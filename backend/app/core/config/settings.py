@@ -33,23 +33,21 @@ class Settings(BaseSettings):
     # ── Database ──────────────────────────────────────────────────────────────
     POSTGRES_HOST: str = "localhost"
     POSTGRES_PORT: int = 5432
-    POSTGRES_DB: str = "agriflow"
+    POSTGRES_DB: str = "agriflow_ai"
     POSTGRES_USER: str = "agriflow"
     POSTGRES_PASSWORD: str = Field(..., description="PostgreSQL password — required")
 
-    DATABASE_URL: PostgresDsn | None = None
+    DATABASE_URL: str | None = None
 
     @model_validator(mode="after")
     def assemble_database_url(self) -> "Settings":
         if self.DATABASE_URL is None:
-            self.DATABASE_URL = PostgresDsn.build(
-                scheme="postgresql+asyncpg",
-                username=self.POSTGRES_USER,
-                password=self.POSTGRES_PASSWORD,
-                host=self.POSTGRES_HOST,
-                port=self.POSTGRES_PORT,
-                path=self.POSTGRES_DB,
-            )
+            self.DATABASE_URL = (
+            f"postgresql+asyncpg://"
+            f"{self.POSTGRES_USER}:{self.POSTGRES_PASSWORD}"
+            f"@{self.POSTGRES_HOST}:{self.POSTGRES_PORT}"
+            f"/{self.POSTGRES_DB}"
+        )
         return self
 
     # ── Security ──────────────────────────────────────────────────────────────
