@@ -1,0 +1,26 @@
+# Python
+__pycache__/
+*.pyc
+*.pyo
+
+# Virtual Environment
+venv/
+.env
+
+# IDE
+.vscode/
+.idea/
+
+# Mac
+.DS_Store
+
+# Testing
+.coverage
+htmlcov/
+
+# Build
+dist/
+build/
+
+# Node
+node_modules/
