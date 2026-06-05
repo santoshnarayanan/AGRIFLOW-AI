@@ -10,12 +10,20 @@ Key behaviours:
 """
 
 import asyncio
+import sys
+from pathlib import Path
 from logging.config import fileConfig
+
+sys.path.insert(
+    0,
+    str(Path(__file__).resolve().parents[3])
+)
 
 from alembic import context
 from sqlalchemy import pool
 from sqlalchemy.engine import Connection
 from sqlalchemy.ext.asyncio import async_engine_from_config
+
 
 from app.core.config import get_settings
 from app.db.base import Base
