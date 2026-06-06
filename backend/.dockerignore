@@ -1,0 +1,39 @@
+# ── Python artefacts ──────────────────────────────────────────────────────────
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+*.egg-info/
+.eggs/
+dist/
+build/
+
+# ── Virtual environments ──────────────────────────────────────────────────────
+.venv/
+venv/
+env/
+
+# ── Secrets — never ship .env into the build context ─────────────────────────
+.env
+.env.*
+!.env.example
+
+# ── Tests & coverage ──────────────────────────────────────────────────────────
+app/tests/
+.pytest_cache/
+.coverage
+htmlcov/
+
+# ── IDE & OS ──────────────────────────────────────────────────────────────────
+.vscode/
+.idea/
+.DS_Store
+*.swp
+*.swo
+
+# ── Git ───────────────────────────────────────────────────────────────────────
+.git/
+.gitignore
+
+# ── Docs ─────────────────────────────────────────────────────────────────────
+*.md
