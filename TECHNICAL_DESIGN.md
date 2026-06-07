@@ -37,6 +37,19 @@ backend/
 
 ---
 
+## Backend folder
+
+```text
+AGRIFLOW-AI
+├── backend
+├── docs
+├── images
+├── infrastructure
+└── frontend (planned)
+```
+
+---
+
 ## High-Level Architecture
 
 ![High Level Archiecture](./images/Phase1/Phase1-Tech-diagram1.png)
@@ -56,21 +69,23 @@ backend/
 1. alembic_version
 2. farms
 
-### Farm Table Columns
+### Farm Entity
 
-- id
-- farm_code
-- farm_name
-- owner_name
-- country
-- state
-- city
-- latitude
-- longitude
-- total_area_hectares
-- is_active
-- created_at
-- updated_at
+| Column | Type |
+|----------|----------|
+| id | UUID |
+| farm_code | VARCHAR |
+| farm_name | VARCHAR |
+| owner_name | VARCHAR |
+| country | VARCHAR |
+| state | VARCHAR |
+| city | VARCHAR |
+| latitude | NUMERIC |
+| longitude | NUMERIC |
+| total_area_hectares | NUMERIC |
+| is_active | BOOLEAN |
+| created_at | TIMESTAMP |
+| updated_at | TIMESTAMP |
 
 ---
 

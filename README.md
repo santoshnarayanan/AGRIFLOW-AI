@@ -45,7 +45,10 @@ Completed:
 - Farm domain model
 - Farm database table
 - Docker foundation
-- Logging and configuration management
+
+Deferred:
+- Frontend Implementation
+- Docker Runtime Validation
 
 ---
 
@@ -102,3 +105,12 @@ Phase 7+:
 - Yield Prediction
 - Disease Prediction
 - Agricultural Intelligence
+
+## Documentation
+
+- docs/01-vision.md
+- docs/02-architecture.md
+- docs/03-database.md
+- docs/04-api-design.md
+- docs/05-local-setup.md
+- docs/06-roadmap.md
