@@ -10,10 +10,17 @@ Latitude / longitude are stored as NUMERIC rather than FLOAT to avoid
 IEEE-754 floating-point drift when persisting and comparing coordinates.
 """
 
+from __future__ import annotations
+
+from typing import TYPE_CHECKING
+
 from sqlalchemy import Boolean, Numeric, String
-from sqlalchemy.orm import Mapped, mapped_column
+from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.db.base import AuditableModel, Base
+
+if TYPE_CHECKING:
+    from app.db.models.field import Field
 
 
 class Farm(AuditableModel, Base):
@@ -79,6 +86,11 @@ class Farm(AuditableModel, Base):
         server_default="true",
         comment="Soft-delete flag; inactive farms are retained for historical data",
     )
+
+    fields: Mapped[list[Field]] = relationship(
+    back_populates="farm",
+    cascade="all, delete-orphan",
+)
 
     def __repr__(self) -> str:
         return f"<Farm id={self.id} code={self.farm_code!r} name={self.farm_name!r}>"
