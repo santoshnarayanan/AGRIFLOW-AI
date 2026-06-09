@@ -6,6 +6,8 @@ This document captures the long-term business vision, AI use cases, and future d
 
 AGRIFLOW-AI aims to become an Agricultural Decision Intelligence Platform that helps farmers make data-driven decisions using farm data, field data, crop data, weather intelligence, sensor data, and AI.
 
+![AI Agriculture Vision](./images/vision/AI-Agriculture.png)
+
 ## Problems Being Solved
 
 - Water scarcity
