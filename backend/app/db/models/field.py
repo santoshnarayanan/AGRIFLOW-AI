@@ -19,6 +19,7 @@ from sqlalchemy.orm import Mapped, mapped_column, relationship
 from app.db.base import AuditableModel, Base
 
 if TYPE_CHECKING:
+    from app.db.models.crop import Crop
     from app.db.models.farm import Farm
 
 
@@ -59,6 +60,10 @@ class Field(AuditableModel, Base):
     )
 
     farm: Mapped[Farm] = relationship(back_populates="fields")
+    crops: Mapped[list[Crop]] = relationship(
+        back_populates="field",
+        cascade="all, delete-orphan",
+    )
 
     def __repr__(self) -> str:
         return f"<Field id={self.id} name={self.name!r} farm_id={self.farm_id}>"
