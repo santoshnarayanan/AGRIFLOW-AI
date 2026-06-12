@@ -1,121 +1,504 @@
-# AGRIFLOW-AI Technical Design Document
+# AGRIFLOW-AI Technical Architecture
 
-## Phase 1 Technical Architecture
+## Overview
 
-### Technology Stack
+AGRIFLOW-AI is an Agricultural Intelligence Platform built using a layered architecture that emphasizes maintainability, scalability, separation of concerns, and domain-driven development.
 
-| Layer | Technology |
-|---------|------------|
-| Backend API | FastAPI |
-| Language | Python 3.12 |
-| ORM | SQLAlchemy |
-| Migration | Alembic |
-| Database | PostgreSQL |
-| Containerization | Docker |
-| Architecture | Clean Architecture |
-| Version Control | Git + GitHub |
-| IDE | Cursor |
+The platform currently implements Farm, Field, and Crop domains and follows a Clean Architecture approach with clearly separated responsibilities across API, Service, Repository, and Database layers.
 
 ---
 
-## Backend Structure
+# Architecture Principles
+
+AGRIFLOW-AI follows the following design principles:
+
+* Clean Architecture
+* SOLID Principles
+* Repository Pattern
+* Service Layer Pattern
+* Separation of Concerns
+* Dependency Injection
+* Domain-Driven Design
+* Migration-Driven Database Evolution
+* API-First Development
+
+---
+
+# Technology Stack
+
+| Layer                | Technology      |
+| -------------------- | --------------- |
+| Backend API          | FastAPI         |
+| Language             | Python 3.12     |
+| ORM                  | SQLAlchemy 2.x  |
+| Database             | PostgreSQL      |
+| Migration Framework  | Alembic         |
+| Validation           | Pydantic        |
+| Dependency Injection | FastAPI Depends |
+| Containerization     | Docker          |
+| Version Control      | Git + GitHub    |
+| IDE                  | Cursor          |
+
+---
+
+# High-Level System Architecture
+
+```text
+Frontend
+    │
+    ▼
+FastAPI API Layer
+    │
+    ▼
+Service Layer
+    │
+    ▼
+Repository Layer
+    │
+    ▼
+SQLAlchemy ORM
+    │
+    ▼
+PostgreSQL
+```
+
+---
+
+# Current Domain Hierarchy
+
+```text
+Farm
+ └── Field
+      └── Crop
+```
+
+Current business domains:
+
+* Farm Management
+* Field Management
+* Crop Management
+
+Future domains:
+
+* Soil Intelligence
+* Weather Intelligence
+* Irrigation Intelligence
+* Sensor Intelligence
+* Yield Intelligence
+* AI Recommendation Engine
+
+---
+
+# Backend Project Structure
 
 ```text
 backend/
-├── app/
-│   ├── api/
-│   ├── core/
-│   ├── db/
-│   ├── schemas/
-│   ├── services/
+├── app
+│   ├── api
+│   │   ├── farms
+│   │   ├── fields
+│   │   ├── crops
+│   │   ├── health
+│   │   └── version
+│   │
+│   ├── core
+│   │   ├── config
+│   │   ├── logging
+│   │   └── security
+│   │
+│   ├── db
+│   │   ├── migrations
+│   │   ├── models
+│   │   ├── repositories
+│   │   └── session
+│   │
+│   ├── schemas
+│   ├── services
 │   └── main.py
-├── alembic.ini
-├── requirements.txt
+│
 ├── Dockerfile
-└── .dockerignore
+├── alembic.ini
+└── requirements.txt
 ```
 
 ---
 
-## Backend folder
+# Layered Architecture
+
+AGRIFLOW-AI uses five primary layers.
+
+## API Layer
+
+Responsibilities:
+
+* HTTP endpoint definitions
+* Request handling
+* Response handling
+* Exception translation
+* Dependency injection
+
+Examples:
 
 ```text
-AGRIFLOW-AI
-├── backend
-├── docs
-├── images
-├── infrastructure
-└── frontend (planned)
+app/api/fields
+app/api/crops
+```
+
+The API layer should not contain business logic.
+
+---
+
+## Schema Layer
+
+Responsibilities:
+
+* Request validation
+* Response serialization
+* API contracts
+
+Examples:
+
+```text
+FieldCreate
+FieldUpdate
+FieldResponse
+
+CropCreate
+CropUpdate
+CropResponse
+```
+
+The schema layer defines what data enters and exits the application.
+
+---
+
+## Service Layer
+
+Responsibilities:
+
+* Business rules
+* Validation
+* Domain orchestration
+* Cross-domain coordination
+
+Examples:
+
+```text
+FieldService
+CropService
+```
+
+Business rules belong here.
+
+Examples:
+
+* Farm must exist before Field creation
+* Field must exist before Crop creation
+* Harvest date validation
+* Domain-specific validations
+
+---
+
+## Repository Layer
+
+Responsibilities:
+
+* Database access
+* CRUD operations
+* Query execution
+* Persistence
+
+Examples:
+
+```text
+FarmRepository
+FieldRepository
+CropRepository
+```
+
+Repositories should not contain business rules.
+
+---
+
+## Model Layer
+
+Responsibilities:
+
+* Database entity definitions
+* Table mapping
+* Relationships
+
+Examples:
+
+```text
+Farm
+Field
+Crop
+```
+
+Models represent PostgreSQL tables.
+
+---
+
+# Request Lifecycle
+
+The following flow occurs for every API request.
+
+```text
+Client Request
+      │
+      ▼
+FastAPI Router
+      │
+      ▼
+Pydantic Schema Validation
+      │
+      ▼
+Service Layer
+      │
+      ▼
+Repository Layer
+      │
+      ▼
+SQLAlchemy ORM
+      │
+      ▼
+PostgreSQL
+```
+
+Response Flow:
+
+```text
+PostgreSQL
+      │
+      ▼
+SQLAlchemy ORM
+      │
+      ▼
+Repository Layer
+      │
+      ▼
+Service Layer
+      │
+      ▼
+Response Schema
+      │
+      ▼
+Client Response
 ```
 
 ---
 
-## High-Level Architecture
+# Dependency Injection Architecture
 
-![High Level Archiecture](../images/Phase1/Phase1-Tech-diagram1.png)
+AGRIFLOW-AI uses FastAPI dependency injection.
 
----
+Example flow:
 
-## Database Migration Flow
+```text
+HTTP Request
+      │
+      ▼
+Router
+      │
+      ▼
+Dependency Provider
+      │
+      ▼
+Service
+      │
+      ▼
+Repository
+      │
+      ▼
+AsyncSession
+      │
+      ▼
+PostgreSQL
+```
 
-![Database Migration flow](../images/Phase1/Phase1-Tech-diagram2.png)
+Benefits:
 
----
-
-## Current Database Objects
-
-### Tables
-
-1. alembic_version
-2. farms
-
-### Farm Entity
-
-| Column | Type |
-|----------|----------|
-| id | UUID |
-| farm_code | VARCHAR |
-| farm_name | VARCHAR |
-| owner_name | VARCHAR |
-| country | VARCHAR |
-| state | VARCHAR |
-| city | VARCHAR |
-| latitude | NUMERIC |
-| longitude | NUMERIC |
-| total_area_hectares | NUMERIC |
-| is_active | BOOLEAN |
-| created_at | TIMESTAMP |
-| updated_at | TIMESTAMP |
+* Centralized transaction management
+* Reduced coupling
+* Improved testability
+* Cleaner service construction
 
 ---
 
-## Docker Architecture
+# Repository Pattern
 
-![Docker Archiecture](../images/Phase1/Phase1-Tech-diagram3.png)
+AGRIFLOW-AI implements a generic repository architecture.
+
+```text
+BaseRepository
+      │
+      ├── FarmRepository
+      ├── FieldRepository
+      └── CropRepository
+```
+
+Benefits:
+
+* Reduced code duplication
+* Consistent CRUD implementation
+* Reusable query patterns
+* Easier maintenance
 
 ---
 
-## Design Principles
+# Database Architecture
 
-- SOLID Principles
-- Clean Architecture
-- Repository Pattern
-- Service Layer Pattern
-- Separation of Concerns
-- Migration-Driven Database Changes
-- Environment-Based Configuration
+Current tables:
+
+```text
+alembic_version
+farms
+fields
+crops
+```
+
+Relationships:
+
+```text
+Farm (1)
+   │
+   ▼
+Field (N)
+   │
+   ▼
+Crop (N)
+```
 
 ---
 
-## Phase 1 Status
+# Database Migration Architecture
 
-Completed:
-- Backend Foundation
-- Database Foundation
-- Migration Framework
-- Farm Domain Foundation
-- Docker Foundation
+AGRIFLOW-AI uses Alembic for schema evolution.
 
-Deferred:
-- Frontend Implementation
-- Docker Runtime Validation
+Migration sequence:
+
+```text
+001_create_farms_table
+002_create_fields_table
+003_create_crops_table
+```
+
+Migration flow:
+
+```text
+Model Change
+      │
+      ▼
+Alembic Revision
+      │
+      ▼
+Migration Script
+      │
+      ▼
+Database Upgrade
+```
+
+Benefits:
+
+* Version-controlled schema changes
+* Repeatable deployments
+* Environment consistency
+
+---
+
+# Current API Architecture
+
+Implemented APIs:
+
+## Health
+
+* GET /api/v1/health/live
+* GET /api/v1/health/ready
+
+## Version
+
+* GET /api/v1/version
+
+## Fields
+
+* POST   /api/v1/farms/{farm_id}/fields
+* GET    /api/v1/farms/{farm_id}/fields
+* GET    /api/v1/fields/{field_id}
+* PATCH  /api/v1/fields/{field_id}
+* DELETE /api/v1/fields/{field_id}
+
+## Crops
+
+* POST   /api/v1/fields/{field_id}/crops
+* GET    /api/v1/fields/{field_id}/crops
+* GET    /api/v1/crops/{crop_id}
+* PATCH  /api/v1/crops/{crop_id}
+* DELETE /api/v1/crops/{crop_id}
+
+---
+
+# Current Platform Status
+
+Completed Domains:
+
+* Farm Domain
+* Field Domain
+* Crop Domain
+
+Implemented Architecture:
+
+* Model Layer
+* Schema Layer
+* Repository Layer
+* Service Layer
+* API Layer
+* Dependency Injection
+* PostgreSQL Integration
+* Alembic Migration Framework
+
+---
+
+# Future Architecture Evolution
+
+Planned domains:
+
+```text
+Farm
+ └── Field
+      ├── Crop
+      ├── Soil Profile
+      ├── Weather Records
+      ├── Sensor Readings
+      ├── Irrigation Events
+      ├── Yield Records
+      └── Satellite Observations
+```
+
+Future architectural capabilities:
+
+* PostGIS Integration
+* Event-Driven Architecture
+* Message Queues
+* AI Recommendation Engine
+* Data Lake Integration
+* MLOps Platform
+* Digital Twin Architecture
+* Farm Copilot
+* Advanced Observability
+
+---
+
+# Architectural Vision
+
+AGRIFLOW-AI is evolving from a farm management platform into a comprehensive Agricultural Intelligence Platform.
+
+The architecture is designed to support the long-term vision of:
+
+* Precision Agriculture
+* Predictive Agriculture
+* AI-Assisted Farming
+* Agricultural Digital Twins
+* Autonomous Agricultural Intelligence
+
+while maintaining clear separation of concerns, scalability, and maintainability.
