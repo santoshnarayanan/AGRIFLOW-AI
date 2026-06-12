@@ -19,9 +19,11 @@ from typing import Annotated
 from fastapi import Depends
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.db.repositories.crop import CropRepository
 from app.db.repositories.farm import FarmRepository
 from app.db.repositories.field import FieldRepository
 from app.db.session import AsyncSessionFactory
+from app.services.crop import CropService
 from app.services.field import FieldService
 
 
@@ -50,3 +52,14 @@ def get_field_service(session: SessionDep) -> FieldService:
 
 
 FieldServiceDep = Annotated[FieldService, Depends(get_field_service)]
+
+
+def get_crop_service(session: SessionDep) -> CropService:
+    """Construct a ``CropService`` wired to the request-scoped session."""
+    return CropService(
+        crop_repository=CropRepository(session),
+        field_repository=FieldRepository(session),
+    )
+
+
+CropServiceDep = Annotated[CropService, Depends(get_crop_service)]
