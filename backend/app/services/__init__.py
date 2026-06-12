@@ -1,3 +1,8 @@
+from .crop import (
+    CropNotFoundError,
+    CropService,
+    InvalidHarvestDateError,
+)
 from .field import (
     DuplicateFieldNameError,
     FarmNotFoundError,
@@ -6,8 +11,11 @@ from .field import (
 )
 
 __all__ = [
+    "CropNotFoundError",
+    "CropService",
     "DuplicateFieldNameError",
     "FarmNotFoundError",
     "FieldNotFoundError",
     "FieldService",
+    "InvalidHarvestDateError",
 ]
