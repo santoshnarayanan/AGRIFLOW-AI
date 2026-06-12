@@ -1,355 +1,305 @@
-# AGRIFLOW-AI Product Vision & Strategic Roadmap
-
 # AGRIFLOW-AI
-## Agricultural Decision Intelligence Platform
+
+## AI-Powered Agricultural Intelligence Platform
+
+AGRIFLOW-AI is an Agricultural Intelligence Platform designed to help farmers, agronomists, cooperatives, and agricultural enterprises manage farm operations, monitor crop lifecycles, and build toward AI-driven agricultural decision intelligence.
+
+The platform combines farm management, field management, crop management, weather intelligence, soil intelligence, sensor integration, and future AI-powered recommendations into a unified agricultural operating platform.
 
 ---
 
-# Executive Summary
+## Vision
 
-AGRIFLOW-AI is an AI-powered Agricultural Decision Intelligence Platform designed to help farmers, agricultural enterprises, cooperatives, agronomists, and food supply chain stakeholders make better operational and strategic decisions using data.
+AGRIFLOW-AI aims to evolve from a farm management platform into a comprehensive Agricultural Intelligence Platform capable of supporting:
 
-Modern agriculture faces increasing pressure from climate change, water scarcity, labor shortages, rising operational costs, unpredictable weather conditions, and growing sustainability requirements. Traditional farming practices often rely heavily on experience and manual observation, which can limit productivity and responsiveness to changing conditions.
+* Precision Agriculture
+* Predictive Agriculture
+* Digital Twin Agriculture
+* AI-Assisted Decision Making
+* Sustainable Farming
+* Autonomous Agriculture
 
-AGRIFLOW-AI addresses these challenges by combining farm data, field data, crop information, weather intelligence, sensor telemetry, satellite imagery, operational workflows, and artificial intelligence into a unified decision-support platform.
+For the complete strategic vision, see:
 
-The long-term vision is to create an Agricultural Operating System that continuously monitors farming operations, predicts future outcomes, recommends actions, and eventually enables autonomous agricultural decision-making.
-
----
-
-# Vision
-
-AGRIFLOW-AI aims to become a comprehensive Agricultural Decision Intelligence Platform that transforms agricultural operations from reactive management into proactive and predictive management.
-
-Instead of waiting for problems such as crop diseases, irrigation issues, nutrient deficiencies, or weather-related disruptions to occur, farmers can receive early warnings, predictive insights, and actionable recommendations generated through AI-powered analytics.
-
-The platform seeks to become the digital control tower for modern farming operations, similar to how enterprise control towers monitor supply chains, manufacturing operations, and logistics networks.
-
-![AI Agriculture Vision](./images/vision/AI-Agriculture.png)
+```text
+docs/01-vision.md
+```
 
 ---
 
-# Problems Being Solved
+## Current Platform Status
 
-## Water Scarcity
+### Completed Phases
 
-Water availability is becoming one of the most critical challenges facing global agriculture. Traditional irrigation methods often result in overwatering, under-watering, and inefficient resource utilization.
+✅ Phase 1 – Foundation
 
-AGRIFLOW-AI uses sensor data, weather forecasts, soil moisture measurements, and predictive analytics to optimize irrigation schedules and reduce water waste while maintaining crop health.
+✅ Phase 2 – Field Domain
 
-### Expected Benefits
+✅ Phase 3 – Crop Domain
 
-- Reduced water consumption
-- Lower irrigation costs
-- Improved crop health
-- Sustainable water management
+### Current Domain Hierarchy
 
----
+```text
+Farm
+ └── Field
+      └── Crop
+```
 
-## Labor Shortages
+### Current Database Tables
 
-Agricultural operations increasingly face shortages of skilled labor, especially during planting, monitoring, and harvesting seasons.
-
-AGRIFLOW-AI reduces manual effort by automating monitoring activities, generating intelligent recommendations, and supporting future autonomous farming workflows.
-
-### Expected Benefits
-
-- Reduced operational dependency on manual labor
-- Improved productivity
-- Faster decision making
-- Scalable farm management
+```text
+alembic_version
+farms
+fields
+crops
+```
 
 ---
 
-## Climate Uncertainty
+## Current Architecture
 
-Weather patterns are becoming increasingly unpredictable, creating risks for planting schedules, irrigation planning, disease management, and harvest timing.
+AGRIFLOW-AI follows a layered architecture.
 
-AGRIFLOW-AI continuously analyzes weather intelligence and environmental conditions to identify potential risks and recommend mitigation actions.
+```text
+API Layer
+    ↓
+Service Layer
+    ↓
+Repository Layer
+    ↓
+Model Layer
+    ↓
+PostgreSQL
+```
 
-### Expected Benefits
+### Architectural Principles
 
-- Improved resilience to climate variability
-- Better planning decisions
-- Reduced weather-related losses
-
----
-
-## Yield Unpredictability
-
-Farmers often struggle to accurately estimate harvest quantity and timing.
-
-AGRIFLOW-AI applies machine learning models to historical production data, weather information, soil conditions, and crop growth patterns to improve yield forecasting accuracy.
-
-### Expected Benefits
-
-- Improved harvest planning
-- Better inventory management
-- Enhanced revenue forecasting
-- Stronger supply chain coordination
-
----
-
-## Disease Management
-
-Many crop diseases are only detected after visible symptoms appear, by which time significant damage may already have occurred.
-
-AGRIFLOW-AI combines environmental monitoring, crop analytics, sensor data, and computer vision technologies to identify disease risks at an early stage.
-
-### Expected Benefits
-
-- Earlier intervention
-- Reduced crop losses
-- Lower treatment costs
-- Improved crop quality
+* Clean Architecture
+* SOLID Principles
+* Repository Pattern
+* Service Layer Pattern
+* Dependency Injection
+* Separation of Concerns
+* Domain-Driven Design
 
 ---
 
-## Resource Optimization
+## Technology Stack
 
-Agricultural inputs such as fertilizers, pesticides, water, and energy represent major operational costs.
-
-AGRIFLOW-AI helps optimize resource utilization through data-driven recommendations and predictive analytics.
-
-### Expected Benefits
-
-- Reduced operating costs
-- Improved sustainability
-- Higher productivity
-- Better profitability
-
----
-
-# Key Business Domains
-
-## Farm Management
-
-Farm Management serves as the foundation of the platform.
-
-This domain manages farm registration, ownership information, operational structures, geographic locations, and overall farm administration.
-
-### Core Capabilities
-
-- Farm registration
-- Ownership management
-- Geographic location tracking
-- Farm-level reporting
-- Multi-farm operations support
+| Layer               | Technology   |
+| ------------------- | ------------ |
+| Backend API         | FastAPI      |
+| Language            | Python 3.12  |
+| Database            | PostgreSQL   |
+| ORM                 | SQLAlchemy   |
+| Migration Framework | Alembic      |
+| Validation          | Pydantic     |
+| Containerization    | Docker       |
+| Version Control     | Git + GitHub |
 
 ---
 
-## Field Management
+## Current Features
 
-Field Management focuses on monitoring and managing individual agricultural fields.
+### Farm Management
 
-Each field can contain different crops, soil conditions, irrigation systems, and operational characteristics.
+* Farm registration
+* Farm geolocation
+* Farm administration
 
-### Core Capabilities
+### Field Management
 
-- Field boundary management
-- GIS integration
-- Soil profiling
-- Irrigation infrastructure tracking
-- Environmental monitoring
+* Field lifecycle management
+* Farm ↔ Field relationship management
+* Field geospatial tracking
+* Field CRUD APIs
 
----
+### Crop Management
 
-## Crop Management
-
-Crop Management supports the complete lifecycle of agricultural production.
-
-The platform tracks planting, growth, monitoring, treatment, and harvesting activities across multiple crop types.
-
-### Core Capabilities
-
-- Crop lifecycle tracking
-- Planting schedules
-- Growth stage monitoring
-- Harvest planning
-- Crop performance analytics
+* Crop lifecycle tracking
+* Crop status management
+* Planting and harvest tracking
+* Crop CRUD APIs
 
 ---
 
-# AI Use Cases
+## Current API Coverage
 
-## Yield Prediction
+### Health APIs
 
-Yield Prediction uses machine learning models to forecast expected harvest quantity and harvest timing.
+```http
+GET /api/v1/health/live
+GET /api/v1/health/ready
+```
 
-The system analyzes historical yield data, weather conditions, soil quality, crop health indicators, and environmental trends.
+### Version API
 
-### Business Value
+```http
+GET /api/v1/version
+```
 
-- Better production planning
-- Improved supply chain coordination
-- Revenue forecasting
-- Inventory optimization
+### Field APIs
 
----
+```http
+POST   /api/v1/farms/{farm_id}/fields
+GET    /api/v1/farms/{farm_id}/fields
+GET    /api/v1/fields/{field_id}
+PATCH  /api/v1/fields/{field_id}
+DELETE /api/v1/fields/{field_id}
+```
 
-## Disease Detection
+### Crop APIs
 
-Disease Detection continuously evaluates crop conditions and environmental variables to identify potential disease risks.
-
-Future versions may incorporate drone imagery, satellite imagery, and computer vision models for automated disease recognition.
-
-### Business Value
-
-- Early warning capabilities
-- Reduced crop damage
-- Improved treatment effectiveness
-- Lower operational costs
-
----
-
-## Precision Irrigation
-
-Precision Irrigation determines the optimal timing and quantity of water required for individual fields.
-
-Recommendations are generated using sensor data, weather forecasts, crop requirements, and soil conditions.
-
-### Business Value
-
-- Water conservation
-- Reduced irrigation costs
-- Improved sustainability
-- Higher crop productivity
+```http
+POST   /api/v1/fields/{field_id}/crops
+GET    /api/v1/fields/{field_id}/crops
+GET    /api/v1/crops/{crop_id}
+PATCH  /api/v1/crops/{crop_id}
+DELETE /api/v1/crops/{crop_id}
+```
 
 ---
 
-## Weather Intelligence
+## Project Structure
 
-Weather Intelligence transforms raw weather data into actionable agricultural recommendations.
+```text
+AGRIFLOW-AI
+├── backend
+├── docs
+├── frontend (planned)
+├── images
+└── infrastructure
+```
 
-Instead of simply displaying weather forecasts, the platform explains how weather conditions may impact agricultural operations.
+### Backend Structure
 
-### Business Value
-
-- Improved planning decisions
-- Reduced weather-related risks
-- Enhanced operational readiness
-
----
-
-## Fertilizer Optimization
-
-Fertilizer Optimization recommends nutrient application schedules based on crop requirements, growth stages, soil conditions, and environmental factors.
-
-### Business Value
-
-- Reduced fertilizer waste
-- Lower operating costs
-- Improved crop quality
-- Sustainable farming practices
-
----
-
-# Industry Inspiration
-
-AGRIFLOW-AI is inspired by leading agricultural technology initiatives worldwide.
-
-These include:
-
-### Dutch AI-Powered Greenhouse Ecosystems
-
-Advanced greenhouse operations use AI, sensors, robotics, and predictive analytics to optimize crop production while minimizing resource consumption.
-
-### Digital Farming Platforms
-
-Modern digital agriculture platforms demonstrate how data-driven decision making can improve agricultural productivity and sustainability.
-
-### Autonomous Agricultural Machinery
-
-AI-powered equipment and autonomous machinery are transforming agricultural operations through automation and precision execution.
-
-### Computer Vision Crop Monitoring
-
-Computer vision technologies enable continuous crop monitoring, disease detection, and field analysis at scale.
-
-### Precision Agriculture Systems
-
-Precision agriculture platforms optimize resource utilization through advanced analytics and data-driven recommendations.
+```text
+backend/
+├── app
+│   ├── api
+│   ├── core
+│   ├── db
+│   ├── schemas
+│   ├── services
+│   └── main.py
+├── Dockerfile
+├── alembic.ini
+└── requirements.txt
+```
 
 ---
 
-# Sustainability Objectives
+## Documentation
 
-AGRIFLOW-AI is designed to support environmentally responsible farming.
-
-## Reduce Water Consumption
-
-Improve irrigation efficiency through intelligent recommendations and predictive analytics.
-
-## Reduce Chemical Usage
-
-Minimize unnecessary fertilizer and pesticide application through precision targeting.
-
-## Improve Crop Quality
-
-Support healthier crop growth through continuous monitoring and optimization.
-
-## Improve Resource Utilization
-
-Maximize productivity while reducing waste across water, energy, fertilizer, and labor resources.
+| Document                 | Description                          |
+| ------------------------ | ------------------------------------ |
+| docs/01-vision.md        | Product Vision & Strategic Direction |
+| docs/02-architecture.md  | Technical Architecture               |
+| docs/03-database.md      | Database Design                      |
+| docs/04-api-design.md    | API Design                           |
+| docs/05-local-setup.md   | Local Development Setup              |
+| docs/06-roadmap.md       | Product Roadmap                      |
+| docs/07-phase-history.md | Implementation History               |
 
 ---
 
-# Long-Term Product Roadmap
+## Getting Started
 
-## Phase 1 – Backend Foundation
+### Clone Repository
 
-Establish platform architecture, database infrastructure, security, and core APIs.
+```bash
+git clone <repository-url>
+cd AGRIFLOW-AI
+```
 
-## Phase 2 – Field Domain
+### Start Services
 
-Implement field management, GIS capabilities, and field-level operations.
+```bash
+docker compose up -d
+```
 
-## Phase 3 – Crop Domain
+### Run Database Migrations
 
-Develop crop lifecycle management and agricultural workflow tracking.
+```bash
+alembic upgrade head
+```
 
-## Phase 4 – Sensor Foundation
+### Start Backend
 
-Integrate IoT sensors and real-time environmental monitoring.
+```bash
+uvicorn app.main:app --reload
+```
 
-## Phase 5 – Data Pipeline
+### API Documentation
 
-Build scalable ingestion, processing, and analytics infrastructure.
-
-## Phase 6 – AI Data Preparation
-
-Prepare datasets, feature engineering pipelines, and model training frameworks.
-
-## Phase 7 – Weather Intelligence
-
-Introduce weather-based recommendations and predictive risk analysis.
-
-## Phase 8 – Yield Prediction
-
-Deploy machine learning models for production forecasting.
-
-## Phase 9 – Disease Prediction
-
-Implement predictive disease monitoring and risk assessment capabilities.
-
-## Phase 10+ – Autonomous Agriculture Intelligence
-
-Evolve AGRIFLOW-AI into a self-optimizing agricultural intelligence platform capable of autonomous monitoring, prediction, recommendation, and operational decision support.
+```text
+http://localhost:8000/docs
+```
 
 ---
 
-# Long-Term Strategic Vision
+## Roadmap Summary
 
-The future of agriculture will increasingly be driven by data, automation, artificial intelligence, robotics, sensors, and predictive analytics.
+### Phase 4
 
-AGRIFLOW-AI aims to become the operational intelligence layer that connects these technologies into a unified agricultural ecosystem.
+Soil Intelligence Domain
 
-The platform will help farmers move from reactive farming to predictive farming and ultimately toward autonomous agriculture, where decisions are continuously informed by real-time intelligence and AI-powered recommendations.
+### Phase 5
+
+Weather Intelligence Domain
+
+### Phase 6
+
+Irrigation & Water Management
+
+### Phase 7
+
+Sensor & IoT Platform
+
+### Phase 8
+
+GIS & Satellite Intelligence
+
+### Phase 9
+
+Yield Analytics
+
+### Phase 10
+
+AI Recommendation Engine
+
+### Phase 11
+
+Digital Twin Agriculture Platform
+
+For the detailed roadmap see:
+
+```text
+docs/06-roadmap.md
+```
 
 ---
 
-# Conclusion
+## Long-Term Goal
 
-AGRIFLOW-AI is envisioned as a next-generation Agricultural Decision Intelligence Platform that combines data, analytics, artificial intelligence, and operational workflows into a single ecosystem.
+AGRIFLOW-AI seeks to become the operating system for modern agriculture by combining operational data, environmental intelligence, predictive analytics, and artificial intelligence into a single platform that helps agricultural organizations improve productivity, sustainability, and decision-making.
 
-By integrating farm operations, field management, crop intelligence, weather analytics, sensor data, and predictive AI capabilities, AGRIFLOW-AI seeks to enable sustainable, efficient, and intelligent farming for the future.
+The long-term evolution can be summarized as:
+
+```text
+Reactive Farming
+      ↓
+Data-Driven Farming
+      ↓
+Predictive Farming
+      ↓
+Intelligent Farming
+      ↓
+Autonomous Agriculture
+```
+
+---
+
+## License
+
+To be defined.
