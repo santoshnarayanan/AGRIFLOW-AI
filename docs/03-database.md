@@ -5,6 +5,15 @@
 ### farms
 Primary agricultural entity.
 
+| Column | Type |
+|---|---|
+| id | UUID |
+| name | VARCHAR |
+| latitude | NUMERIC |
+| longitude | NUMERIC |
+| created_at | TIMESTAMP |
+| updated_at | TIMESTAMP |
+
 ### fields
 Represents a field belonging to a farm.
 
@@ -20,15 +29,73 @@ Represents a field belonging to a farm.
 | created_at | TIMESTAMP |
 | updated_at | TIMESTAMP |
 
+### crops
+Represents a crop cycle belonging to a field.
+
+| Column | Type |
+|---|---|
+| id | UUID |
+| field_id | UUID (FK -> fields.id) |
+| crop_name | VARCHAR(255) |
+| crop_variety | VARCHAR(255) |
+| planting_date | DATE |
+| expected_harvest_date | DATE |
+| actual_harvest_date | DATE |
+| status | ENUM(crop_status) |
+| created_at | TIMESTAMP |
+| updated_at | TIMESTAMP |
+
 ## Relationships
 
 Farm (1) -> (N) Fields
 
+Field (1) -> (N) Crops
+
+## Current Domain Hierarchy
+
+Farm
+└── Field
+    └── Crop
+
+## Implemented Migrations
+
+- 001_create_farms_table
+- 002_create_fields_table
+- 003_create_crops_table
+
+## Crop Status Lifecycle
+
+- PLANNED
+- PLANTED
+- GROWING
+- HARVESTED
+
+## Current API Coverage
+
+### Field APIs
+
+- POST   /api/v1/farms/{farm_id}/fields
+- GET    /api/v1/farms/{farm_id}/fields
+- GET    /api/v1/fields/{field_id}
+- PATCH  /api/v1/fields/{field_id}
+- DELETE /api/v1/fields/{field_id}
+
+### Crop APIs
+
+- POST   /api/v1/fields/{field_id}/crops
+- GET    /api/v1/fields/{field_id}/crops
+- GET    /api/v1/crops/{crop_id}
+- PATCH  /api/v1/crops/{crop_id}
+- DELETE /api/v1/crops/{crop_id}
+
 ## Future Database Evolution
 
-- Crop Domain
+- Soil Profile Domain
 - Weather Data
 - Soil Sensors
 - Satellite Imagery
 - GIS / PostGIS Support
 - Field Boundary Polygons
+- Irrigation Management
+- Yield Tracking
+- AI Recommendation Engine
