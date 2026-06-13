@@ -9,13 +9,21 @@ from .field import (
     FieldNotFoundError,
     FieldService,
 )
+from .soil_profile import (
+    DuplicateSoilProfileError,
+    SoilProfileNotFoundError,
+    SoilProfileService,
+)
 
 __all__ = [
     "CropNotFoundError",
     "CropService",
     "DuplicateFieldNameError",
+    "DuplicateSoilProfileError",
     "FarmNotFoundError",
     "FieldNotFoundError",
     "FieldService",
     "InvalidHarvestDateError",
+    "SoilProfileNotFoundError",
+    "SoilProfileService",
 ]
