@@ -21,6 +21,7 @@ from app.db.base import AuditableModel, Base
 if TYPE_CHECKING:
     from app.db.models.crop import Crop
     from app.db.models.farm import Farm
+    from app.db.models.soil_profile import SoilProfile
 
 
 class Field(AuditableModel, Base):
@@ -62,6 +63,11 @@ class Field(AuditableModel, Base):
     farm: Mapped[Farm] = relationship(back_populates="fields")
     crops: Mapped[list[Crop]] = relationship(
         back_populates="field",
+        cascade="all, delete-orphan",
+    )
+    soil_profile: Mapped[SoilProfile | None] = relationship(
+        back_populates="field",
+        uselist=False,
         cascade="all, delete-orphan",
     )
 
