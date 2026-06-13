@@ -25,6 +25,7 @@ Just as enterprise control towers provide visibility and decision support across
 The platform will continuously monitor farms, fields, crops, soil conditions, weather patterns, irrigation systems, sensor networks, and operational activities to generate actionable recommendations and predictive insights.
 
 The long-term objective is to enable farmers to make faster, better, and more sustainable decisions through data-driven intelligence.
+![AI Agriculture Vision](../images/vision/Agriflow-AI-Vision.png)
 
 ---
 
@@ -94,6 +95,8 @@ Future farming systems must reduce waste while improving:
 # Agricultural Control Tower Vision
 
 AGRIFLOW-AI is envisioned as the digital control tower for agricultural operations.
+
+![AI Agriculture Vision](../images/vision/Agriflow-AI-Future.png)
 
 The platform will provide:
 
