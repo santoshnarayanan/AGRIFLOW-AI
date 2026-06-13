@@ -22,9 +22,11 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.db.repositories.crop import CropRepository
 from app.db.repositories.farm import FarmRepository
 from app.db.repositories.field import FieldRepository
+from app.db.repositories.soil_profile import SoilProfileRepository
 from app.db.session import AsyncSessionFactory
 from app.services.crop import CropService
 from app.services.field import FieldService
+from app.services.soil_profile import SoilProfileService
 
 
 # ── Database session ──────────────────────────────────────────────────────────
@@ -63,3 +65,14 @@ def get_crop_service(session: SessionDep) -> CropService:
 
 
 CropServiceDep = Annotated[CropService, Depends(get_crop_service)]
+
+
+def get_soil_profile_service(session: SessionDep) -> SoilProfileService:
+    """Construct a ``SoilProfileService`` wired to the request-scoped session."""
+    return SoilProfileService(
+        soil_profile_repository=SoilProfileRepository(session),
+        field_repository=FieldRepository(session),
+    )
+
+
+SoilProfileServiceDep = Annotated[SoilProfileService, Depends(get_soil_profile_service)]
