@@ -45,23 +45,48 @@ Represents a crop cycle belonging to a field.
 | created_at | TIMESTAMP |
 | updated_at | TIMESTAMP |
 
+### soil_profiles
+
+Represents the soil intelligence profile for a field.
+
+| Column         | Type                           |
+| -------------- | ------------------------------ |
+| id             | UUID                           |
+| field_id       | UUID (FK -> fields.id, UNIQUE) |
+| soil_type      | ENUM(soil_type)                |
+| ph             | NUMERIC(4,2)                   |
+| organic_matter | NUMERIC(5,2)                   |
+| nitrogen       | NUMERIC(10,2)                  |
+| phosphorus     | NUMERIC(10,2)                  |
+| potassium      | NUMERIC(10,2)                  |
+| notes          | TEXT                           |
+| created_at     | TIMESTAMP                      |
+| updated_at     | TIMESTAMP                      |
+
+
 ## Relationships
 
 Farm (1) -> (N) Fields
 
 Field (1) -> (N) Crops
 
+Field (1) -> (1) SoilProfile
+
+
 ## Current Domain Hierarchy
 
 Farm
 └── Field
-    └── Crop
+├── Crop
+└── SoilProfile
+
 
 ## Implemented Migrations
 
 - 001_create_farms_table
 - 002_create_fields_table
 - 003_create_crops_table
+- 004_create_soil_profiles_table
 
 ## Crop Status Lifecycle
 
@@ -88,9 +113,16 @@ Farm
 - PATCH  /api/v1/crops/{crop_id}
 - DELETE /api/v1/crops/{crop_id}
 
+### Soil Profile APIs
+
+* POST   /api/v1/fields/{field_id}/soil-profile
+* GET    /api/v1/fields/{field_id}/soil-profile
+* PATCH  /api/v1/soil-profiles/{soil_profile_id}
+* DELETE /api/v1/soil-profiles/{soil_profile_id}
+
+
 ## Future Database Evolution
 
-- Soil Profile Domain
 - Weather Data
 - Soil Sensors
 - Satellite Imagery

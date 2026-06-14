@@ -158,7 +158,8 @@ Status: Completed
 
 Farm
 └── Field
-└── Crop
+     ├── Crop
+     └── SoilProfile
 
 ### API Endpoints Added
 
@@ -240,6 +241,142 @@ Outcome:
 
 ---
 
+## Phase 4 – Soil Intelligence Domain
+
+Status: Completed
+
+### Completed
+
+* SoilProfile Domain Design
+* SoilProfile ORM Model
+* SoilProfile Database Schema
+* SoilProfile Migration
+* SoilType Enum
+* SoilProfile Pydantic Schemas
+* SoilProfile Repository Layer
+* SoilProfile Service Layer
+* SoilProfile API Layer
+* Dependency Injection Integration
+* API Router Registration
+* CRUD Endpoints for Soil Profiles
+* Integration & Validation Testing
+
+### Database Changes
+
+* Added soil_profiles table
+* Added field_id foreign key relationship
+* Added one-to-one Field ↔ SoilProfile relationship
+* Added soil nutrient tracking
+* Added soil pH tracking
+* Added organic matter tracking
+* Added soil profile notes support
+
+### Domain Hierarchy Established
+
+Farm
+└── Field
+├── Crop
+└── SoilProfile
+
+### API Endpoints Added
+
+* POST   /api/v1/fields/{field_id}/soil-profile
+* GET    /api/v1/fields/{field_id}/soil-profile
+* PATCH  /api/v1/soil-profiles/{soil_profile_id}
+* DELETE /api/v1/soil-profiles/{soil_profile_id}
+
+### Business Rules Implemented
+
+* Field must exist before SoilProfile creation
+* Only one SoilProfile allowed per Field
+* SoilProfile existence validation before update
+* SoilProfile existence validation before delete
+* Soil nutrient validation
+* Soil pH validation foundation
+
+### Architecture Evolution
+
+Repository Layer:
+
+* SoilProfileRepository added
+* BaseRepository reused for SoilProfileRepository
+* Field-specific SoilProfile queries implemented
+
+Dependency Injection:
+
+* SoilProfileService dependency provider added
+* Shared transaction scope across repositories
+* Request-scoped session management extended
+
+API Layer:
+
+* SoilProfile service exception translation
+* HTTP error mapping
+* Schema-based request validation
+* SoilProfile endpoint registration
+
+### Lessons Learned
+
+* One-to-one domain relationships require both service validation and database constraints
+* Schema validation should remain separate from business rule validation
+* Repository reuse significantly reduces implementation effort
+* Vertical domain implementation (Model → Schema → Repository → Service → API) improves consistency
+* Integration testing should be performed before domain closure
+
+### Notable Technical Challenges
+
+Docker Port Conflicts
+
+Issue:
+
+* PostgreSQL host port conflicts
+* FastAPI host port conflicts across multiple local projects
+
+Resolution:
+
+* Reassigned PostgreSQL container port mappings
+* Reassigned backend service port mappings
+* Validated Docker networking and container health
+
+Outcome:
+
+* Stable local development environment
+* Successful end-to-end integration validation
+
+PostgreSQL 18 Container Compatibility
+
+Issue:
+
+* PostgreSQL 18 container startup conflict with existing volume layout
+
+Resolution:
+
+* Environment cleanup and container recreation
+* Successful database initialization and health verification
+
+Outcome:
+
+* Stable PostgreSQL runtime configuration
+* Successful migration execution
+
+### Future Considerations
+
+* Soil sampling history
+* Soil trend analysis
+* Fertility scoring
+* Nutrient recommendation engine
+* Precision agriculture analytics
+* Soil-weather correlation analysis
+
+### Deferred
+
+* Automated API tests
+* Soil analytics dashboards
+* Soil health scoring engine
+* Nutrient recommendation engine
+* Historical soil trend analysis
+
+
 ## Current Platform Status
 
 ### Domain Hierarchy
@@ -254,6 +391,7 @@ Farm
 * farms
 * fields
 * crops
+* soil_profiles
 
 ### Current Architecture
 
@@ -267,6 +405,7 @@ Service
 ↓
 API
 
+---
 ### Current API Coverage
 
 Health
@@ -294,15 +433,24 @@ Crops
 * PATCH  /api/v1/crops/{crop_id}
 * DELETE /api/v1/crops/{crop_id}
 
+Soil Profiles
+
+* POST   /api/v1/fields/{field_id}/soil-profile
+* GET    /api/v1/fields/{field_id}/soil-profile
+* PATCH  /api/v1/soil-profiles/{soil_profile_id}
+* DELETE /api/v1/soil-profiles/{soil_profile_id}
+
 ---
 
 ## Next Planned Evolution
 
-Phase 4 – Soil Intelligence Domain
+Phase 5 – Weather Intelligence Domain
 
 Future target hierarchy:
 
 Farm
 └── Field
 ├── Crop
-└── Soil Profile
+├── SoilProfile
+├── Weather Records
+└── Future Domains

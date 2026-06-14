@@ -4,7 +4,7 @@
 
 AGRIFLOW-AI is an Agricultural Intelligence Platform built using a layered architecture that emphasizes maintainability, scalability, separation of concerns, and domain-driven development.
 
-The platform currently implements Farm, Field, and Crop domains and follows a Clean Architecture approach with clearly separated responsibilities across API, Service, Repository, and Database layers.
+The platform currently implements Farm, Field, Crop, and Soil Profile domains and follows a Clean Architecture approach with clearly separated responsibilities across API, Service, Repository, and Database layers.
 
 ---
 
@@ -69,7 +69,8 @@ PostgreSQL
 ```text
 Farm
  └── Field
-      └── Crop
+      ├── Crop
+      └── SoilProfile
 ```
 
 Current business domains:
@@ -77,10 +78,10 @@ Current business domains:
 * Farm Management
 * Field Management
 * Crop Management
+* Soil Intelligence
 
 Future domains:
 
-* Soil Intelligence
 * Weather Intelligence
 * Irrigation Intelligence
 * Sensor Intelligence
@@ -98,6 +99,7 @@ backend/
 │   │   ├── farms
 │   │   ├── fields
 │   │   ├── crops
+│   │   ├── soil_profiles
 │   │   ├── health
 │   │   └── version
 │   │
@@ -142,6 +144,7 @@ Examples:
 ```text
 app/api/fields
 app/api/crops
+app/api/soil_profiles
 ```
 
 The API layer should not contain business logic.
@@ -166,6 +169,10 @@ FieldResponse
 CropCreate
 CropUpdate
 CropResponse
+
+SoilProfileCreate
+SoilProfileUpdate
+SoilProfileResponse
 ```
 
 The schema layer defines what data enters and exits the application.
@@ -186,6 +193,7 @@ Examples:
 ```text
 FieldService
 CropService
+SoilProfileService
 ```
 
 Business rules belong here.
@@ -194,8 +202,9 @@ Examples:
 
 * Farm must exist before Field creation
 * Field must exist before Crop creation
+* Field must exist before SoilProfile creation
+* Only one SoilProfile allowed per Field
 * Harvest date validation
-* Domain-specific validations
 
 ---
 
@@ -214,6 +223,7 @@ Examples:
 FarmRepository
 FieldRepository
 CropRepository
+SoilProfileRepository
 ```
 
 Repositories should not contain business rules.
@@ -234,6 +244,7 @@ Examples:
 Farm
 Field
 Crop
+SoilProfile
 ```
 
 Models represent PostgreSQL tables.
@@ -241,8 +252,6 @@ Models represent PostgreSQL tables.
 ---
 
 # Request Lifecycle
-
-The following flow occurs for every API request.
 
 ```text
 Client Request
@@ -293,8 +302,6 @@ Client Response
 
 AGRIFLOW-AI uses FastAPI dependency injection.
 
-Example flow:
-
 ```text
 HTTP Request
       │
@@ -335,7 +342,8 @@ BaseRepository
       │
       ├── FarmRepository
       ├── FieldRepository
-      └── CropRepository
+      ├── CropRepository
+      └── SoilProfileRepository
 ```
 
 Benefits:
@@ -356,6 +364,7 @@ alembic_version
 farms
 fields
 crops
+soil_profiles
 ```
 
 Relationships:
@@ -365,9 +374,9 @@ Farm (1)
    │
    ▼
 Field (N)
+   ├────────────► Crop (N)
    │
-   ▼
-Crop (N)
+   └────────────► SoilProfile (1)
 ```
 
 ---
@@ -382,6 +391,7 @@ Migration sequence:
 001_create_farms_table
 002_create_fields_table
 003_create_crops_table
+004_create_soil_profiles_table
 ```
 
 Migration flow:
@@ -436,6 +446,13 @@ Implemented APIs:
 * PATCH  /api/v1/crops/{crop_id}
 * DELETE /api/v1/crops/{crop_id}
 
+## Soil Profiles
+
+* POST   /api/v1/fields/{field_id}/soil-profile
+* GET    /api/v1/fields/{field_id}/soil-profile
+* PATCH  /api/v1/soil-profiles/{soil_profile_id}
+* DELETE /api/v1/soil-profiles/{soil_profile_id}
+
 ---
 
 # Current Platform Status
@@ -445,6 +462,7 @@ Completed Domains:
 * Farm Domain
 * Field Domain
 * Crop Domain
+* Soil Intelligence Domain
 
 Implemented Architecture:
 
@@ -467,7 +485,7 @@ Planned domains:
 Farm
  └── Field
       ├── Crop
-      ├── Soil Profile
+      ├── SoilProfile
       ├── Weather Records
       ├── Sensor Readings
       ├── Irrigation Events

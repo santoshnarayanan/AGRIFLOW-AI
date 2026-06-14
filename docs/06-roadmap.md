@@ -86,16 +86,47 @@ Business Capability:
 
 # Phase 4 – Soil Intelligence Domain
 
-Status: Planned
+Status: Completed
 
-Objectives:
+Completed:
 
-* Soil Profile Entity
-* Soil Sampling Records
-* Soil Health Tracking
-* Soil Nutrient Analysis
-* Soil Organic Carbon Tracking
-* Soil History
+* SoilProfile ORM Model
+* SoilProfile Database Migration
+* SoilProfile Schema Layer
+* SoilProfile Repository Layer
+* SoilProfile Service Layer
+* SoilProfile API Layer
+* Dependency Injection Integration
+* Integration & Validation Testing
+
+Outcome:
+
+Farm
+└── Field
+├── Crop
+└── SoilProfile
+
+Business Capability:
+
+* Soil profile management
+* Soil nutrient tracking
+* Soil health foundation
+* Soil intelligence foundation
+* Precision agriculture readiness
+
+Implemented Business Rules:
+
+* Field must exist before SoilProfile creation
+* Only one SoilProfile allowed per Field
+* SoilProfile existence validation before update
+* SoilProfile existence validation before delete
+
+Delivered APIs:
+
+* POST   /api/v1/fields/{field_id}/soil-profile
+* GET    /api/v1/fields/{field_id}/soil-profile
+* PATCH  /api/v1/soil-profiles/{soil_profile_id}
+* DELETE /api/v1/soil-profiles/{soil_profile_id}
 
 Backlog Coverage:
 
@@ -103,21 +134,18 @@ BACKLOG-001
 
 * Soil Profile Management
 
-BACKLOG-002
-
-* Soil Health Monitoring
-
 Business Value:
 
 * Early soil degradation detection
-* Fertilizer optimization
+* Fertilizer optimization foundation
+* Soil health visibility
 * Sustainable farming support
 
 ---
 
 # Phase 5 – Weather Intelligence Domain
 
-Status: Planned
+Status: Next Phase
 
 Objectives:
 
@@ -309,6 +337,8 @@ Implemented:
 * Service Layer
 * Dependency Injection
 * FastAPI
+* Crop Domain
+* Soil Intelligence Domain
 
 Future:
 
@@ -327,7 +357,7 @@ Future:
 Farm
 └── Field
 ├── Crop
-├── Soil Profile
+├── SoilProfile
 ├── Weather Records
 ├── Sensor Readings
 ├── Irrigation Events
