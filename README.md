@@ -2,9 +2,9 @@
 
 ## AI-Powered Agricultural Intelligence Platform
 
-AGRIFLOW-AI is an Agricultural Intelligence Platform designed to help farmers, agronomists, cooperatives, and agricultural enterprises manage farm operations, monitor crop lifecycles, and build toward AI-driven agricultural decision intelligence.
+AGRIFLOW-AI is an Agricultural Intelligence Platform designed to help farmers, agronomists, cooperatives, and agricultural enterprises manage farm operations, monitor crop lifecycles, analyze soil health, and build toward AI-driven agricultural decision intelligence.
 
-The platform combines farm management, field management, crop management, weather intelligence, soil intelligence, sensor integration, and future AI-powered recommendations into a unified agricultural operating platform.
+The platform combines farm management, field management, crop management, soil intelligence, weather intelligence, sensor integration, and future AI-powered recommendations into a unified agricultural operating platform.
 
 ---
 
@@ -37,13 +37,20 @@ docs/01-vision.md
 
 ✅ Phase 3 – Crop Domain
 
+✅ Phase 4 – Soil Intelligence Domain
+
+---
+
 ### Current Domain Hierarchy
 
 ```text
 Farm
  └── Field
-      └── Crop
+      ├── Crop
+      └── SoilProfile
 ```
+
+---
 
 ### Current Database Tables
 
@@ -52,6 +59,7 @@ alembic_version
 farms
 fields
 crops
+soil_profiles
 ```
 
 ---
@@ -86,16 +94,16 @@ PostgreSQL
 
 ## Technology Stack
 
-| Layer               | Technology   |
-| ------------------- | ------------ |
-| Backend API         | FastAPI      |
-| Language            | Python 3.12  |
-| Database            | PostgreSQL   |
-| ORM                 | SQLAlchemy   |
-| Migration Framework | Alembic      |
-| Validation          | Pydantic     |
-| Containerization    | Docker       |
-| Version Control     | Git + GitHub |
+| Layer               | Technology     |
+| ------------------- | -------------- |
+| Backend API         | FastAPI        |
+| Language            | Python 3.12    |
+| Database            | PostgreSQL     |
+| ORM                 | SQLAlchemy 2.x |
+| Migration Framework | Alembic        |
+| Validation          | Pydantic       |
+| Containerization    | Docker         |
+| Version Control     | Git + GitHub   |
 
 ---
 
@@ -120,6 +128,15 @@ PostgreSQL
 * Crop status management
 * Planting and harvest tracking
 * Crop CRUD APIs
+
+### Soil Intelligence
+
+* Soil profile management
+* Soil nutrient tracking
+* Soil pH tracking
+* Organic matter tracking
+* Soil health foundation
+* SoilProfile CRUD APIs
 
 ---
 
@@ -157,6 +174,37 @@ GET    /api/v1/crops/{crop_id}
 PATCH  /api/v1/crops/{crop_id}
 DELETE /api/v1/crops/{crop_id}
 ```
+
+### Soil Profile APIs
+
+```http
+POST   /api/v1/fields/{field_id}/soil-profile
+GET    /api/v1/fields/{field_id}/soil-profile
+PATCH  /api/v1/soil-profiles/{soil_profile_id}
+DELETE /api/v1/soil-profiles/{soil_profile_id}
+```
+
+---
+
+## Business Rules Implemented
+
+### Field Domain
+
+* Farm must exist before Field creation
+* Field names must be unique within a Farm
+
+### Crop Domain
+
+* Field must exist before Crop creation
+* Harvest date validation
+* Crop lifecycle management
+
+### Soil Profile Domain
+
+* Field must exist before SoilProfile creation
+* Only one SoilProfile allowed per Field
+* SoilProfile existence validation before update
+* SoilProfile existence validation before delete
 
 ---
 
@@ -240,42 +288,44 @@ http://localhost:8000/docs
 
 ## Roadmap Summary
 
-### Phase 4
+### Current Next Phase
 
-Soil Intelligence Domain
+Phase 5 – Weather Intelligence Domain
 
-### Phase 5
+### Future Phases
 
-Weather Intelligence Domain
+Phase 6 – Irrigation & Water Management
 
-### Phase 6
+Phase 7 – Sensor & IoT Platform
 
-Irrigation & Water Management
+Phase 8 – GIS & Satellite Intelligence
 
-### Phase 7
+Phase 9 – Yield Analytics
 
-Sensor & IoT Platform
+Phase 10 – AI Recommendation Engine
 
-### Phase 8
-
-GIS & Satellite Intelligence
-
-### Phase 9
-
-Yield Analytics
-
-### Phase 10
-
-AI Recommendation Engine
-
-### Phase 11
-
-Digital Twin Agriculture Platform
+Phase 11 – Digital Twin Agriculture Platform
 
 For the detailed roadmap see:
 
 ```text
 docs/06-roadmap.md
+```
+
+---
+
+## Target Agricultural Intelligence Platform
+
+```text
+Farm
+ └── Field
+      ├── Crop
+      ├── SoilProfile
+      ├── Weather Records
+      ├── Sensor Readings
+      ├── Irrigation Events
+      ├── Yield Records
+      └── Satellite Observations
 ```
 
 ---
