@@ -22,6 +22,7 @@ if TYPE_CHECKING:
     from app.db.models.crop import Crop
     from app.db.models.farm import Farm
     from app.db.models.soil_profile import SoilProfile
+    from app.db.models.weather_record import WeatherRecord
 
 
 class Field(AuditableModel, Base):
@@ -68,6 +69,10 @@ class Field(AuditableModel, Base):
     soil_profile: Mapped[SoilProfile | None] = relationship(
         back_populates="field",
         uselist=False,
+        cascade="all, delete-orphan",
+    )
+    weather_records: Mapped[list[WeatherRecord]] = relationship(
+        back_populates="field",
         cascade="all, delete-orphan",
     )
 
