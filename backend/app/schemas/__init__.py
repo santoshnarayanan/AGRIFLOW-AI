@@ -6,6 +6,12 @@ from .soil_profile import (
     SoilProfileResponse,
     SoilProfileUpdate,
 )
+from .weather_record import (
+    WeatherRecordBase,
+    WeatherRecordCreate,
+    WeatherRecordResponse,
+    WeatherRecordUpdate,
+)
 
 __all__ = [
     "CropBase",
@@ -22,4 +28,8 @@ __all__ = [
     "SoilProfileResponse",
     "SoilProfileUpdate",
     "VersionResponse",
+    "WeatherRecordBase",
+    "WeatherRecordCreate",
+    "WeatherRecordResponse",
+    "WeatherRecordUpdate",
 ]
