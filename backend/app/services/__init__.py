@@ -14,6 +14,12 @@ from .soil_profile import (
     SoilProfileNotFoundError,
     SoilProfileService,
 )
+from .weather_record import (
+    InvalidWeatherMeasurementError,
+    InvalidWeatherTimestampError,
+    WeatherRecordNotFoundError,
+    WeatherRecordService,
+)
 
 __all__ = [
     "CropNotFoundError",
@@ -24,6 +30,10 @@ __all__ = [
     "FieldNotFoundError",
     "FieldService",
     "InvalidHarvestDateError",
+    "InvalidWeatherMeasurementError",
+    "InvalidWeatherTimestampError",
     "SoilProfileNotFoundError",
     "SoilProfileService",
+    "WeatherRecordNotFoundError",
+    "WeatherRecordService",
 ]
