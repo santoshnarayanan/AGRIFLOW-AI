@@ -12,6 +12,7 @@ from app.api.fields.router import router as fields_router
 from app.api.health.router import router as health_router
 from app.api.soil_profiles.router import router as soil_profiles_router
 from app.api.version.router import router as version_router
+from app.api.weather_records.router import router as weather_records_router
 
 api_router = APIRouter()
 
@@ -20,3 +21,4 @@ api_router.include_router(version_router)
 api_router.include_router(fields_router)
 api_router.include_router(crops_router)
 api_router.include_router(soil_profiles_router)
+api_router.include_router(weather_records_router)

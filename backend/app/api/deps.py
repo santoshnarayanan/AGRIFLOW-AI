@@ -23,10 +23,12 @@ from app.db.repositories.crop import CropRepository
 from app.db.repositories.farm import FarmRepository
 from app.db.repositories.field import FieldRepository
 from app.db.repositories.soil_profile import SoilProfileRepository
+from app.db.repositories.weather_record import WeatherRecordRepository
 from app.db.session import AsyncSessionFactory
 from app.services.crop import CropService
 from app.services.field import FieldService
 from app.services.soil_profile import SoilProfileService
+from app.services.weather_record import WeatherRecordService
 
 
 # ── Database session ──────────────────────────────────────────────────────────
@@ -76,3 +78,14 @@ def get_soil_profile_service(session: SessionDep) -> SoilProfileService:
 
 
 SoilProfileServiceDep = Annotated[SoilProfileService, Depends(get_soil_profile_service)]
+
+
+def get_weather_record_service(session: SessionDep) -> WeatherRecordService:
+    """Construct a ``WeatherRecordService`` wired to the request-scoped session."""
+    return WeatherRecordService(
+        weather_record_repository=WeatherRecordRepository(session),
+        field_repository=FieldRepository(session),
+    )
+
+
+WeatherRecordServiceDep = Annotated[WeatherRecordService, Depends(get_weather_record_service)]
