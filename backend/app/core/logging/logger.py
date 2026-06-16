@@ -19,7 +19,7 @@ def _add_app_context(
     event_dict: EventDict,
 ) -> EventDict:
     """Inject application-level context into every log record."""
-    event_dict.setdefault("app", "agriflow-ai")
+    event_dict.setdefault("app", "agriflow")
     return event_dict
 
 
