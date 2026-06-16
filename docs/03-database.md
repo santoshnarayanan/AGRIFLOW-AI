@@ -64,6 +64,25 @@ Represents the soil intelligence profile for a field.
 | updated_at     | TIMESTAMP                      |
 
 
+
+### weather_records
+
+Represents historical weather observations for a field.
+
+| Column | Type |
+|---|---|
+| id | UUID |
+| field_id | UUID (FK -> fields.id) |
+| recorded_at | TIMESTAMP |
+| temperature_c | NUMERIC(5,2) |
+| humidity_percent | NUMERIC(5,2) |
+| rainfall_mm | NUMERIC(8,2) |
+| wind_speed_kmh | NUMERIC(8,2) |
+| data_source | VARCHAR(100) |
+| created_at | TIMESTAMP |
+| updated_at | TIMESTAMP |
+
+
 ## Relationships
 
 Farm (1) -> (N) Fields
@@ -72,13 +91,16 @@ Field (1) -> (N) Crops
 
 Field (1) -> (1) SoilProfile
 
+Field (1) -> (N) WeatherRecords
+
 
 ## Current Domain Hierarchy
 
 Farm
 └── Field
-├── Crop
-└── SoilProfile
+    ├── Crop
+    ├── SoilProfile
+    └── WeatherRecord
 
 
 ## Implemented Migrations
@@ -86,7 +108,8 @@ Farm
 - 001_create_farms_table
 - 002_create_fields_table
 - 003_create_crops_table
-- 004_create_soil_profiles_table
+- 004_create_weather_records_table
+- 13aabbe35d51_add_soil_profiles_table
 
 ## Crop Status Lifecycle
 
@@ -120,10 +143,17 @@ Farm
 * PATCH  /api/v1/soil-profiles/{soil_profile_id}
 * DELETE /api/v1/soil-profiles/{soil_profile_id}
 
+### Weather Record APIs
+
+* POST   /api/v1/fields/{field_id}/weather-records
+* GET    /api/v1/fields/{field_id}/weather-records
+* GET    /api/v1/weather-records/{weather_record_id}
+* PATCH  /api/v1/weather-records/{weather_record_id}
+* DELETE /api/v1/weather-records/{weather_record_id}
+
 
 ## Future Database Evolution
 
-- Weather Data
 - Soil Sensors
 - Satellite Imagery
 - GIS / PostGIS Support

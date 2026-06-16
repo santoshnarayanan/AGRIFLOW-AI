@@ -4,7 +4,7 @@
 
 AGRIFLOW-AI is an Agricultural Intelligence Platform built using a layered architecture that emphasizes maintainability, scalability, separation of concerns, and domain-driven development.
 
-The platform currently implements Farm, Field, Crop, and Soil Profile domains and follows a Clean Architecture approach with clearly separated responsibilities across API, Service, Repository, and Database layers.
+The platform currently implements Farm, Field, Crop, Soil Profile, and Weather Intelligence domains and follows a Clean Architecture approach with clearly separated responsibilities across API, Service, Repository, and Database layers.
 
 ---
 
@@ -70,7 +70,8 @@ PostgreSQL
 Farm
  └── Field
       ├── Crop
-      └── SoilProfile
+      ├── SoilProfile
+      └── WeatherRecord
 ```
 
 Current business domains:
@@ -79,10 +80,9 @@ Current business domains:
 * Field Management
 * Crop Management
 * Soil Intelligence
+* Weather Intelligence
 
 Future domains:
-
-* Weather Intelligence
 * Irrigation Intelligence
 * Sensor Intelligence
 * Yield Intelligence
@@ -145,6 +145,7 @@ Examples:
 app/api/fields
 app/api/crops
 app/api/soil_profiles
+app/api/weather_records
 ```
 
 The API layer should not contain business logic.
@@ -194,6 +195,7 @@ Examples:
 FieldService
 CropService
 SoilProfileService
+WeatherRecordService
 ```
 
 Business rules belong here.
@@ -224,6 +226,7 @@ FarmRepository
 FieldRepository
 CropRepository
 SoilProfileRepository
+WeatherRecordRepository
 ```
 
 Repositories should not contain business rules.
@@ -343,7 +346,8 @@ BaseRepository
       ├── FarmRepository
       ├── FieldRepository
       ├── CropRepository
-      └── SoilProfileRepository
+      ├── SoilProfileRepository
+      └── WeatherRecordRepository
 ```
 
 Benefits:
@@ -365,6 +369,7 @@ farms
 fields
 crops
 soil_profiles
+weather_records
 ```
 
 Relationships:
@@ -375,6 +380,7 @@ Farm (1)
    ▼
 Field (N)
    ├────────────► Crop (N)
+   ├────────────► WeatherRecord (N)
    │
    └────────────► SoilProfile (1)
 ```
@@ -391,7 +397,8 @@ Migration sequence:
 001_create_farms_table
 002_create_fields_table
 003_create_crops_table
-004_create_soil_profiles_table
+004_create_weather_records_table
+005_add_soil_profiles_table
 ```
 
 Migration flow:
@@ -453,6 +460,14 @@ Implemented APIs:
 * PATCH  /api/v1/soil-profiles/{soil_profile_id}
 * DELETE /api/v1/soil-profiles/{soil_profile_id}
 
+## Weather Records
+
+* POST   /api/v1/fields/{field_id}/weather-records
+* GET    /api/v1/fields/{field_id}/weather-records
+* GET    /api/v1/weather-records/{weather_record_id}
+* PATCH  /api/v1/weather-records/{weather_record_id}
+* DELETE /api/v1/weather-records/{weather_record_id}
+
 ---
 
 # Current Platform Status
@@ -463,6 +478,7 @@ Completed Domains:
 * Field Domain
 * Crop Domain
 * Soil Intelligence Domain
+* Weather Intelligence Domain
 
 Implemented Architecture:
 

@@ -79,7 +79,31 @@
 
 * DELETE /api/v1/soil-profiles/{soil_profile_id}
 
+
 ---
+
+## Weather Record Domain Endpoints
+
+### Create Weather Record
+
+* POST /api/v1/fields/{field_id}/weather-records
+
+### List Weather Records for Field
+
+* GET /api/v1/fields/{field_id}/weather-records
+
+### Get Weather Record
+
+* GET /api/v1/weather-records/{weather_record_id}
+
+### Update Weather Record
+
+* PATCH /api/v1/weather-records/{weather_record_id}
+
+### Delete Weather Record
+
+* DELETE /api/v1/weather-records/{weather_record_id}
+
 
 ## API Architecture
 
@@ -128,6 +152,11 @@ Field
 
 Field
 └── SoilProfile
+
+### Weather Record Domain
+
+Field
+└── WeatherRecords
 
 ---
 
@@ -182,6 +211,14 @@ Field
 * Update Soil Profile
 * Delete Soil Profile
 
+### Weather Record APIs
+
+* Create Weather Record
+* List Weather Records
+* Get Weather Record
+* Update Weather Record
+* Delete Weather Record
+
 ---
 
 ## Business Rules Exposed Through APIs
@@ -203,6 +240,16 @@ Field
 * Only one SoilProfile allowed per Field
 * SoilProfile must exist before update
 * SoilProfile must exist before delete
+
+### Weather Record Domain
+
+* Field must exist before WeatherRecord creation
+* WeatherRecord must exist before update
+* WeatherRecord must exist before delete
+* Future timestamps are rejected
+* Humidity must be between 0 and 100
+* Rainfall cannot be negative
+* Wind speed cannot be negative
 
 ---
 
@@ -240,11 +287,18 @@ Field
 * PATCH  /api/v1/soil-profiles/{soil_profile_id}
 * DELETE /api/v1/soil-profiles/{soil_profile_id}
 
+### Weather Records
+
+* POST   /api/v1/fields/{field_id}/weather-records
+* GET    /api/v1/fields/{field_id}/weather-records
+* GET    /api/v1/weather-records/{weather_record_id}
+* PATCH  /api/v1/weather-records/{weather_record_id}
+* DELETE /api/v1/weather-records/{weather_record_id}
+
 ---
 
 ## Future API Evolution
 
-* Weather APIs
 * Irrigation APIs
 * Sensor APIs
 * Yield Analytics APIs

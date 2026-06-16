@@ -39,6 +39,8 @@ docs/01-vision.md
 
 ✅ Phase 4 – Soil Intelligence Domain
 
+✅ Phase 5 – Weather Intelligence Domain
+
 ---
 
 ### Current Domain Hierarchy
@@ -47,7 +49,8 @@ docs/01-vision.md
 Farm
  └── Field
       ├── Crop
-      └── SoilProfile
+      ├── SoilProfile
+      └── WeatherRecord
 ```
 
 ---
@@ -60,6 +63,7 @@ farms
 fields
 crops
 soil_profiles
+weather_records
 ```
 
 ---
@@ -138,6 +142,16 @@ PostgreSQL
 * Soil health foundation
 * SoilProfile CRUD APIs
 
+### Weather Intelligence
+
+* Historical weather observations
+* Temperature tracking
+* Humidity tracking
+* Rainfall tracking
+* Wind speed tracking
+* WeatherRecord CRUD APIs
+* Time-series weather data foundation
+
 ---
 
 ## Current API Coverage
@@ -184,6 +198,16 @@ PATCH  /api/v1/soil-profiles/{soil_profile_id}
 DELETE /api/v1/soil-profiles/{soil_profile_id}
 ```
 
+### Weather Record APIs
+
+```http
+POST   /api/v1/fields/{field_id}/weather-records
+GET    /api/v1/fields/{field_id}/weather-records
+GET    /api/v1/weather-records/{weather_record_id}
+PATCH  /api/v1/weather-records/{weather_record_id}
+DELETE /api/v1/weather-records/{weather_record_id}
+```
+
 ---
 
 ## Business Rules Implemented
@@ -205,6 +229,16 @@ DELETE /api/v1/soil-profiles/{soil_profile_id}
 * Only one SoilProfile allowed per Field
 * SoilProfile existence validation before update
 * SoilProfile existence validation before delete
+
+### Weather Record Domain
+
+* Field must exist before WeatherRecord creation
+* WeatherRecord existence validation before update
+* WeatherRecord existence validation before delete
+* Future timestamp validation
+* Humidity validation
+* Rainfall validation
+* Wind speed validation
 
 ---
 
@@ -290,13 +324,11 @@ http://localhost:8000/docs
 
 ### Current Next Phase
 
-Phase 5 – Weather Intelligence Domain
+Phase 6 – Sensor Reading Domain
 
 ### Future Phases
 
-Phase 6 – Irrigation & Water Management
-
-Phase 7 – Sensor & IoT Platform
+Phase 7 – Irrigation & Water Management
 
 Phase 8 – GIS & Satellite Intelligence
 

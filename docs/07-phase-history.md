@@ -377,13 +377,154 @@ Outcome:
 * Historical soil trend analysis
 
 
+---
+
+## Phase 5 – Weather Intelligence Domain
+
+Status: Completed
+
+### Completed
+
+* WeatherRecord Domain Design
+* WeatherRecord ORM Model
+* WeatherRecord Database Schema
+* WeatherRecord Migration
+* WeatherRecord Pydantic Schemas
+* WeatherRecord Repository Layer
+* WeatherRecord Service Layer
+* WeatherRecord API Layer
+* Dependency Injection Integration
+* API Router Registration
+* CRUD Endpoints for Weather Records
+* Integration & Validation Testing
+
+### Database Changes
+
+* Added weather_records table
+* Added field_id foreign key relationship
+* Added recorded_at timestamp tracking
+* Added temperature tracking
+* Added humidity tracking
+* Added rainfall tracking
+* Added wind speed tracking
+* Added weather data source support
+
+### Domain Hierarchy Established
+
+Farm
+└── Field
+├── Crop
+├── SoilProfile
+└── WeatherRecord
+
+### API Endpoints Added
+
+* POST   /api/v1/fields/{field_id}/weather-records
+* GET    /api/v1/fields/{field_id}/weather-records
+* GET    /api/v1/weather-records/{weather_record_id}
+* PATCH  /api/v1/weather-records/{weather_record_id}
+* DELETE /api/v1/weather-records/{weather_record_id}
+
+### Business Rules Implemented
+
+* Field must exist before WeatherRecord creation
+* WeatherRecord existence validation before update
+* WeatherRecord existence validation before delete
+* Future timestamp validation
+* Humidity validation
+* Rainfall validation
+* Wind speed validation
+
+### Architecture Evolution
+
+Repository Layer:
+
+* WeatherRecordRepository added
+* BaseRepository reused for WeatherRecordRepository
+* Field-specific WeatherRecord queries implemented
+
+Dependency Injection:
+
+* WeatherRecordService dependency provider added
+* Shared transaction scope across repositories
+* Request-scoped session management extended
+
+API Layer:
+
+* WeatherRecord service exception translation
+* HTTP error mapping
+* Schema-based request validation
+* WeatherRecord endpoint registration
+
+### Lessons Learned
+
+* Time-series agricultural data requires different modeling than master data
+* Historical observations should be immutable once recorded
+* Vertical domain implementation improves consistency and maintainability
+* Integration testing should validate complete API → Service → Repository → Database flows
+
+### Notable Technical Challenges
+
+Migration Execution Gap
+
+Issue:
+
+* Weather migration file existed but was not applied to the database
+
+Resolution:
+
+* Verified Alembic migration history
+* Applied migration to head revision
+* Validated weather_records table creation
+
+Outcome:
+
+* Successful schema evolution
+* Weather domain fully operational
+
+PostgreSQL Container Version Compatibility
+
+Issue:
+
+* PostgreSQL 18 container incompatibility with existing volume layout
+
+Resolution:
+
+* Reverted to PostgreSQL 17 container image
+* Recreated runtime environment
+* Validated database health and startup
+
+Outcome:
+
+* Stable development environment
+* Successful WeatherRecord integration validation
+
+### Future Considerations
+
+* Weather forecast ingestion
+* Climate trend analysis
+* Drought monitoring
+* Weather anomaly detection
+* Weather-crop correlation analysis
+* Predictive weather intelligence
+
+### Deferred
+
+* Automated API tests
+* Weather analytics dashboards
+* Forecast provider integrations
+* Climate risk scoring
+
+
 ## Current Platform Status
 
 ### Domain Hierarchy
 
 Farm
 └── Field
-└── Crop
+    ├── Crop
+    ├── SoilProfile
+    └── WeatherRecord
 
 ### Current Database Tables
 
@@ -392,6 +533,7 @@ Farm
 * fields
 * crops
 * soil_profiles
+* weather_records
 
 ### Current Architecture
 
@@ -440,11 +582,19 @@ Soil Profiles
 * PATCH  /api/v1/soil-profiles/{soil_profile_id}
 * DELETE /api/v1/soil-profiles/{soil_profile_id}
 
+Weather Records
+
+* POST   /api/v1/fields/{field_id}/weather-records
+* GET    /api/v1/fields/{field_id}/weather-records
+* GET    /api/v1/weather-records/{weather_record_id}
+* PATCH  /api/v1/weather-records/{weather_record_id}
+* DELETE /api/v1/weather-records/{weather_record_id}
+
 ---
 
 ## Next Planned Evolution
 
-Phase 5 – Weather Intelligence Domain
+Phase 6 – Sensor Reading Domain
 
 Future target hierarchy:
 
@@ -453,4 +603,5 @@ Farm
 ├── Crop
 ├── SoilProfile
 ├── Weather Records
+├── Sensor Readings
 └── Future Domains
