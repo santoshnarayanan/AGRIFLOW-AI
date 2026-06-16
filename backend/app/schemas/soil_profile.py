@@ -75,6 +75,20 @@ class SoilProfileBase(BaseModel):
         decimal_places=4,
         description="Available potassium concentration in mg/kg (ppm)",
     )
+    # ── Physical properties (P1 — Yield Prediction) ──────────────────────────
+    soil_depth_cm: Decimal | None = Field(
+        default=None,
+        ge=0,
+        decimal_places=2,
+        description="Effective rooting zone depth in centimetres",
+    )
+    cation_exchange_capacity_meq: Decimal | None = Field(
+        default=None,
+        ge=0,
+        decimal_places=4,
+        description="Cation exchange capacity in meq/100g; indicates soil nutrient retention capacity",
+    )
+
     notes: str | None = Field(
         default=None,
         description="Free-text agronomist observations or lab report references",
@@ -128,6 +142,20 @@ class SoilProfileCreate(BaseModel):
         decimal_places=4,
         description="Available potassium concentration in mg/kg (ppm)",
     )
+    # ── Physical properties (P1 — Yield Prediction) ──────────────────────────
+    soil_depth_cm: Decimal | None = Field(
+        default=None,
+        ge=0,
+        decimal_places=2,
+        description="Effective rooting zone depth in centimetres",
+    )
+    cation_exchange_capacity_meq: Decimal | None = Field(
+        default=None,
+        ge=0,
+        decimal_places=4,
+        description="Cation exchange capacity in meq/100g",
+    )
+
     notes: str | None = Field(
         default=None,
         description="Free-text agronomist observations or lab report references",
@@ -177,6 +205,20 @@ class SoilProfileUpdate(BaseModel):
         decimal_places=4,
         description="Available potassium concentration in mg/kg (ppm)",
     )
+    # ── Physical properties (P1 — Yield Prediction) ──────────────────────────
+    soil_depth_cm: Decimal | None = Field(
+        default=None,
+        ge=0,
+        decimal_places=2,
+        description="Effective rooting zone depth in centimetres",
+    )
+    cation_exchange_capacity_meq: Decimal | None = Field(
+        default=None,
+        ge=0,
+        decimal_places=4,
+        description="Cation exchange capacity in meq/100g",
+    )
+
     notes: str | None = Field(
         default=None,
         description="Free-text agronomist observations or lab report references",

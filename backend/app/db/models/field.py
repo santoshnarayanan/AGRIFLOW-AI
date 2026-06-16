@@ -61,6 +61,13 @@ class Field(AuditableModel, Base):
         comment="WGS-84 longitude — range [-180, 180]",
     )
 
+    # ── Topography (P1 — Yield Prediction) ───────────────────────────────────
+    elevation_m: Mapped[float | None] = mapped_column(
+        Numeric(precision=8, scale=2),
+        nullable=True,
+        comment="Field elevation in metres above sea level; negative values valid (e.g. below sea level)",
+    )
+
     farm: Mapped[Farm] = relationship(back_populates="fields")
     crops: Mapped[list[Crop]] = relationship(
         back_populates="field",

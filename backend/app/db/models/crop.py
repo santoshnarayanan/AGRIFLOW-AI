@@ -19,7 +19,7 @@ import uuid
 from datetime import date
 from typing import TYPE_CHECKING
 
-from sqlalchemy import Date, Enum, ForeignKey, String
+from sqlalchemy import Date, Enum, ForeignKey, Numeric, String
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
@@ -100,6 +100,28 @@ class Crop(AuditableModel, Base):
         default=CropStatus.PLANNED,
         server_default=CropStatus.PLANNED.value,
         comment="Current agronomic lifecycle state of the crop cycle",
+    )
+
+    # ── AI data (P1 — Yield Prediction) ──────────────────────────────────────
+    actual_yield_tons_ha: Mapped[float | None] = mapped_column(
+        Numeric(precision=10, scale=4),
+        nullable=True,
+        comment="Actual yield recorded at harvest in tonnes per hectare; populated only when status = HARVESTED",
+    )
+    expected_yield_tons_ha: Mapped[float | None] = mapped_column(
+        Numeric(precision=10, scale=4),
+        nullable=True,
+        comment="Agronomist or AI-projected yield target in tonnes per hectare",
+    )
+    seeding_rate_kg_ha: Mapped[float | None] = mapped_column(
+        Numeric(precision=8, scale=3),
+        nullable=True,
+        comment="Seeding density at planting in kg per hectare",
+    )
+    growth_stage: Mapped[str | None] = mapped_column(
+        String(20),
+        nullable=True,
+        comment="Current BBCH phenological growth stage code, e.g. 'BBCH-59'",
     )
 
     # ── Relationships ─────────────────────────────────────────────────────────

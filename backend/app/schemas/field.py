@@ -47,6 +47,13 @@ class FieldCreate(BaseModel):
         description="WGS-84 longitude — range [-180, 180]",
     )
 
+    # ── Topography (P1 — Yield Prediction) ───────────────────────────────────
+    elevation_m: Decimal | None = Field(
+        default=None,
+        decimal_places=2,
+        description="Field elevation in metres above sea level; negative values valid (e.g. below sea level)",
+    )
+
 
 class FieldUpdate(BaseModel):
     name: str | None = Field(
@@ -81,6 +88,13 @@ class FieldUpdate(BaseModel):
         description="WGS-84 longitude — range [-180, 180]",
     )
 
+    # ── Topography (P1 — Yield Prediction) ───────────────────────────────────
+    elevation_m: Decimal | None = Field(
+        default=None,
+        decimal_places=2,
+        description="Field elevation in metres above sea level; negative values valid",
+    )
+
 
 class FieldResponse(BaseModel):
     model_config = ConfigDict(from_attributes=True)
@@ -92,5 +106,8 @@ class FieldResponse(BaseModel):
     soil_type: str | None = Field(description="Dominant soil classification for the field")
     latitude: Decimal | None = Field(description="WGS-84 latitude — range [-90, 90]")
     longitude: Decimal | None = Field(description="WGS-84 longitude — range [-180, 180]")
+    elevation_m: Decimal | None = Field(
+        description="Field elevation in metres above sea level; negative values valid"
+    )
     created_at: datetime = Field(description="Row creation timestamp")
     updated_at: datetime = Field(description="Row last-updated timestamp")

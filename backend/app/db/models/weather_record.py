@@ -87,6 +87,23 @@ class WeatherRecord(AuditableModel, Base):
         comment="Wind speed in kilometers per hour",
     )
 
+    # ── Solar / temperature range (P1 — Yield Prediction) ────────────────────
+    solar_radiation_wm2: Mapped[Decimal | None] = mapped_column(
+        Numeric(precision=8, scale=3),
+        nullable=True,
+        comment="Solar irradiance in W/m²; required for Penman-Monteith ET₀ calculation",
+    )
+    temperature_min_c: Mapped[Decimal | None] = mapped_column(
+        Numeric(precision=5, scale=2),
+        nullable=True,
+        comment="Daily minimum air temperature in °C; used for Growing Degree Day calculation",
+    )
+    temperature_max_c: Mapped[Decimal | None] = mapped_column(
+        Numeric(precision=5, scale=2),
+        nullable=True,
+        comment="Daily maximum air temperature in °C; used for Growing Degree Day calculation",
+    )
+
     # ── Provenance ────────────────────────────────────────────────────────────
     data_source: Mapped[str] = mapped_column(
         String(50),

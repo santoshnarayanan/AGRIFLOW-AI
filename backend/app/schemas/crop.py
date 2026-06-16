@@ -19,6 +19,7 @@ Separation of concerns
 
 import uuid
 from datetime import date, datetime
+from decimal import Decimal
 
 from pydantic import BaseModel, ConfigDict, Field
 
@@ -61,6 +62,31 @@ class CropBase(BaseModel):
         description="Current agronomic lifecycle state (PLANNED → PLANTED → GROWING → HARVESTED)",
     )
 
+    # ── AI data (P1 — Yield Prediction) ──────────────────────────────────────
+    actual_yield_tons_ha: Decimal | None = Field(
+        default=None,
+        ge=0,
+        decimal_places=4,
+        description="Actual yield at harvest in tonnes per hectare; populated only when status = HARVESTED",
+    )
+    expected_yield_tons_ha: Decimal | None = Field(
+        default=None,
+        ge=0,
+        decimal_places=4,
+        description="Agronomist or AI-projected yield target in tonnes per hectare",
+    )
+    seeding_rate_kg_ha: Decimal | None = Field(
+        default=None,
+        ge=0,
+        decimal_places=3,
+        description="Seeding density at planting in kg per hectare",
+    )
+    growth_stage: str | None = Field(
+        default=None,
+        max_length=20,
+        description="BBCH phenological growth stage code, e.g. 'BBCH-59'",
+    )
+
 
 class CropCreate(BaseModel):
     """
@@ -89,6 +115,28 @@ class CropCreate(BaseModel):
     expected_harvest_date: date | None = Field(
         default=None,
         description="Agronomically projected harvest date",
+    )
+
+    # ── AI data (P1 — Yield Prediction) ──────────────────────────────────────
+    # actual_yield_tons_ha is intentionally excluded from CropCreate.
+    # Yield is a harvest-time observation recorded via PATCH once the crop
+    # reaches HARVESTED status, following the same pattern as actual_harvest_date.
+    expected_yield_tons_ha: Decimal | None = Field(
+        default=None,
+        ge=0,
+        decimal_places=4,
+        description="Agronomist or AI-projected yield target in tonnes per hectare",
+    )
+    seeding_rate_kg_ha: Decimal | None = Field(
+        default=None,
+        ge=0,
+        decimal_places=3,
+        description="Seeding density at planting in kg per hectare",
+    )
+    growth_stage: str | None = Field(
+        default=None,
+        max_length=20,
+        description="BBCH phenological growth stage code, e.g. 'BBCH-59'",
     )
 
 
@@ -127,6 +175,31 @@ class CropUpdate(BaseModel):
     status: CropStatus | None = Field(
         default=None,
         description="Target agronomic lifecycle state",
+    )
+
+    # ── AI data (P1 — Yield Prediction) ──────────────────────────────────────
+    actual_yield_tons_ha: Decimal | None = Field(
+        default=None,
+        ge=0,
+        decimal_places=4,
+        description="Actual yield at harvest in tonnes per hectare; set when status transitions to HARVESTED",
+    )
+    expected_yield_tons_ha: Decimal | None = Field(
+        default=None,
+        ge=0,
+        decimal_places=4,
+        description="Agronomist or AI-projected yield target in tonnes per hectare",
+    )
+    seeding_rate_kg_ha: Decimal | None = Field(
+        default=None,
+        ge=0,
+        decimal_places=3,
+        description="Seeding density at planting in kg per hectare",
+    )
+    growth_stage: str | None = Field(
+        default=None,
+        max_length=20,
+        description="BBCH phenological growth stage code, e.g. 'BBCH-59'",
     )
 
 

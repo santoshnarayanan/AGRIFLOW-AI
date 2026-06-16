@@ -61,10 +61,22 @@ class InvalidWeatherMeasurementError(ValueError):
     - ``humidity_percent`` must be in the range [0.00, 100.00].
     - ``rainfall_mm`` must be non-negative.
     - ``wind_speed_kmh`` must be non-negative.
+    - ``solar_radiation_wm2`` must be non-negative.
 
     These constraints are also expressed in the Pydantic schema layer; the
     service layer re-validates them to remain independent of the transport
     mechanism and to provide defence-in-depth for programmatic callers.
+    """
+
+
+class InvalidTemperatureRangeError(ValueError):
+    """
+    Raised when temperature_max_c is less than temperature_min_c.
+
+    A daily maximum temperature below the minimum is physically impossible and
+    would corrupt Growing Degree Day (GDD) calculations. This invariant is
+    enforced only when both values are present in the same payload — a partial
+    update supplying only one of the two fields does not trigger this check.
     """
 
 
@@ -124,6 +136,14 @@ class WeatherRecordService:
             humidity_percent=payload.humidity_percent,
             rainfall_mm=payload.rainfall_mm,
             wind_speed_kmh=payload.wind_speed_kmh,
+            solar_radiation_wm2=payload.solar_radiation_wm2,
+            log=log,
+        )
+
+        # Rule 8 — temperature_max_c must not be less than temperature_min_c
+        _validate_temperature_range(
+            temperature_min_c=payload.temperature_min_c,
+            temperature_max_c=payload.temperature_max_c,
             log=log,
         )
 
@@ -223,6 +243,16 @@ class WeatherRecordService:
             humidity_percent=update_data.get("humidity_percent"),
             rainfall_mm=update_data.get("rainfall_mm"),
             wind_speed_kmh=update_data.get("wind_speed_kmh"),
+            solar_radiation_wm2=update_data.get("solar_radiation_wm2"),
+            log=log,
+        )
+
+        # Rule 8 — validate temperature range only when both extremes are
+        # present after applying the update. Resolve effective values the same
+        # way as rule 4: incoming value takes priority over the stored value.
+        _validate_temperature_range(
+            temperature_min_c=update_data.get("temperature_min_c", current.temperature_min_c),
+            temperature_max_c=update_data.get("temperature_max_c", current.temperature_max_c),
             log=log,
         )
 
@@ -301,6 +331,7 @@ def _validate_measurements(
     humidity_percent: Decimal | None,
     rainfall_mm: Decimal | None,
     wind_speed_kmh: Decimal | None,
+    solar_radiation_wm2: Decimal | None,
     log: Any,
 ) -> None:
     """
@@ -339,4 +370,45 @@ def _validate_measurements(
         )
         raise InvalidWeatherMeasurementError(
             f"wind_speed_kmh ({wind_speed_kmh}) must be non-negative."
+        )
+
+    if solar_radiation_wm2 is not None and solar_radiation_wm2 < Decimal("0"):
+        log.warning(
+            "weather_record_service.solar_radiation_invalid",
+            solar_radiation_wm2=str(solar_radiation_wm2),
+        )
+        raise InvalidWeatherMeasurementError(
+            f"solar_radiation_wm2 ({solar_radiation_wm2}) must be non-negative."
+        )
+
+
+def _validate_temperature_range(
+    *,
+    temperature_min_c: Decimal | None,
+    temperature_max_c: Decimal | None,
+    log: Any,
+) -> None:
+    """
+    Raise ``InvalidTemperatureRangeError`` when temperature_max_c < temperature_min_c.
+
+    The check is only applied when both values are present — a partial payload
+    supplying only one extreme is valid (the other remains at its stored value
+    and the stored pair was already validated on a prior write).
+
+    Extracted as a module-level function so it can be unit-tested independently
+    of the service class and database session lifecycle.
+    """
+    if (
+        temperature_min_c is not None
+        and temperature_max_c is not None
+        and temperature_max_c < temperature_min_c
+    ):
+        log.warning(
+            "weather_record_service.temperature_range_invalid",
+            temperature_min_c=str(temperature_min_c),
+            temperature_max_c=str(temperature_max_c),
+        )
+        raise InvalidTemperatureRangeError(
+            f"temperature_max_c ({temperature_max_c}) must be greater than or equal to "
+            f"temperature_min_c ({temperature_min_c})."
         )

@@ -80,6 +80,27 @@ class WeatherRecordBase(BaseModel):
         ),
     )
 
+    # ── Solar / temperature range (P1 — Yield Prediction) ────────────────────
+    # Note: temperature_c retains its existing semantics (current/point-in-time
+    # reading). temperature_min_c and temperature_max_c represent the daily
+    # extremes required for Growing Degree Day (GDD) accumulation calculations.
+    solar_radiation_wm2: Decimal | None = Field(
+        default=None,
+        ge=0,
+        decimal_places=3,
+        description="Solar irradiance in W/m²; required for Penman-Monteith ET₀ calculation",
+    )
+    temperature_min_c: Decimal | None = Field(
+        default=None,
+        decimal_places=2,
+        description="Daily minimum air temperature in °C; used for GDD calculation",
+    )
+    temperature_max_c: Decimal | None = Field(
+        default=None,
+        decimal_places=2,
+        description="Daily maximum air temperature in °C; used for GDD calculation",
+    )
+
 
 class WeatherRecordCreate(BaseModel):
     """
@@ -133,6 +154,24 @@ class WeatherRecordCreate(BaseModel):
         ),
     )
 
+    # ── Solar / temperature range (P1 — Yield Prediction) ────────────────────
+    solar_radiation_wm2: Decimal | None = Field(
+        default=None,
+        ge=0,
+        decimal_places=3,
+        description="Solar irradiance in W/m²; required for Penman-Monteith ET₀ calculation",
+    )
+    temperature_min_c: Decimal | None = Field(
+        default=None,
+        decimal_places=2,
+        description="Daily minimum air temperature in °C; used for GDD calculation",
+    )
+    temperature_max_c: Decimal | None = Field(
+        default=None,
+        decimal_places=2,
+        description="Daily maximum air temperature in °C; used for GDD calculation",
+    )
+
 
 class WeatherRecordUpdate(BaseModel):
     """
@@ -179,6 +218,24 @@ class WeatherRecordUpdate(BaseModel):
         default=None,
         max_length=50,
         description="Origin of the weather data",
+    )
+
+    # ── Solar / temperature range (P1 — Yield Prediction) ────────────────────
+    solar_radiation_wm2: Decimal | None = Field(
+        default=None,
+        ge=0,
+        decimal_places=3,
+        description="Solar irradiance in W/m²",
+    )
+    temperature_min_c: Decimal | None = Field(
+        default=None,
+        decimal_places=2,
+        description="Daily minimum air temperature in °C",
+    )
+    temperature_max_c: Decimal | None = Field(
+        default=None,
+        decimal_places=2,
+        description="Daily maximum air temperature in °C",
     )
 
 

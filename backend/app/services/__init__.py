@@ -2,6 +2,7 @@ from .crop import (
     CropNotFoundError,
     CropService,
     InvalidHarvestDateError,
+    InvalidYieldDataError,
 )
 from .field import (
     DuplicateFieldNameError,
@@ -15,6 +16,7 @@ from .soil_profile import (
     SoilProfileService,
 )
 from .weather_record import (
+    InvalidTemperatureRangeError,
     InvalidWeatherMeasurementError,
     InvalidWeatherTimestampError,
     WeatherRecordNotFoundError,
@@ -30,8 +32,10 @@ __all__ = [
     "FieldNotFoundError",
     "FieldService",
     "InvalidHarvestDateError",
+    "InvalidTemperatureRangeError",
     "InvalidWeatherMeasurementError",
     "InvalidWeatherTimestampError",
+    "InvalidYieldDataError",
     "SoilProfileNotFoundError",
     "SoilProfileService",
     "WeatherRecordNotFoundError",

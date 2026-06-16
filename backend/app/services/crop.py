@@ -18,6 +18,7 @@ naming collision in the services package ``__init__``.
 
 import uuid
 from datetime import date
+from decimal import Decimal
 from typing import Any
 
 from app.core.logging.logger import get_logger
@@ -44,6 +45,22 @@ class InvalidHarvestDateError(ValueError):
     This is a business invariant — a crop cannot be harvested before it was
     planted — enforced here rather than in the database layer so that the
     error message is meaningful to API callers.
+    """
+
+
+class InvalidYieldDataError(ValueError):
+    """
+    Raised when yield data violates agronomic business rules.
+
+    Enforced constraints:
+    - ``actual_yield_tons_ha`` must not be set while status is not HARVESTED.
+    - ``actual_yield_tons_ha`` must be non-negative.
+    - ``expected_yield_tons_ha`` must be non-negative.
+    - ``seeding_rate_kg_ha`` must be non-negative.
+
+    These constraints are also expressed in the Pydantic schema layer (ge=0);
+    the service layer re-validates the status-gated rule and provides
+    defence-in-depth for programmatic callers that bypass the API transport.
     """
 
 
@@ -95,6 +112,19 @@ class CropService:
             "status": CropStatus.PLANNED,
             **payload.model_dump(),
         }
+
+        # P1 yield validation — status is always PLANNED on create, so
+        # actual_yield_tons_ha must not be supplied at creation time.
+        # (CropCreate excludes it from its schema; this guard defends against
+        # direct programmatic calls that bypass the schema layer.)
+        _validate_yield_data(
+            status=CropStatus.PLANNED,
+            actual_yield_tons_ha=data.get("actual_yield_tons_ha"),
+            expected_yield_tons_ha=data.get("expected_yield_tons_ha"),
+            seeding_rate_kg_ha=data.get("seeding_rate_kg_ha"),
+            log=log,
+        )
+
         crop = await self._crops.create(data)
         log.info("crop_service.create.success", crop_id=str(crop.id))
         return crop
@@ -181,6 +211,22 @@ class CropService:
             log=log,
         )
 
+        # P1 yield validation — evaluate against the effective status after the
+        # update is applied; fall back to the stored value if not being changed.
+        _validate_yield_data(
+            status=update_data.get("status", current.status),
+            actual_yield_tons_ha=update_data.get(
+                "actual_yield_tons_ha", current.actual_yield_tons_ha
+            ),
+            expected_yield_tons_ha=update_data.get(
+                "expected_yield_tons_ha", current.expected_yield_tons_ha
+            ),
+            seeding_rate_kg_ha=update_data.get(
+                "seeding_rate_kg_ha", current.seeding_rate_kg_ha
+            ),
+            log=log,
+        )
+
         # update() returns None only when the record is absent; the guard above
         # guarantees existence, so the cast is safe.
         updated = await self._crops.update(crop_id, update_data)
@@ -238,4 +284,62 @@ def _validate_harvest_date(
         raise InvalidHarvestDateError(
             f"actual_harvest_date ({actual_harvest_date}) cannot be earlier than "
             f"planting_date ({planting_date})."
+        )
+
+
+def _validate_yield_data(
+    *,
+    status: CropStatus,
+    actual_yield_tons_ha: Decimal | None,
+    expected_yield_tons_ha: Decimal | None,
+    seeding_rate_kg_ha: Decimal | None,
+    log: Any,
+) -> None:
+    """
+    Raise ``InvalidYieldDataError`` for yield data that violates agronomic rules.
+
+    Rules enforced:
+    - actual_yield_tons_ha may only be set when status = HARVESTED.
+    - actual_yield_tons_ha, expected_yield_tons_ha, and seeding_rate_kg_ha must
+      be non-negative when provided.
+
+    Extracted as a module-level function so it can be unit-tested independently
+    of the service class and database session lifecycle.
+    """
+    if actual_yield_tons_ha is not None and status != CropStatus.HARVESTED:
+        log.warning(
+            "crop_service.yield_status_invalid",
+            status=status.value,
+            actual_yield_tons_ha=str(actual_yield_tons_ha),
+        )
+        raise InvalidYieldDataError(
+            f"actual_yield_tons_ha may only be set when status is HARVESTED "
+            f"(current status: {status.value})."
+        )
+
+    if actual_yield_tons_ha is not None and actual_yield_tons_ha < Decimal("0"):
+        log.warning(
+            "crop_service.actual_yield_negative",
+            actual_yield_tons_ha=str(actual_yield_tons_ha),
+        )
+        raise InvalidYieldDataError(
+            f"actual_yield_tons_ha ({actual_yield_tons_ha}) must be non-negative."
+        )
+
+    if expected_yield_tons_ha is not None and expected_yield_tons_ha < Decimal("0"):
+        log.warning(
+            "crop_service.expected_yield_negative",
+            expected_yield_tons_ha=str(expected_yield_tons_ha),
+        )
+        raise InvalidYieldDataError(
+            f"expected_yield_tons_ha ({expected_yield_tons_ha}) must be non-negative."
+        )
+
+    if seeding_rate_kg_ha is not None and seeding_rate_kg_ha < Decimal("0"):
+        log.warning(
+            "crop_service.seeding_rate_negative",
+            seeding_rate_kg_ha=str(seeding_rate_kg_ha),
+        )
+        raise InvalidYieldDataError(
+            f"seeding_rate_kg_ha ({seeding_rate_kg_ha}) must be non-negative."
         )

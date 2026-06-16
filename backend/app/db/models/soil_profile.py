@@ -108,6 +108,18 @@ class SoilProfile(AuditableModel, Base):
         comment="Available potassium concentration in mg/kg (ppm)",
     )
 
+    # ── Physical properties (P1 — Yield Prediction) ──────────────────────────
+    soil_depth_cm: Mapped[float | None] = mapped_column(
+        Numeric(precision=6, scale=2),
+        nullable=True,
+        comment="Effective rooting zone depth in centimetres",
+    )
+    cation_exchange_capacity_meq: Mapped[float | None] = mapped_column(
+        Numeric(precision=8, scale=4),
+        nullable=True,
+        comment="Cation exchange capacity in meq/100g; indicates soil nutrient retention",
+    )
+
     # ── Agronomic notes ───────────────────────────────────────────────────────
     notes: Mapped[str | None] = mapped_column(
         Text,
