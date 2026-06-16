@@ -15,6 +15,7 @@ Domain exception → HTTP status mapping
     WeatherRecordNotFoundError      → 404 Not Found
     InvalidWeatherTimestampError    → 400 Bad Request
     InvalidWeatherMeasurementError  → 400 Bad Request
+    InvalidTemperatureRangeError    → 400 Bad Request
 """
 
 import uuid
@@ -31,6 +32,7 @@ from app.schemas.weather_record import (
 )
 from app.services.field import FieldNotFoundError
 from app.services.weather_record import (
+    InvalidTemperatureRangeError,
     InvalidWeatherMeasurementError,
     InvalidWeatherTimestampError,
     WeatherRecordNotFoundError,
@@ -78,6 +80,12 @@ async def create_weather_record(
         ) from exc
     except InvalidWeatherMeasurementError as exc:
         log.warning("api.weather_records.create.invalid_measurement")
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=str(exc),
+        ) from exc
+    except InvalidTemperatureRangeError as exc:
+        log.warning("api.weather_records.create.invalid_temperature_range")
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail=str(exc),
@@ -188,6 +196,12 @@ async def update_weather_record(
         ) from exc
     except InvalidWeatherMeasurementError as exc:
         log.warning("api.weather_records.update.invalid_measurement")
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=str(exc),
+        ) from exc
+    except InvalidTemperatureRangeError as exc:
+        log.warning("api.weather_records.update.invalid_temperature_range")
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail=str(exc),

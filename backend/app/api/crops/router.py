@@ -11,9 +11,10 @@ Route map (all paths are relative to the /api/v1 prefix in main.py):
 
 Domain exception → HTTP status mapping
 ---------------------------------------
-    FieldNotFoundError     → 404 Not Found
-    CropNotFoundError      → 404 Not Found
+    FieldNotFoundError      → 404 Not Found
+    CropNotFoundError       → 404 Not Found
     InvalidHarvestDateError → 400 Bad Request
+    InvalidYieldDataError   → 400 Bad Request
 """
 
 import uuid
@@ -25,7 +26,7 @@ from app.core.logging import get_logger
 from app.db.models.crop import CropStatus
 from app.schemas.common import PaginatedResponse
 from app.schemas.crop import CropCreate, CropResponse, CropUpdate
-from app.services.crop import CropNotFoundError, InvalidHarvestDateError
+from app.services.crop import CropNotFoundError, InvalidHarvestDateError, InvalidYieldDataError
 from app.services.field import FieldNotFoundError
 
 router = APIRouter(tags=["Crops"])
@@ -165,6 +166,12 @@ async def update_crop(
         ) from exc
     except InvalidHarvestDateError as exc:
         log.warning("api.crops.update.invalid_harvest_date")
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=str(exc),
+        ) from exc
+    except InvalidYieldDataError as exc:
+        log.warning("api.crops.update.invalid_yield_data")
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail=str(exc),

@@ -10,6 +10,8 @@ Responsibilities
 - Ensure humidity_percent is within the range [0, 100].              (rule 5)
 - Ensure rainfall_mm is non-negative.                                (rule 6)
 - Ensure wind_speed_kmh is non-negative.                             (rule 7)
+- Ensure solar_radiation_wm2 is non-negative when provided.         (rule 8)
+- Ensure temperature_max_c >= temperature_min_c when both provided. (rule 9)
 
 All database access is delegated to the injected repositories; no SQLAlchemy
 sessions or queries appear in this module.
@@ -117,8 +119,10 @@ class WeatherRecordService:
         InvalidWeatherTimestampError
             If ``recorded_at`` is in the future.
         InvalidWeatherMeasurementError
-            If ``humidity_percent``, ``rainfall_mm``, or ``wind_speed_kmh``
-            violate their domain constraints.
+            If ``humidity_percent``, ``rainfall_mm``, ``wind_speed_kmh``, or
+            ``solar_radiation_wm2`` violate their domain constraints.
+        InvalidTemperatureRangeError
+            If ``temperature_max_c`` is less than ``temperature_min_c``.
         """
         log = logger.bind(field_id=str(field_id))
 
