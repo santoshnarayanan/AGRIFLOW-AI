@@ -161,3 +161,28 @@ Farm
 - Irrigation Management
 - Yield Tracking
 - AI Recommendation Engine
+
+
+## Phase 6 AI Readiness Foundation (Completed)
+
+Added AI-ready attributes across Field, Crop, SoilProfile, and WeatherRecord domains to support future prediction and recommendation engines.
+
+### New AI Attributes
+
+Field
+- elevation_m
+
+Crop
+- actual_yield_tons_ha
+- expected_yield_tons_ha
+- seeding_rate_kg_ha
+- growth_stage
+
+SoilProfile
+- soil_depth_cm
+- cation_exchange_capacity_meq
+
+WeatherRecord
+- solar_radiation_wm2
+- temperature_min_c
+- temperature_max_c

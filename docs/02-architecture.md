@@ -4,7 +4,7 @@
 
 AGRIFLOW-AI is an Agricultural Intelligence Platform built using a layered architecture that emphasizes maintainability, scalability, separation of concerns, and domain-driven development.
 
-The platform currently implements Farm, Field, Crop, Soil Profile, and Weather Intelligence domains and follows a Clean Architecture approach with clearly separated responsibilities across API, Service, Repository, and Database layers.
+The platform currently implements Farm, Field, Crop, Soil Profile, Weather Intelligence, and Phase 6 AI Readiness Foundation domains and follows a Clean Architecture approach with clearly separated responsibilities across API, Service, Repository, and Database layers.
 
 ---
 
@@ -83,10 +83,17 @@ Current business domains:
 * Weather Intelligence
 
 Future domains:
-* Irrigation Intelligence
-* Sensor Intelligence
-* Yield Intelligence
-* AI Recommendation Engine
+* Sensor Intelligence (Phase 7)
+* Irrigation Intelligence (Phase 8)
+* Yield Intelligence (Phase 9)
+* Disease Observation (Phase 10)
+* Satellite Observation (Phase 11)
+
+Future AI Layer:
+* Yield Prediction Engine
+* Disease Prediction Engine
+* Irrigation Recommendation Engine
+* Farm Intelligence Platform
 
 ---
 
