@@ -158,6 +158,11 @@ Field
 Field
 └── WeatherRecords
 
+### Sensor Reading Domain (Phase 7)
+
+Field
+└── SensorReadings (append-only telemetry)
+
 ---
 
 ## HTTP Status Code Conventions
@@ -251,6 +256,16 @@ Field
 * Rainfall cannot be negative
 * Wind speed cannot be negative
 
+### Sensor Reading Domain (Phase 7)
+
+* Field must exist before sensor reading creation (→ 404 Not Found)
+* `recorded_at` must be timezone-aware; naive datetimes are rejected (→ 422 Unprocessable Entity)
+* `recorded_at` must not be in the future; future timestamps are rejected (→ 422 Unprocessable Entity)
+* No sensor value range validation (reserved for future ingestion and SensorDevice domains)
+* No update operation permitted — SensorReading is immutable (no PATCH, no PUT)
+* Telemetry list responses are ordered by `recorded_at DESC` (most recent first)
+* Administrative deletion is supported; modification is forbidden
+
 ---
 
 ## Current API Inventory
@@ -295,15 +310,25 @@ Field
 * PATCH  /api/v1/weather-records/{weather_record_id}
 * DELETE /api/v1/weather-records/{weather_record_id}
 
+### Sensor Readings (Phase 7)
+
+* POST   /api/v1/fields/{field_id}/sensor-readings
+* GET    /api/v1/fields/{field_id}/sensor-readings
+* GET    /api/v1/sensor-readings/{sensor_reading_id}
+* DELETE /api/v1/sensor-readings/{sensor_reading_id}
+
 ---
 
 ## Future API Evolution
 
-* Irrigation APIs
-* Sensor APIs
-* Yield Analytics APIs
-* AI Recommendation APIs
-* Satellite Imagery APIs
+* Irrigation APIs (Phase 8)
+* Yield Analytics APIs (Phase 9)
+* Disease Observation APIs (Phase 10)
+* Satellite Imagery APIs (Phase 11)
+* AI Recommendation APIs (Phase 12+)
+* Sensor Aggregation APIs (TimescaleDB continuous aggregates)
+* Digital Twin State API
+* GaaS / Farm Copilot API
 
 
 ---
@@ -321,3 +346,132 @@ Validation completed across:
 - Backward Compatibility
 
 Critical router exception handling issues were identified and fixed during stabilization.
+
+---
+
+## Sensor Reading Domain Endpoints (Phase 7)
+
+### Create Sensor Reading
+
+```
+POST /api/v1/fields/{field_id}/sensor-readings
+```
+
+**Status:** 201 Created
+
+**Request Model:** `SensorReadingCreate`
+
+```json
+{
+  "sensor_type": "SOIL_MOISTURE",
+  "sensor_value": 34.7,
+  "unit": "%VWC",
+  "recorded_at": "2026-06-18T20:00:00Z",
+  "notes": "Optional annotation"
+}
+```
+
+**Response Model:** `SensorReadingResponse`
+
+**Exception Mapping:**
+
+| Exception | HTTP Status | Condition |
+|---|---|---|
+| `FieldNotFoundError` | 404 Not Found | Parent field UUID does not exist |
+| `InvalidSensorTimestampError` | 422 Unprocessable Entity | `recorded_at` is timezone-naive or in the future |
+
+**Design note:** `recorded_at` must include a UTC offset (e.g. `2026-06-18T20:00:00Z` or `2026-06-18T22:00:00+02:00`). `datetime.now()` without timezone is invalid.
+
+---
+
+### List Sensor Readings for Field
+
+```
+GET /api/v1/fields/{field_id}/sensor-readings
+```
+
+**Status:** 200 OK
+
+**Response Model:** `list[SensorReadingResponse]`
+
+**Ordering:** `recorded_at DESC` — most recent reading first. Ordering is applied at the repository layer.
+
+**Pagination:** None in Phase 7. All readings for the field are returned. Pagination deferred to a future phase.
+
+**Exception Mapping:**
+
+| Exception | HTTP Status | Condition |
+|---|---|---|
+| `FieldNotFoundError` | 404 Not Found | Parent field UUID does not exist |
+
+---
+
+### Get Sensor Reading
+
+```
+GET /api/v1/sensor-readings/{sensor_reading_id}
+```
+
+**Status:** 200 OK
+
+**Response Model:** `SensorReadingResponse`
+
+**Exception Mapping:**
+
+| Exception | HTTP Status | Condition |
+|---|---|---|
+| `SensorReadingNotFoundError` | 404 Not Found | Reading UUID does not exist |
+
+---
+
+### Delete Sensor Reading
+
+```
+DELETE /api/v1/sensor-readings/{sensor_reading_id}
+```
+
+**Status:** 204 No Content
+
+**Response body:** None
+
+**Purpose:** Administrative cleanup of invalid or corrupted telemetry. Not a business operation.
+
+**Exception Mapping:**
+
+| Exception | HTTP Status | Condition |
+|---|---|---|
+| `SensorReadingNotFoundError` | 404 Not Found | Reading UUID does not exist |
+
+---
+
+## Telemetry API Architectural Decisions
+
+### No PATCH / No PUT (ADR-007-29, ADR-007-32)
+
+SensorReading endpoints deliberately omit `PATCH` and `PUT`. Telemetry is a factual record of what a sensor reported. Mutations to historical telemetry would corrupt the time-series integrity of AI training datasets and Digital Twin state.
+
+Corrections to sensor readings are represented by submitting a new reading.
+
+### 422 for Invalid Timestamps (ADR-007-33)
+
+`InvalidSensorTimestampError` maps to HTTP 422 (Unprocessable Entity), not 400 (Bad Request).
+
+Rationale: A timezone-naive or future-dated timestamp is syntactically valid JSON but semantically unprocessable given the telemetry domain contract. This distinction follows RFC 9110 semantics.
+
+### Ordering Semantics (ADR-007-30)
+
+`GET /fields/{field_id}/sensor-readings` returns readings ordered by `recorded_at DESC`. This ordering is enforced at the repository layer (`SensorReadingRepository.list_by_field`) and must not be reordered at the service or API layer.
+
+### Deletion Semantics (ADR-007-31)
+
+`DELETE /sensor-readings/{id}` returns `204 No Content` with an empty body. This is consistent with all other DELETE endpoints in AGRIFLOW-AI.
+
+### HTTP Status Code Reference for Sensor Reading Domain
+
+| Code | Meaning | When Used |
+|---|---|---|
+| 201 Created | Reading persisted | Successful POST |
+| 200 OK | Reading(s) returned | Successful GET |
+| 204 No Content | Reading deleted | Successful DELETE |
+| 404 Not Found | Resource absent | Field or reading UUID not found |
+| 422 Unprocessable Entity | Invalid timestamp | Timezone-naive or future `recorded_at` |

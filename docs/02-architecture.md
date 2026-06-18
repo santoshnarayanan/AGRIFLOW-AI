@@ -71,7 +71,8 @@ Farm
  └── Field
       ├── Crop
       ├── SoilProfile
-      └── WeatherRecord
+      ├── WeatherRecord
+      └── SensorReading   ← Phase 7 (Telemetry, append-only)
 ```
 
 Current business domains:
@@ -81,9 +82,9 @@ Current business domains:
 * Crop Management
 * Soil Intelligence
 * Weather Intelligence
+* Sensor Telemetry (Phase 7)
 
 Future domains:
-* Sensor Intelligence (Phase 7)
 * Irrigation Intelligence (Phase 8)
 * Yield Intelligence (Phase 9)
 * Disease Observation (Phase 10)
@@ -107,11 +108,14 @@ backend/
 │   │   ├── fields
 │   │   ├── crops
 │   │   ├── soil_profiles
+│   │   ├── weather_records
+│   │   ├── sensor_readings   ← Phase 7
 │   │   ├── health
 │   │   └── version
 │   │
 │   ├── core
 │   │   ├── config
+│   │   ├── enums.py          ← Phase 7 (shared cross-domain enumerations)
 │   │   ├── logging
 │   │   └── security
 │   │
@@ -354,7 +358,8 @@ BaseRepository
       ├── FieldRepository
       ├── CropRepository
       ├── SoilProfileRepository
-      └── WeatherRecordRepository
+      ├── WeatherRecordRepository
+      └── SensorReadingRepository   ← Phase 7
 ```
 
 Benefits:
@@ -377,6 +382,7 @@ fields
 crops
 soil_profiles
 weather_records
+sensor_readings   ← Phase 7 (append-only telemetry)
 ```
 
 Relationships:
@@ -388,6 +394,7 @@ Farm (1)
 Field (N)
    ├────────────► Crop (N)
    ├────────────► WeatherRecord (N)
+   ├────────────► SensorReading (N, append-only)   ← Phase 7
    │
    └────────────► SoilProfile (1)
 ```
@@ -405,7 +412,9 @@ Migration sequence:
 002_create_fields_table
 003_create_crops_table
 004_create_weather_records_table
-005_add_soil_profiles_table
+13aabbe35d51_add_soil_profiles_table
+005_add_p1_ai_readiness_columns
+006_create_sensor_readings_table   ← Phase 7 (sensor_type enum + sensor_readings table + 5 indexes)
 ```
 
 Migration flow:
@@ -475,6 +484,15 @@ Implemented APIs:
 * PATCH  /api/v1/weather-records/{weather_record_id}
 * DELETE /api/v1/weather-records/{weather_record_id}
 
+## Sensor Readings (Phase 7)
+
+* POST   /api/v1/fields/{field_id}/sensor-readings
+* GET    /api/v1/fields/{field_id}/sensor-readings
+* GET    /api/v1/sensor-readings/{sensor_reading_id}
+* DELETE /api/v1/sensor-readings/{sensor_reading_id}
+
+Note: No PATCH. No PUT. SensorReading is immutable append-only telemetry (ADR-007-32).
+
 ---
 
 # Current Platform Status
@@ -486,6 +504,8 @@ Completed Domains:
 * Crop Domain
 * Soil Intelligence Domain
 * Weather Intelligence Domain
+* AI Readiness Foundation (Phase 6)
+* Sensor Telemetry Domain — SensorReading (Phase 7)
 
 Implemented Architecture:
 
@@ -497,6 +517,9 @@ Implemented Architecture:
 * Dependency Injection
 * PostgreSQL Integration
 * Alembic Migration Framework
+* Shared Enum Module (`app/core/enums.py`) — Phase 7
+* Telemetry Immutability Pattern — Phase 7
+* Compound Index Strategy — Phase 7
 
 ---
 
@@ -543,3 +566,148 @@ The architecture is designed to support the long-term vision of:
 * Autonomous Agricultural Intelligence
 
 while maintaining clear separation of concerns, scalability, and maintainability.
+
+---
+
+# Telemetry Architecture (Phase 7)
+
+## Immutability Contract
+
+`SensorReading` is the first domain in AGRIFLOW-AI with an explicit immutability contract. This is a deliberate architectural decision reflecting the nature of telemetry data.
+
+Telemetry is a factual record of what a sensor reported at a specific moment. It must not be mutated — corrections are expressed as new readings.
+
+This contract is enforced at three layers:
+1. **Schema layer**: No `SensorReadingUpdate` schema exists.
+2. **Service layer**: No `update_sensor_reading()` method exists.
+3. **API layer**: No PATCH or PUT endpoint is registered (ADR-007-32).
+
+## Append-Only Pattern
+
+All sensor readings flow in a single direction: create → persist → event-publish (future).
+
+```text
+IoT Device / Ingestion Gateway
+            │
+            ▼
+    POST /api/v1/fields/{field_id}/sensor-readings
+            │
+            ▼
+    SensorReadingService (validate)
+            │
+            ▼
+    SensorReadingRepository (persist)
+            │
+            ▼
+    PostgreSQL sensor_readings table
+            │
+            ▼
+    [Future: Redpanda event publish]
+```
+
+## Timestamp Validation
+
+All sensor timestamps must satisfy two conditions (ADR-007-24 and ADR-007-25):
+
+1. **Timezone-aware**: Naive `datetime.now()` is rejected with `InvalidSensorTimestampError` → HTTP 422.
+2. **Not in the future**: Future timestamps are rejected with `InvalidSensorTimestampError` → HTTP 422.
+
+Validation order is deliberate: timezone-awareness is checked first because a naive datetime cannot be safely compared to a UTC-aware timestamp.
+
+## DOUBLE PRECISION for Sensor Values
+
+`sensor_value` uses `DOUBLE PRECISION` (IEEE 754 64-bit float), unlike all other numeric columns in the platform which use `NUMERIC(p,s)`.
+
+Rationale: Sensor ADC outputs and physical measurements (mV, µS/cm, lux, kPa) operate in floating-point space. Fixed-scale `NUMERIC` would silently truncate high-resolution readings. `DOUBLE PRECISION` is the correct type for sensor physics; `NUMERIC` is correct for accounting.
+
+## Compound Index Strategy
+
+Phase 7 introduced the first compound indexes in the project:
+
+| Index | Columns | Primary Use Case |
+|---|---|---|
+| `ix_sensor_readings_field_id_recorded_at` | `(field_id, recorded_at)` | Time-ordered telemetry for a field |
+| `ix_sensor_readings_sensor_type_recorded_at` | `(sensor_type, recorded_at)` | Cross-field type-scoped time queries |
+
+These compound indexes cover the two dominant telemetry access patterns without requiring additional query planning overhead.
+
+---
+
+# Shared Enum Module
+
+`app/core/enums.py` was established in Phase 7 as the canonical location for cross-domain enumerations.
+
+Prior to Phase 7, enums (`CropStatus`, `SoilType`) were defined within their respective ORM model files. This pattern works for enums that belong exclusively to one domain.
+
+`SensorType` was placed in `app/core/enums.py` because it will be consumed by future domains beyond `SensorReading`:
+* `SensorDevice` — IoT device registry
+* `SensorAlert` — alert rule definitions
+* Digital Twin field state model
+* AI Recommendation Engine feature pipeline
+
+Importing enums from ORM model files creates circular import chains as cross-domain usage grows. `app/core/enums.py` is the neutral import point that prevents this.
+
+All future cross-domain enumerations should be placed here.
+
+---
+
+# Architecture Decision Register (Summary)
+
+Full ADR details are maintained in `docs/08-phase-architecture-handbook.md` (Section 19).
+
+Key decisions by phase:
+
+| ADR | Phase | Decision |
+|---|---|---|
+| ADR-001-01 | 1 | UUID v4 as universal primary key |
+| ADR-001-02 | 1 | `AuditableModel` mixin on all tables |
+| ADR-001-03 | 1 | Alembic as sole schema change mechanism |
+| ADR-002-01 | 2 | Repository owns persistence only |
+| ADR-002-02 | 2 | Transaction commit belongs to session dependency |
+| ADR-002-03 | 2 | Domain exceptions are `ValueError` subclasses |
+| ADR-002-04 | 2 | Routers translate domain exceptions to HTTP |
+| ADR-003-01 | 3 | All enums inherit `str` for VARCHAR storage |
+| ADR-004-01 | 4 | One-to-one enforced at DB level (UNIQUE) and service level |
+| ADR-005-01 | 5 | Time-series entities use `TIMESTAMPTZ NOT NULL` |
+| ADR-006-01 | 6 | P1 AI attributes are nullable ADD COLUMN — no backfill |
+| ADR-007-19 | 7 | SensorReading supports DELETE but not UPDATE |
+| ADR-007-25 | 7 | Timezone-naive datetimes rejected |
+| ADR-007-26 | 7 | Service layer is the future event publishing boundary |
+| ADR-007-27 | 7 | Historical telemetry cannot be mutated |
+| ADR-007-32 | 7 | No PATCH or PUT endpoint for SensorReading |
+
+---
+
+# Future Architecture Evolution
+
+## TimescaleDB
+
+The `sensor_readings` table is designed for zero-friction TimescaleDB promotion. `recorded_at TIMESTAMPTZ NOT NULL` satisfies the hypertable partition key requirement.
+
+Activation: `SELECT create_hypertable('sensor_readings', 'recorded_at', chunk_time_interval => INTERVAL '1 week');`
+
+No application code changes are required. Continuous aggregates (hourly averages per sensor type per field) will be implemented as materialised views queried by a future `SensorAggregationRepository`.
+
+## Apache Cassandra
+
+High-scale deployments will migrate telemetry reads to Cassandra with `field_id` as the partition key and `recorded_at DESC` as the clustering key — matching the compound index already established. Migration occurs via a CQRS split with Redpanda projecting writes asynchronously.
+
+## CQRS
+
+Write side (`create`, `delete`) and read side (`list_by_field`, `get_by_id`) will be separated into distinct repository implementations backed by different storage engines. The service layer is the correct split boundary — no service code changes required.
+
+## Redpanda
+
+`SensorReadingService.create_sensor_reading()` contains a documented extension point (ADR-007-26) for publishing `SensorReadingCreated` events to the Redpanda topic `sensor.readings.created`. Downstream consumers: Digital Twin updater, AI anomaly detector, alert evaluator, CQRS projector.
+
+## Temporal Workflows
+
+Stateful agricultural alert workflows (sustained soil moisture deficit → irrigation recommendation → operator notification → escalation) will be triggered from the `create_sensor_reading` service extension point, launching Temporal workflows with durable timers and retry policies.
+
+## Digital Twin
+
+A continuously updated virtual model of every field will be maintained, sourced from `SensorReadingCreated` events (Redpanda), AI inference results, and crop lifecycle updates. The `SensorType` enum values map directly to Digital Twin field state properties.
+
+## Generative-As-A-Service (GaaS)
+
+The AGRIFLOW-AI REST API surface (fully documented in OpenAPI via FastAPI auto-generation) is already GaaS-ready. A future LLM agent will use AGRIFLOW-AI endpoints as tools to answer natural language queries from farmers and agronomists. Phase 7 sensor telemetry is a key context source for irrigation and crop health queries.

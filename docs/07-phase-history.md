@@ -645,6 +645,244 @@ WeatherRecord
 
 Phase 6 formally closed after successful validation and stabilization.
 
+### Architecture Decisions
+
+* All P1 AI attributes are nullable `ADD COLUMN` operations — no server defaults, no backfill required.
+* PostgreSQL 11+ handles nullable column additions as metadata-only operations with no table rewrite.
+* Business validation for new attributes was added to existing service methods, not new services.
+* AI inference write-back fields (e.g. `disease_risk_score`) are reserved for future AI inference services, not the current API layer.
+
+### Lessons Learned
+
+* A formal data readiness assessment before any AI work eliminates speculative schema design and focuses engineering on the highest-value attributes first.
+* Additive schema changes (nullable `ADD COLUMN`) are far safer than modifying existing columns in production systems with existing consumers.
+* The gap between 18% yield prediction coverage and 82% after just 10 additional attributes demonstrates the leverage of careful attribute selection.
+* Router exception handling must be explicitly validated across all domains after any schema change that could alter exception propagation paths.
+
+### References
+
+* Full AI attribute gap analysis: `docs/AI_DATA_READINESS_ASSESSMENT.md`
+* Validation report across all layers: `docs/PHASE6_STEP3_VALIDATION_REPORT.md`
+
+---
+
+## Phase 7 – SensorReading Domain
+
+Status: Completed
+
+### Completed
+
+* SensorType shared enum module (`app/core/enums.py`)
+* SensorReading ORM Model (`app/db/models/sensor_reading.py`)
+* Farm ↔ Field ↔ SensorReading relationship with `cascade="all, delete-orphan"`
+* Alembic migration 006: `sensor_readings` table, `sensor_type` PostgreSQL enum, 5 indexes
+* SensorReading Pydantic schemas — `SensorReadingCreate` and `SensorReadingResponse` (no Update schema)
+* SensorReadingRepository with `create`, `get_by_id`, `list_by_field`, `delete`, `exists`
+* SensorReadingService with field existence validation, timezone-aware timestamp validation, future timestamp rejection
+* SensorReading API Router with POST, GET (list), GET (single), DELETE endpoints
+* `SensorReadingServiceDep` registered in `app/api/deps.py`
+* Router registered in `app/api/router.py`
+
+### Domain Hierarchy Established
+
+```
+Farm
+└── Field
+     ├── Crop
+     ├── SoilProfile
+     ├── WeatherRecord
+     └── SensorReading   ← Phase 7
+```
+
+### Database Changes
+
+* Added `sensor_type` PostgreSQL ENUM type with 11 values:
+  `SOIL_MOISTURE`, `SOIL_TEMPERATURE`, `AIR_TEMPERATURE`, `AIR_HUMIDITY`,
+  `LIGHT_INTENSITY`, `LEAF_WETNESS`, `ELECTRICAL_CONDUCTIVITY`,
+  `SOIL_SALINITY`, `WATER_LEVEL`, `BATTERY_STATUS`, `DEVICE_HEALTH`
+
+* Added `sensor_readings` table with columns:
+
+| Column | Type | Notes |
+|---|---|---|
+| `id` | `UUID` | Primary key |
+| `field_id` | `UUID` (FK) | References `fields.id` ON DELETE CASCADE |
+| `sensor_type` | `sensor_type` ENUM | Discriminator for physical quantity |
+| `sensor_value` | `DOUBLE PRECISION` | IEEE 754 64-bit for sensor ADC precision |
+| `unit` | `VARCHAR(50)` | SI or industry-standard unit label |
+| `recorded_at` | `TIMESTAMPTZ NOT NULL` | Timezone-aware observation timestamp |
+| `notes` | `TEXT` | Nullable free-text annotation |
+| `created_at` | `TIMESTAMPTZ` | Audit — row creation timestamp |
+| `updated_at` | `TIMESTAMPTZ` | Audit — row last-updated timestamp |
+
+* Added 5 indexes — 3 individual, 2 compound:
+
+| Index | Columns | Purpose |
+|---|---|---|
+| `ix_sensor_readings_field_id` | `field_id` | Field-level reading lookups |
+| `ix_sensor_readings_sensor_type` | `sensor_type` | Cross-field type queries |
+| `ix_sensor_readings_recorded_at` | `recorded_at` | Time-range queries |
+| `ix_sensor_readings_field_id_recorded_at` | `(field_id, recorded_at)` | Primary telemetry access pattern |
+| `ix_sensor_readings_sensor_type_recorded_at` | `(sensor_type, recorded_at)` | Type-scoped time queries |
+
+* `ON DELETE CASCADE` on `field_id` FK — field deletion atomically removes all its sensor readings.
+
+### API Endpoints Added
+
+```http
+POST   /api/v1/fields/{field_id}/sensor-readings     201 Created
+GET    /api/v1/fields/{field_id}/sensor-readings     200 OK  (recorded_at DESC)
+GET    /api/v1/sensor-readings/{sensor_reading_id}   200 OK
+DELETE /api/v1/sensor-readings/{sensor_reading_id}  204 No Content
+```
+
+No `PATCH` endpoint. No `PUT` endpoint. SensorReading is immutable by design.
+
+### Business Rules Implemented
+
+* Field must exist before sensor reading creation (raises `FieldNotFoundError` → 404)
+* `recorded_at` must be timezone-aware; naive datetimes are rejected (raises `InvalidSensorTimestampError` → 422)
+* `recorded_at` must not be in the future; future timestamps are rejected (raises `InvalidSensorTimestampError` → 422)
+* No sensor value range validation — reserved for future ingestion and SensorDevice domains
+* Telemetry list responses ordered by `recorded_at DESC` (most recent first)
+* Administrative deletion supported; mutation forbidden
+
+### Architecture Evolution
+
+**Shared Enum Module established:**
+`app/core/enums.py` was created as the first file in the shared core layer. `SensorType` was placed here rather than in the ORM model file because it will be reused by future domains: `SensorDevice`, `SensorAlert`, Digital Twin topology, and the AI Recommendation Engine. This is now the standard location for cross-domain enumerations.
+
+**Telemetry Immutability Pattern:**
+`SensorReading` is the first domain in AGRIFLOW-AI with an explicit immutability contract. No `SensorReadingUpdate` schema exists. No `update_sensor_reading()` service method exists. No PATCH or PUT endpoint exists. Corrections to historical readings are expressed as new readings.
+
+**Compound Index Strategy:**
+Phase 7 introduced the first compound indexes in the project (`field_id, recorded_at`) and (`sensor_type, recorded_at`). These cover the two primary telemetry access patterns efficiently.
+
+**DOUBLE PRECISION for Sensor Values:**
+`DOUBLE PRECISION` (IEEE 754 64-bit) was selected over `NUMERIC(p,s)` because sensor ADC outputs and physical measurements require floating-point semantics. `NUMERIC` with fixed scale would silently truncate high-resolution readings from precision sensors.
+
+**Service Extension Point Architecture:**
+`SensorReadingService.create_sensor_reading()` contains a documented extension point comment block marking the future boundary for: Redpanda event publishing, Digital Twin state updates, CQRS projections, and Temporal workflow triggers. No integration is implemented; the boundary is reserved.
+
+### Repository Decisions
+
+| ADR | Decision |
+|---|---|
+| ADR-007-17 | Repository owns persistence, not intelligence |
+| ADR-007-18 | Telemetry queries return latest readings first (`ORDER BY recorded_at DESC`) |
+| ADR-007-19 | SensorReading supports DELETE but not UPDATE |
+| ADR-007-20 | Repository is event-agnostic — no Redpanda publishing from repository layer |
+| ADR-007-21 | Phase 7 returns all readings for a field without pagination (deferred) |
+
+### Service Decisions
+
+| ADR | Decision |
+|---|---|
+| ADR-007-22 | Service layer owns telemetry intelligence (timestamp validation) |
+| ADR-007-23 | Field must exist before telemetry creation |
+| ADR-007-24 | Future timestamps are rejected |
+| ADR-007-25 | Timezone-naive datetimes are rejected |
+| ADR-007-26 | Service layer is the future event publishing boundary |
+| ADR-007-27 | Historical telemetry cannot be mutated |
+| ADR-007-28 | Telemetry supports administrative deletion but not modification |
+
+### API Decisions
+
+| ADR | Decision |
+|---|---|
+| ADR-007-29 | SensorReading API: POST + GET + DELETE only; no PATCH, no PUT |
+| ADR-007-30 | Telemetry responses return newest readings first |
+| ADR-007-31 | Administrative deletion returns 204 No Content |
+| ADR-007-32 | SensorReading is immutable; no update verb exposed |
+| ADR-007-33 | Domain exceptions translated to HTTP in routers; service layer raises typed exceptions |
+
+### Notable Technical Challenges
+
+**SensorType Enum Relocation:**
+
+The `SensorType` enum was initially defined in `app/db/models/sensor_reading.py` (following the `CropStatus` and `SoilType` precedent). A dedicated refactor step relocated it to `app/core/enums.py` because future domains (SensorDevice, SensorAlert) would need to import it — and importing from an ORM model creates problematic circular import chains. The refactor was purely structural; no schema or behavior changed.
+
+**Explicit Alembic Enum Lifecycle Management:**
+
+Unlike `CropStatus` (where SQLAlchemy managed the enum creation implicitly), Phase 7 used `op.execute(sa.text("CREATE TYPE sensor_type AS ENUM (...)"))` explicitly in the upgrade function and `op.execute(sa.text("DROP TYPE sensor_type"))` in the downgrade function. This pattern gives full lifecycle control and avoids the implicit enum creation race conditions encountered in Phase 3.
+
+**DOUBLE PRECISION vs NUMERIC Decision:**
+
+All prior numeric columns in AGRIFLOW-AI use `NUMERIC(p,s)` with fixed precision (e.g. `NUMERIC(5,2)` for temperature). The `sensor_value` column is the first to use `DOUBLE PRECISION`. This decision required explicit architectural justification: sensor ADC outputs operate in floating-point space and fixed-scale types would introduce silent truncation for high-resolution transducers.
+
+### Lessons Learned
+
+* Shared enums must live in a neutral module (`app/core/enums.py`) rather than ORM model files as soon as they are expected to be used across more than one domain.
+* Explicit enum DDL in Alembic migrations provides full lifecycle control and avoids implicit creation issues discovered in earlier phases.
+* The two-phase timestamp validation order matters: timezone-awareness must be checked before future-timestamp comparison, because a naive datetime cannot be safely compared to a UTC-aware datetime.
+* `DOUBLE PRECISION` vs `NUMERIC` is a domain-specific choice. Both are correct in their contexts; the selection must be documented with physical rationale to prevent future refactoring based on incorrect assumptions.
+* Documenting the service extension point as a comment block (not TODO) creates a stable contract boundary that survives future code reviewers and AI-assisted development.
+
+### Future Considerations
+
+* **TimescaleDB:** `sensor_readings` was designed to be TimescaleDB-compatible. `recorded_at TIMESTAMPTZ NOT NULL` is the partition key. A `create_hypertable('sensor_readings', 'recorded_at')` call is the only schema operation needed; no application code changes are required.
+* **Cassandra:** High-scale deployments (millions of readings/day) will migrate to Cassandra with `(field_id, recorded_at)` as the partition/clustering key — matching the compound index already established.
+* **CQRS:** The write path (`create` / `delete`) and read path (`list_by_field` / `get_by_id`) will be split into separate repository implementations backed by different storage engines.
+* **Redpanda:** A `SensorReadingCreated` domain event will be published at the service layer extension point, enabling downstream consumers (Digital Twin, AI pipeline, alert engine) to react without coupling to the write path.
+* **Temporal Workflows:** Alert evaluation workflows (e.g. sustained low soil moisture → irrigation recommendation) will be triggered from the service layer extension point.
+* **Digital Twin:** Each new sensor reading will update the field-level Digital Twin state, providing a continuously current virtual model of every field.
+* **Pagination:** `list_by_field` returns all readings in Phase 7. Pagination (`LIMIT` / `OFFSET` or cursor-based) will be added in a future phase when response sizes require it.
+
+---
+
+### Current Platform Status (Post Phase 7)
+
+#### Domain Hierarchy
+
+```
+Farm
+└── Field
+     ├── Crop
+     ├── SoilProfile
+     ├── WeatherRecord
+     └── SensorReading
+```
+
+#### Current Database Tables
+
+* alembic_version
+* farms
+* fields
+* crops
+* soil_profiles
+* weather_records
+* sensor_readings
+
+#### Current Architecture
+
+```
+Model → Schema → Repository → Service → API
+```
+
+#### Current API Coverage
+
+Health
+
+* GET /api/v1/health/live
+* GET /api/v1/health/ready
+
+Version
+
+* GET /api/v1/version
+
+Fields, Crops, Soil Profiles, Weather Records
+
+* (unchanged — see Phase 2–5 entries)
+
+Sensor Readings
+
+* POST   /api/v1/fields/{field_id}/sensor-readings
+* GET    /api/v1/fields/{field_id}/sensor-readings
+* GET    /api/v1/sensor-readings/{sensor_reading_id}
+* DELETE /api/v1/sensor-readings/{sensor_reading_id}
+
+---
+
 ### Next Planned Evolution
 
-Phase 7 – SensorReading Domain
+Phase 8 – Irrigation Domain

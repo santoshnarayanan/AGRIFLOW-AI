@@ -43,6 +43,8 @@ docs/01-vision.md
 
 ✅ Phase 6 – AI Readiness Foundation
 
+✅ Phase 7 – SensorReading Domain (Telemetry)
+
 ---
 
 ### Current Domain Hierarchy
@@ -52,7 +54,8 @@ Farm
  └── Field
       ├── Crop
       ├── SoilProfile
-      └── WeatherRecord
+      ├── WeatherRecord
+      └── SensorReading   (Phase 7 — append-only telemetry)
 ```
 
 ---
@@ -66,6 +69,7 @@ fields
 crops
 soil_profiles
 weather_records
+sensor_readings
 ```
 
 ---
@@ -153,6 +157,36 @@ PostgreSQL
 * Wind speed tracking
 * WeatherRecord CRUD APIs
 * Time-series weather data foundation
+
+---
+
+## Phase 7 Completion Summary
+
+Phase 7 introduced AGRIFLOW-AI's first telemetry domain: SensorReading.
+
+Completed:
+
+* Shared enum module (`app/core/enums.py`) with `SensorType` enum (11 sensor categories)
+* SensorReading ORM model with `DOUBLE PRECISION` sensor value and `TIMESTAMPTZ` recorded_at
+* Alembic migration 006: `sensor_readings` table, `sensor_type` PostgreSQL enum, 5 indexes (3 individual, 2 compound)
+* SensorReading Pydantic schemas — `SensorReadingCreate`, `SensorReadingResponse` (no Update schema — immutable by design)
+* SensorReadingRepository with create, list, get, delete operations
+* SensorReadingService with field existence validation, timezone-aware timestamp validation, future timestamp rejection
+* SensorReading API Router — 4 endpoints (no PATCH, no PUT)
+* Full dependency injection registration in `app/api/deps.py`
+
+New sensor types supported:
+
+* SOIL_MOISTURE, SOIL_TEMPERATURE, AIR_TEMPERATURE, AIR_HUMIDITY
+* LIGHT_INTENSITY, LEAF_WETNESS, ELECTRICAL_CONDUCTIVITY
+* SOIL_SALINITY, WATER_LEVEL, BATTERY_STATUS, DEVICE_HEALTH
+
+Architectural decisions introduced (ADR-007 series):
+
+* Telemetry is append-only and immutable
+* Timezone-naive timestamps are rejected (422 Unprocessable Entity)
+* Future timestamps are rejected (422 Unprocessable Entity)
+* Service layer marked as future boundary for Redpanda, Digital Twin, Temporal
 
 ---
 
@@ -250,6 +284,15 @@ PATCH  /api/v1/weather-records/{weather_record_id}
 DELETE /api/v1/weather-records/{weather_record_id}
 ```
 
+### Sensor Reading APIs (Phase 7)
+
+```http
+POST   /api/v1/fields/{field_id}/sensor-readings
+GET    /api/v1/fields/{field_id}/sensor-readings
+GET    /api/v1/sensor-readings/{sensor_reading_id}
+DELETE /api/v1/sensor-readings/{sensor_reading_id}
+```
+
 ---
 
 ## Business Rules Implemented
@@ -281,6 +324,15 @@ DELETE /api/v1/weather-records/{weather_record_id}
 * Humidity validation
 * Rainfall validation
 * Wind speed validation
+
+### SensorReading Domain (Phase 7)
+
+* Field must exist before sensor reading creation
+* `recorded_at` must be timezone-aware (naive datetimes rejected → 422)
+* `recorded_at` must not be in the future (future timestamps rejected → 422)
+* SensorReading is immutable — no update or patch operation permitted
+* Telemetry list returned ordered by `recorded_at DESC` (most recent first)
+* Administrative deletion supported; modification is not
 
 ---
 
@@ -315,15 +367,17 @@ backend/
 
 ## Documentation
 
-| Document                 | Description                          |
-| ------------------------ | ------------------------------------ |
-| docs/01-vision.md        | Product Vision & Strategic Direction |
-| docs/02-architecture.md  | Technical Architecture               |
-| docs/03-database.md      | Database Design                      |
-| docs/04-api-design.md    | API Design                           |
-| docs/05-local-setup.md   | Local Development Setup              |
-| docs/06-roadmap.md       | Product Roadmap                      |
-| docs/07-phase-history.md | Implementation History               |
+| Document                          | Description                          |
+| --------------------------------- | ------------------------------------ |
+| docs/01-vision.md                 | Product Vision & Strategic Direction |
+| docs/02-architecture.md           | Technical Architecture               |
+| docs/03-database.md               | Database Design                      |
+| docs/04-api-design.md             | API Design                           |
+| docs/05-local-setup.md            | Local Development Setup              |
+| docs/06-roadmap.md                | Product Roadmap                      |
+| docs/07-phase-history.md          | Implementation History               |
+| docs/08-phase-architecture-handbook.md | Phase Architecture Handbook (authoritative reference) |
+| docs/AI_DATA_READINESS_ASSESSMENT.md | AI Data Readiness Assessment (Phase 6) |
 
 ---
 
@@ -366,11 +420,9 @@ http://localhost:8000/docs
 
 ### Current Next Phase
 
-Phase 7 – SensorReading Domain
+Phase 8 – Irrigation Domain
 
 ### Future Phases
-
-Phase 8 – Irrigation Domain
 
 Phase 9 – Yield Domain
 
@@ -394,6 +446,17 @@ docs/06-roadmap.md
 
 ---
 
+## Current Agricultural Intelligence Platform (Post Phase 7)
+
+```text
+Farm
+ └── Field
+      ├── Crop                ✅ Phase 3
+      ├── SoilProfile         ✅ Phase 4
+      ├── WeatherRecord       ✅ Phase 5
+      └── SensorReading       ✅ Phase 7 (IoT Telemetry)
+```
+
 ## Target Agricultural Intelligence Platform
 
 ```text
@@ -401,11 +464,11 @@ Farm
  └── Field
       ├── Crop
       ├── SoilProfile
-      ├── Weather Records
-      ├── Sensor Readings
-      ├── Irrigation Events
-      ├── Yield Records
-      └── Satellite Observations
+      ├── WeatherRecord
+      ├── SensorReading
+      ├── IrrigationEvent
+      ├── YieldRecord
+      └── SatelliteObservation
 ```
 
 ---
