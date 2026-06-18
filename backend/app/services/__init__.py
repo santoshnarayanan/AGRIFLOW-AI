@@ -10,6 +10,11 @@ from .field import (
     FieldNotFoundError,
     FieldService,
 )
+from .sensor_reading import (
+    InvalidSensorTimestampError,
+    SensorReadingNotFoundError,
+    SensorReadingService,
+)
 from .soil_profile import (
     DuplicateSoilProfileError,
     SoilProfileNotFoundError,
@@ -32,10 +37,13 @@ __all__ = [
     "FieldNotFoundError",
     "FieldService",
     "InvalidHarvestDateError",
+    "InvalidSensorTimestampError",
     "InvalidTemperatureRangeError",
     "InvalidWeatherMeasurementError",
     "InvalidWeatherTimestampError",
     "InvalidYieldDataError",
+    "SensorReadingNotFoundError",
+    "SensorReadingService",
     "SoilProfileNotFoundError",
     "SoilProfileService",
     "WeatherRecordNotFoundError",
