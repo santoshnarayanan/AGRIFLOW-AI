@@ -21,6 +21,7 @@ from app.db.base import AuditableModel, Base
 if TYPE_CHECKING:
     from app.db.models.crop import Crop
     from app.db.models.farm import Farm
+    from app.db.models.sensor_reading import SensorReading
     from app.db.models.soil_profile import SoilProfile
     from app.db.models.weather_record import WeatherRecord
 
@@ -81,6 +82,11 @@ class Field(AuditableModel, Base):
     weather_records: Mapped[list[WeatherRecord]] = relationship(
         back_populates="field",
         cascade="all, delete-orphan",
+    )
+    sensor_readings: Mapped[list[SensorReading]] = relationship(
+        back_populates="field",
+        cascade="all, delete-orphan",
+        order_by="SensorReading.recorded_at",
     )
 
     def __repr__(self) -> str:
