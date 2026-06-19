@@ -1,6 +1,12 @@
 from .common import ErrorResponse, HealthResponse, PaginatedResponse, VersionResponse
 from .crop import CropBase, CropCreate, CropResponse, CropUpdate
 from .field import FieldCreate, FieldResponse, FieldUpdate
+from .irrigation_event import (
+    IrrigationEventBase,
+    IrrigationEventCreate,
+    IrrigationEventResponse,
+    IrrigationEventUpdate,
+)
 from .sensor_reading import (
     SensorReadingBase,
     SensorReadingCreate,
@@ -28,6 +34,10 @@ __all__ = [
     "FieldResponse",
     "FieldUpdate",
     "HealthResponse",
+    "IrrigationEventBase",
+    "IrrigationEventCreate",
+    "IrrigationEventResponse",
+    "IrrigationEventUpdate",
     "PaginatedResponse",
     "SensorReadingBase",
     "SensorReadingCreate",
