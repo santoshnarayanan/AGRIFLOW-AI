@@ -50,11 +50,19 @@ down_revision: Union[str, None] = "f3a8c1d9e047"
 branch_labels: Union[str, Sequence[str], None] = None
 depends_on: Union[str, Sequence[str], None] = None
 
-# Named enum defined at module level so upgrade() and downgrade() share the
-# same object without duplication.  create_type=False defers type creation to
-# the explicit op.execute() call in upgrade(), giving full control over the
-# type lifecycle and ensuring it is also removed cleanly in downgrade().
-sensor_type_enum = sa.Enum(
+# postgresql.ENUM (not sa.Enum) is used here intentionally.
+#
+# sa.Enum._copy() — called internally by op.create_table() when the type is
+# cloned into the temporary Table object — does not forward create_type=False
+# in SQLAlchemy 2.0.x.  The copy is constructed with the default
+# create_type=True, which registers a before_create DDL listener and causes a
+# second "CREATE TYPE sensor_type" to be emitted, colliding with the explicit
+# creation below.
+#
+# postgresql.ENUM handles _set_table() and _copy() correctly: create_type=False
+# is preserved through the copy and no DDL listener is registered.  The type
+# lifecycle is managed entirely by the explicit .create() / .drop() calls.
+sensor_type_enum = postgresql.ENUM(
     "SOIL_MOISTURE",
     "SOIL_TEMPERATURE",
     "AIR_TEMPERATURE",
@@ -75,24 +83,13 @@ def upgrade() -> None:
     # ── 1. Create the PostgreSQL ENUM type ────────────────────────────────────
     # Must exist before the table that references it.  PostgreSQL will NOT drop
     # this type automatically when the table is removed, so downgrade() handles
-    # it explicitly with DROP TYPE to leave no orphan types in the schema.
-    op.execute(
-        sa.text(
-            "CREATE TYPE sensor_type AS ENUM ("
-            " 'SOIL_MOISTURE',"
-            " 'SOIL_TEMPERATURE',"
-            " 'AIR_TEMPERATURE',"
-            " 'AIR_HUMIDITY',"
-            " 'LIGHT_INTENSITY',"
-            " 'LEAF_WETNESS',"
-            " 'ELECTRICAL_CONDUCTIVITY',"
-            " 'SOIL_SALINITY',"
-            " 'WATER_LEVEL',"
-            " 'BATTERY_STATUS',"
-            " 'DEVICE_HEALTH'"
-            ")"
-        )
-    )
+    # it explicitly via .drop() to leave no orphan types in the schema.
+    #
+    # .create() is used instead of op.execute(sa.text("CREATE TYPE ...")) so
+    # that the lifecycle is owned entirely by the sensor_type_enum object.
+    # create_type=False on the object ensures op.create_table() below does NOT
+    # emit a second CREATE TYPE when the type is attached to the table column.
+    sensor_type_enum.create(op.get_bind(), checkfirst=False)
 
     # ── 2. Create the sensor_readings table ───────────────────────────────────
     op.create_table(
@@ -249,4 +246,6 @@ def downgrade() -> None:
     # ── Enum type ─────────────────────────────────────────────────────────────
     # PostgreSQL retains named enum types after the owning table is dropped;
     # explicit removal is required to leave no orphan types in the schema.
-    op.execute(sa.text("DROP TYPE sensor_type"))
+    # .drop() is symmetric with .create() above — the object manages its own
+    # full lifecycle, matching how upgrade() created it.
+    sensor_type_enum.drop(op.get_bind(), checkfirst=False)

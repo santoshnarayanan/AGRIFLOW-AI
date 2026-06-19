@@ -33,7 +33,7 @@ class Settings(BaseSettings):
     # ── Database ──────────────────────────────────────────────────────────────
     POSTGRES_HOST: str = "localhost"
     POSTGRES_PORT: int = 5432
-    POSTGRES_DB: str = "agriflow_ai"
+    POSTGRES_DB: str = "agriflow"
     POSTGRES_USER: str = "agriflow"
     POSTGRES_PASSWORD: str = Field(..., description="PostgreSQL password — required")
 
