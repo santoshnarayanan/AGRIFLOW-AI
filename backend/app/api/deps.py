@@ -22,12 +22,14 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.db.repositories.crop import CropRepository
 from app.db.repositories.farm import FarmRepository
 from app.db.repositories.field import FieldRepository
+from app.db.repositories.irrigation_event import IrrigationEventRepository
 from app.db.repositories.sensor_reading import SensorReadingRepository
 from app.db.repositories.soil_profile import SoilProfileRepository
 from app.db.repositories.weather_record import WeatherRecordRepository
 from app.db.session import AsyncSessionFactory
 from app.services.crop import CropService
 from app.services.field import FieldService
+from app.services.irrigation_event import IrrigationEventService
 from app.services.sensor_reading import SensorReadingService
 from app.services.soil_profile import SoilProfileService
 from app.services.weather_record import WeatherRecordService
@@ -102,3 +104,14 @@ def get_sensor_reading_service(session: SessionDep) -> SensorReadingService:
 
 
 SensorReadingServiceDep = Annotated[SensorReadingService, Depends(get_sensor_reading_service)]
+
+
+def get_irrigation_event_service(session: SessionDep) -> IrrigationEventService:
+    """Construct an ``IrrigationEventService`` wired to the request-scoped session."""
+    return IrrigationEventService(
+        irrigation_event_repository=IrrigationEventRepository(session),
+        field_repository=FieldRepository(session),
+    )
+
+
+IrrigationEventServiceDep = Annotated[IrrigationEventService, Depends(get_irrigation_event_service)]
