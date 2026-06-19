@@ -10,6 +10,11 @@ from .field import (
     FieldNotFoundError,
     FieldService,
 )
+from .irrigation_event import (
+    InvalidIrrigationTimestampError,
+    IrrigationEventNotFoundError,
+    IrrigationEventService,
+)
 from .sensor_reading import (
     InvalidSensorTimestampError,
     SensorReadingNotFoundError,
@@ -37,11 +42,14 @@ __all__ = [
     "FieldNotFoundError",
     "FieldService",
     "InvalidHarvestDateError",
+    "InvalidIrrigationTimestampError",
     "InvalidSensorTimestampError",
     "InvalidTemperatureRangeError",
     "InvalidWeatherMeasurementError",
     "InvalidWeatherTimestampError",
     "InvalidYieldDataError",
+    "IrrigationEventNotFoundError",
+    "IrrigationEventService",
     "SensorReadingNotFoundError",
     "SensorReadingService",
     "SoilProfileNotFoundError",
