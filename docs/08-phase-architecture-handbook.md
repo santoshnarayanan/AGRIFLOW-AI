@@ -1032,7 +1032,7 @@ erDiagram
     }
     SoilProfile {
         UUID id PK
-        UUID field_id FK_UNIQUE
+        UUID field_id FK
         enum soil_type
         numeric ph
         numeric organic_matter
