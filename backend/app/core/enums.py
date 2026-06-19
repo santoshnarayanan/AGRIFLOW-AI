@@ -41,3 +41,52 @@ class SensorType(str, enum.Enum):
     WATER_LEVEL = "WATER_LEVEL"
     BATTERY_STATUS = "BATTERY_STATUS"
     DEVICE_HEALTH = "DEVICE_HEALTH"
+
+
+class IrrigationMethod(str, enum.Enum):
+    """
+    Delivery method used to apply water to a Field during an irrigation event.
+
+    Inheriting ``str`` lets SQLAlchemy store the label as a plain VARCHAR,
+    forward-compatible with schema changes and readable in raw SQL without a
+    type cast.
+
+    Method-specific application efficiency coefficients (used in FAO-56
+    water balance models):
+    - DRIP / SUBSURFACE  ~85–95 % distribution uniformity
+    - SPRINKLER          ~70–85 %
+    - CENTER_PIVOT       ~75–90 %
+    - FURROW / FLOOD     ~50–70 %
+
+    Used by:
+    - IrrigationEvent  (Phase 8)
+    - Digital Twin field water-balance state  (future)
+    - Irrigation Optimization AI model        (future)
+    - GaaS IrrigationAdvisor                 (future)
+    """
+
+    DRIP = "DRIP"
+    SPRINKLER = "SPRINKLER"
+    FLOOD = "FLOOD"
+    FURROW = "FURROW"
+    CENTER_PIVOT = "CENTER_PIVOT"
+    SUBSURFACE = "SUBSURFACE"
+    MANUAL = "MANUAL"
+    AUTOMATED = "AUTOMATED"
+
+
+class WaterSource(str, enum.Enum):
+    """
+    Origin of the water applied during an irrigation event.
+
+    Used by:
+    - IrrigationEvent  (Phase 8)
+    - Water management analytics  (future)
+    - Digital Twin resource allocation model  (future)
+    """
+
+    GROUNDWATER = "GROUNDWATER"
+    SURFACE_WATER = "SURFACE_WATER"
+    RAINWATER = "RAINWATER"
+    MUNICIPAL = "MUNICIPAL"
+    RECYCLED_WATER = "RECYCLED_WATER"
