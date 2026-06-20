@@ -1,9 +1,9 @@
 # AGRIFLOW-AI Architecture Diagrams
 
 **Document:** Architecture Diagrams Reference  
-**Version:** 1.0  
+**Version:** 1.1  
 **Date:** June 2026  
-**Scope:** Current State (Phase 7) and Target State (Phase 15) — visual architecture reference  
+**Scope:** Current State (Phase 8) and Target State (Phase 15) — visual architecture reference  
 **Status:** Living Document  
 **Author:** AGRIFLOW-AI Principal Enterprise Architecture
 
@@ -33,17 +33,17 @@
 ## 1. AGRIFLOW Platform Evolution
 
 ### Title
-AGRIFLOW-AI Platform Evolution — Phase 1 through Phase 7
+AGRIFLOW-AI Platform Evolution — Phase 1 through Phase 8
 
 ### Purpose
 Illustrate how each completed phase expanded the AGRIFLOW-AI platform from an empty backend foundation into a multi-domain, AI-ready agricultural intelligence system. This diagram captures the strategic trajectory: each phase added a new domain, new infrastructure, or a critical capability layer that unlocked the next phase.
 
 ### Explanation
-The platform began with zero capability in Phase 1. By Phase 7, it operates a fully layered Clean Architecture with six domain models, seven database migrations, an AI readiness attribute set, and the first append-only IoT telemetry domain. Each vertical column in the diagram represents a phase boundary. Capabilities are cumulative — nothing is removed; each phase builds on all prior phases.
+The platform began with zero capability in Phase 1. By Phase 8, it operates a fully layered Clean Architecture with seven domain models, eight database migrations, an AI readiness attribute set, the first append-only IoT telemetry domain, and the first mutable operational management event domain. Each vertical column in the diagram represents a phase boundary. Capabilities are cumulative — nothing is removed; each phase builds on all prior phases.
 
 ```mermaid
 timeline
-    title AGRIFLOW-AI Platform Evolution — Phase 1 to Phase 7
+    title AGRIFLOW-AI Platform Evolution — Phase 1 to Phase 8
     Phase 1 : FastAPI Foundation
             : PostgreSQL Integration
             : Alembic Migration Framework
@@ -76,6 +76,12 @@ timeline
             : SensorType Shared Enum (11 types)
             : Compound Index Strategy
             : Future Event Boundary Marked
+    Phase 8 : Irrigation Management Domain
+            : Mutable Operational Event Pattern
+            : IrrigationMethod Enum (8 methods)
+            : WaterSource Enum (5 sources)
+            : TimescaleDB Partition Key (started_at)
+            : ENUM Lifecycle Fix (postgresql.ENUM)
 ```
 
 ### Key Architectural Observations
@@ -84,19 +90,20 @@ timeline
 - **Phase 2** created the five-layer architecture pattern (`Model → Schema → Repository → Service → Router`) that became the immutable template for all future domain additions.
 - **Phase 6** was the only phase that did not add a new domain — instead it performed a systematic AI data gap analysis and backfilled the minimum P1 attribute set. This was the most strategically important phase for future AI model training.
 - **Phase 7** introduced the first qualitatively different domain: append-only telemetry. The decision to make `SensorReading` immutable and to mark the service layer as the future Redpanda/Digital Twin/Temporal boundary was the platform's first explicit forward-architecture design.
+- **Phase 8** introduced the first mutable operational event domain (`IrrigationEvent`) and the authoritative PostgreSQL ENUM lifecycle pattern (`postgresql.ENUM` with `create_type=False`). Both `sensor_readings` and `irrigation_events` are now TimescaleDB-ready.
 
 ---
 
 ## 2. Current Domain Architecture
 
 ### Title
-AGRIFLOW-AI Current Domain Architecture — Post Phase 7
+AGRIFLOW-AI Current Domain Architecture — Post Phase 8
 
 ### Purpose
-Show the complete domain model as it exists after Phase 7, including all entities, their relationships, cardinalities, and key attributes. This is the authoritative domain map for current state.
+Show the complete domain model as it exists after Phase 8, including all entities, their relationships, cardinalities, and key attributes. This is the authoritative domain map for current state.
 
 ### Explanation
-`Farm` is the root aggregate. All domain entities trace their ancestry to a `Farm` via the `Field` pivot. `SoilProfile` has a strict 1:1 cardinality with `Field`. `Crop`, `WeatherRecord`, and `SensorReading` are 1:N time-series or lifecycle collections per `Field`. `SensorReading` is the only domain with an explicit immutability contract.
+`Farm` is the root aggregate. All domain entities trace their ancestry to a `Farm` via the `Field` pivot. `SoilProfile` has a strict 1:1 cardinality with `Field`. `Crop`, `WeatherRecord`, `SensorReading`, and `IrrigationEvent` are 1:N collections per `Field`. `SensorReading` is the only domain with an explicit immutability contract. `IrrigationEvent` is the first mutable operational event domain.
 
 ```mermaid
 graph TD
@@ -112,19 +119,23 @@ graph TD
 
     SensorReading["📡 SensorReading\n──────────────\nid: UUID PK\nfield_id: UUID FK\nsensor_type: SensorType ENUM\nsensor_value: DOUBLE PRECISION\nunit: VARCHAR\nrecorded_at: TIMESTAMPTZ\nnotes: TEXT\ncreated_at / updated_at\n⚠ APPEND-ONLY — No UPDATE"]
 
+    IrrigationEvent["💧 IrrigationEvent\n──────────────\nid: UUID PK\nfield_id: UUID FK\nstarted_at: TIMESTAMPTZ\nended_at: TIMESTAMPTZ (opt)\nduration_minutes: NUMERIC\nwater_volume_liters: NUMERIC\nirrigation_method: ENUM\nwater_source: ENUM\nnotes: TEXT\ncreated_at / updated_at\n✓ MUTABLE — PATCH supported"]
+
     Farm -->|"1 : N\nhas fields"| Field
     Field -->|"1 : N\ngrows crops"| Crop
     Field -->|"1 : 1\nhas profile"| SoilProfile
     Field -->|"1 : N\nrecords weather"| WeatherRecord
     Field -->|"1 : N\ngenerates telemetry"| SensorReading
+    Field -->|"1 : N\nreceives irrigation"| IrrigationEvent
 ```
 
 ### Key Architectural Observations
 
-- `Farm → Field → {Crop, SoilProfile, WeatherRecord, SensorReading}` is the stable aggregate hierarchy. All new domains in Phases 8–11 will anchor to `Field`.
+- `Farm → Field → {Crop, SoilProfile, WeatherRecord, SensorReading, IrrigationEvent}` is the stable aggregate hierarchy. All new domains in Phases 9–11 will anchor to `Field`.
 - `SoilProfile` is the only 1:1 entity. Its uniqueness is enforced at two levels: `UNIQUE` constraint in PostgreSQL and `DuplicateSoilProfileError` at the service layer.
-- `WeatherRecord` and `SensorReading` are both time-series domains with `TIMESTAMPTZ recorded_at`. Their query patterns are nearly identical; the key difference is that `SensorReading` is immutable.
-- All six tables carry `created_at` and `updated_at` via `AuditableModel`. This universalizes audit trail support without domain-specific instrumentation.
+- `WeatherRecord`, `SensorReading`, and `IrrigationEvent` are all time-keyed domains with `TIMESTAMPTZ`. All three are TimescaleDB hypertable candidates.
+- `SensorReading` is immutable (no PATCH, no UPDATE); `IrrigationEvent` is mutable (full CRUD). This contrast reflects the fundamental difference between sensor telemetry (immutable physical fact) and operational management records (correctible human actions).
+- All seven tables carry `created_at` and `updated_at` via `AuditableModel`.
 
 ---
 
@@ -167,8 +178,8 @@ graph TB
     end
 
     subgraph "Database Layer"
-        PG[("PostgreSQL 17\n• farms\n• fields\n• crops\n• soil_profiles\n• weather_records\n• sensor_readings\n• alembic_version")]
-        Alembic["Alembic\nMigration Engine\n001 → 006\n(current head)"]
+        PG[("PostgreSQL 17\n• farms\n• fields\n• crops\n• soil_profiles\n• weather_records\n• sensor_readings\n• irrigation_events\n• alembic_version")]
+        Alembic["Alembic\nMigration Engine\n001 → 235a51cdf901\n(current head)"]
     end
 
     Client -->|"HTTP Request"| Router
@@ -191,7 +202,7 @@ graph TB
 - **`deps.py` is the composition root.** All object construction and wiring happens there. Routes and services are unaware of each other's construction details.
 - **`BaseRepository` provides the CRUD contract.** Concrete repositories re-declare inherited methods with typed signatures for IDE and mypy support, but add no new CRUD logic.
 - **`AuditableModel` is the universal base.** Adding any new table without inheriting `AuditableModel` is an architectural violation.
-- **`app/core/enums.py` is the shared vocabulary layer.** `SensorType` was placed there (rather than in the ORM model file) to enable reuse by Digital Twin, AI Engine, and GaaS components in future phases.
+- **`app/core/enums.py` is the shared vocabulary layer.** `SensorType` (Phase 7) and `IrrigationMethod` / `WaterSource` (Phase 8) are placed there to enable reuse by Digital Twin, AI Engine, and GaaS components in future phases.
 
 ---
 
@@ -278,10 +289,10 @@ sequenceDiagram
 AGRIFLOW-AI Current Database Architecture — Tables, Relationships, and Migration Strategy
 
 ### Purpose
-Show the complete current database schema including all six tables, their foreign key relationships, primary index strategy, and the Alembic migration chain that produced them. This diagram is the DBA reference view of the platform.
+Show the complete current database schema including all seven tables, their foreign key relationships, primary index strategy, and the Alembic migration chain that produced them. This diagram is the DBA reference view of the platform.
 
 ### Explanation
-All tables use UUID v4 primary keys generated server-side. Foreign keys establish the `Farm → Field → {Crop, SoilProfile, WeatherRecord, SensorReading}` hierarchy. PostgreSQL ENUM types (`crop_status`, `soil_type`, `sensor_type`) are created in separate `op.execute()` statements before their owning tables to enable independent lifecycle management. Alembic migrations are linear and sequential — each revision has exactly one `down_revision`.
+All tables use UUID v4 primary keys generated server-side. Foreign keys establish the `Farm → Field → {Crop, SoilProfile, WeatherRecord, SensorReading, IrrigationEvent}` hierarchy. PostgreSQL ENUM types are created in separate calls before their owning tables to enable independent lifecycle management. Starting from Phase 8, `postgresql.ENUM` with `create_type=False` is the authoritative enum lifecycle pattern. Alembic migrations are linear and sequential.
 
 ```mermaid
 erDiagram
@@ -375,11 +386,26 @@ erDiagram
         TIMESTAMPTZ updated_at
     }
 
+    irrigation_events {
+        UUID id PK
+        UUID field_id FK
+        TIMESTAMPTZ started_at
+        TIMESTAMPTZ ended_at
+        NUMERIC duration_minutes
+        NUMERIC water_volume_liters
+        irrigation_method irrigation_method
+        water_source water_source
+        TEXT notes
+        TIMESTAMPTZ created_at
+        TIMESTAMPTZ updated_at
+    }
+
     farms ||--o{ fields : "has"
     fields ||--o{ crops : "grows"
     fields ||--o| soil_profiles : "has profile"
     fields ||--o{ weather_records : "records"
     fields ||--o{ sensor_readings : "generates"
+    fields ||--o{ irrigation_events : "receives"
 ```
 
 ### Migration Chain
@@ -393,17 +419,19 @@ graph LR
     M5["004\ncreate_weather_records_table\nWeatherRecord table\nix_recorded_at"]
     M6["005\nadd_p1_ai_readiness_columns\nADD COLUMN x10\n4 tables extended"]
     M7["006\ncreate_sensor_readings_table\nsensor_type ENUM\n5 indexes incl. compound"]
+    M8["235a51cdf901\ncreate_irrigation_events_table\nirrigation_method ENUM\nwater_source ENUM\n3 indexes incl. compound"]
 
-    M1 --> M2 --> M3 --> M4 --> M5 --> M6 --> M7
-    M7 --> HEAD["HEAD\n(current)"]
+    M1 --> M2 --> M3 --> M4 --> M5 --> M6 --> M7 --> M8
+    M8 --> HEAD["HEAD\n(current)"]
 ```
 
 ### Key Architectural Observations
 
-- **All time-series tables index `recorded_at`.** `weather_records.ix_weather_records_recorded_at` and `sensor_readings.ix_sensor_readings_recorded_at` support time-range queries. `sensor_readings` adds compound indexes `(field_id, recorded_at)` and `(sensor_type, recorded_at)` — the two primary telemetry access patterns.
+- **All time-series tables index their primary time key.** `weather_records`, `sensor_readings`, and `irrigation_events` each have individual time indexes. `sensor_readings` and `irrigation_events` add compound `(field_id, time_key)` indexes — the primary AI feature pipeline access pattern.
 - **`soil_profiles.field_id` carries a `UNIQUE` constraint**, not a `UNIQUE INDEX`. The `UNIQUE` constraint is supplemented by a `UNIQUE INDEX` for explicit index naming.
 - **Migration 005 used `ADD COLUMN` with no server defaults.** Adding nullable columns to existing tables with large row counts is instantaneous on PostgreSQL 11+ (metadata-only operation). This is the only safe strategy for live production schema evolution.
-- **`sensor_readings` uses `ON DELETE CASCADE`.** Deleting a `Field` atomically removes all its sensor readings at the database level, consistent with the ORM-level `cascade="all, delete-orphan"` setting.
+- **All Field children use `ON DELETE CASCADE`.** Deleting a `Field` atomically removes all its children at the database level.
+- **Phase 8 established `postgresql.ENUM` as the authoritative enum migration pattern.** All future migrations must use `postgresql.ENUM` with `create_type=False` + explicit `.create()` / `.drop()` calls.
 
 ---
 

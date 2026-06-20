@@ -321,6 +321,63 @@ Business Value:
 
 ---
 
+# Phase 8 – Irrigation Management Domain
+
+Status: ✅ Complete
+
+Objectives:
+
+* IrrigationMethod and WaterSource enums added to `app/core/enums.py`
+* IrrigationEvent ORM Model
+* Alembic Migration `235a51cdf901`: `irrigation_events` table, `irrigation_method` enum (8 values), `water_source` enum (5 values), 3 indexes
+* IrrigationEvent Pydantic Schemas (`IrrigationEventCreate`, `IrrigationEventUpdate`, `IrrigationEventResponse`)
+* `IrrigationEventRepository` with `create`, `get_by_id`, `list_by_field` (ordered `started_at DESC`), `update`, `delete`, `exists`
+* `IrrigationEventService` with field existence validation, future timestamp rejection, sparse PATCH cross-field ordering guard
+* IrrigationEvent API Router (POST, GET list with pagination, GET single, PATCH, DELETE)
+* `IrrigationEventServiceDep` dependency injection registration
+* PostgreSQL ENUM lifecycle fix applied (`postgresql.ENUM` with `create_type=False`)
+* Swagger documentation validated end-to-end
+
+Delivered APIs:
+
+* POST   /api/v1/fields/{field_id}/irrigation-events
+* GET    /api/v1/fields/{field_id}/irrigation-events
+* GET    /api/v1/irrigation-events/{event_id}
+* PATCH  /api/v1/irrigation-events/{event_id}
+* DELETE /api/v1/irrigation-events/{event_id}
+
+Architectural Decisions Established (ADR-008 series):
+
+* `postgresql.ENUM` with `create_type=False` + explicit lifecycle is the authoritative enum migration pattern (ADR-008-01)
+* IrrigationEvent is mutable — PATCH is permitted to allow operator correction (ADR-008-02)
+* `started_at TIMESTAMPTZ` is the TimescaleDB partition key candidate (ADR-008-03)
+* Sparse PATCH ordering guard: service merges payload with persisted record before `ended_at >= started_at` check (ADR-008-04)
+* `IrrigationMethod` and `WaterSource` placed in `app/core/enums.py` for Digital Twin and AI reuse (ADR-008-05)
+
+Outcome:
+
+```text
+Farm
+└── Field
+     ├── Crop
+     ├── SoilProfile
+     ├── WeatherRecord
+     ├── SensorReading   ← Phase 7 (append-only)
+     └── IrrigationEvent ← Phase 8 (mutable operational events)
+```
+
+Business Capability:
+
+* Irrigation event logging per field
+* Delivery method classification (DRIP, SPRINKLER, FLOOD, FURROW, CENTER_PIVOT, SUBSURFACE, MANUAL, AUTOMATED)
+* Water source tracking (GROUNDWATER, SURFACE_WATER, RAINWATER, MUNICIPAL, RECYCLED_WATER)
+* Water volume and duration tracking for FAO-56 water balance
+* Operator-correctable event log (mutable CRUD)
+* AI feature pipeline inputs for irrigation optimization models
+* TimescaleDB hypertable upgrade path established (zero code changes required)
+
+---
+
 # Cross-Cutting Capabilities
 
 Implemented:
@@ -338,9 +395,11 @@ Implemented:
 * Soil Intelligence Domain
 * Weather Intelligence Domain
 * SensorReading Domain (Phase 7)
-* Shared Enum Module (`app/core/enums.py`)
-* Telemetry Immutability Pattern
-* Compound Index Strategy
+* Shared Enum Module (`app/core/enums.py`) — Phase 7 (SensorType) + Phase 8 (IrrigationMethod, WaterSource)
+* Telemetry Immutability Pattern — Phase 7
+* Compound Index Strategy — Phase 7 + Phase 8
+* Operational Event Mutable Pattern — Phase 8
+* IrrigationEvent Domain (Phase 8)
 
 Near-Term (Phases 8–11):
 
@@ -363,15 +422,16 @@ Future:
 
 ---
 
-# Current Domain Hierarchy (Post Phase 7)
+# Current Domain Hierarchy (Post Phase 8)
 
-```
+```text
 Farm
 └── Field
      ├── Crop
      ├── SoilProfile
      ├── WeatherRecord
-     └── SensorReading   ← Phase 7 Complete
+     ├── SensorReading   ← Phase 7 Complete
+     └── IrrigationEvent ← Phase 8 Complete
 ```
 
 # Target Domain Hierarchy (Long-Term)
@@ -404,8 +464,8 @@ AGRIFLOW-AI evolves from a farm management system into a comprehensive Agricultu
 ✅ Phase 5  – Weather Intelligence Domain
 ✅ Phase 6  – AI Readiness Foundation
 ✅ Phase 7  – SensorReading Domain
+✅ Phase 8  – Irrigation Management Domain
 
-🔜 Phase 8  – Irrigation Domain
 🔜 Phase 9  – Yield Domain
 🔜 Phase 10 – Disease Observation Domain
 🔜 Phase 11 – Satellite Observation Domain

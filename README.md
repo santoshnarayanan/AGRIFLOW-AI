@@ -45,6 +45,8 @@ docs/01-vision.md
 
 ✅ Phase 7 – SensorReading Domain (Telemetry)
 
+✅ Phase 8 – Irrigation Management Domain
+
 ---
 
 ### Current Domain Hierarchy
@@ -55,7 +57,8 @@ Farm
       ├── Crop
       ├── SoilProfile
       ├── WeatherRecord
-      └── SensorReading   (Phase 7 — append-only telemetry)
+      ├── SensorReading     (Phase 7 — append-only telemetry)
+      └── IrrigationEvent   (Phase 8 — operational management events)
 ```
 
 ---
@@ -70,6 +73,7 @@ crops
 soil_profiles
 weather_records
 sensor_readings
+irrigation_events
 ```
 
 ---
@@ -115,6 +119,15 @@ PostgreSQL
 | Containerization    | Docker         |
 | Version Control     | Git + GitHub   |
 
+### Irrigation Management
+
+* Irrigation event logging per field
+* Delivery method classification (DRIP, SPRINKLER, FLOOD, FURROW, CENTER_PIVOT, SUBSURFACE, MANUAL, AUTOMATED)
+* Water source tracking (GROUNDWATER, SURFACE_WATER, RAINWATER, MUNICIPAL, RECYCLED_WATER)
+* Duration and water volume tracking
+* Start/end timestamp management with timezone validation
+* IrrigationEvent CRUD APIs
+
 ---
 
 ## Current Features
@@ -157,6 +170,32 @@ PostgreSQL
 * Wind speed tracking
 * WeatherRecord CRUD APIs
 * Time-series weather data foundation
+
+---
+
+## Phase 8 Completion Summary
+
+Phase 8 introduced AGRIFLOW-AI's first operational management event domain: IrrigationEvent.
+
+Completed:
+
+* `IrrigationMethod` and `WaterSource` enums added to `app/core/enums.py`
+* IrrigationEvent ORM model with `started_at` (TIMESTAMPTZ primary time key), `ended_at`, `duration_minutes`, `water_volume_liters`, `irrigation_method`, `water_source`
+* Alembic migration `235a51cdf901`: `irrigation_events` table, `irrigation_method` PostgreSQL enum (8 values), `water_source` PostgreSQL enum (5 values), 3 indexes (2 individual, 1 compound)
+* IrrigationEvent Pydantic schemas — `IrrigationEventCreate`, `IrrigationEventUpdate`, `IrrigationEventResponse`
+* `IrrigationEventRepository` with create, list, get, update, delete, exists operations
+* `IrrigationEventService` with field existence validation, future timestamp rejection, cross-field sparse PATCH ordering guard
+* IrrigationEvent API Router — 5 endpoints (POST, GET list, GET single, PATCH, DELETE)
+* Full dependency injection registration in `app/api/deps.py`
+* Swagger documentation validated end-to-end
+
+Irrigation methods supported: DRIP, SPRINKLER, FLOOD, FURROW, CENTER_PIVOT, SUBSURFACE, MANUAL, AUTOMATED
+
+Water sources supported: GROUNDWATER, SURFACE_WATER, RAINWATER, MUNICIPAL, RECYCLED_WATER
+
+Notable migration fix:
+
+`postgresql.ENUM` with `create_type=False` was used (instead of `sa.Enum`) to prevent `DuplicateObjectError` on fresh database installations. This supersedes the `sa.Enum` pattern used in prior migrations and is now the recommended enum lifecycle strategy for all future phases.
 
 ---
 
@@ -293,6 +332,16 @@ GET    /api/v1/sensor-readings/{sensor_reading_id}
 DELETE /api/v1/sensor-readings/{sensor_reading_id}
 ```
 
+### Irrigation Event APIs (Phase 8)
+
+```http
+POST   /api/v1/fields/{field_id}/irrigation-events
+GET    /api/v1/fields/{field_id}/irrigation-events
+GET    /api/v1/irrigation-events/{event_id}
+PATCH  /api/v1/irrigation-events/{event_id}
+DELETE /api/v1/irrigation-events/{event_id}
+```
+
 ---
 
 ## Business Rules Implemented
@@ -333,6 +382,16 @@ DELETE /api/v1/sensor-readings/{sensor_reading_id}
 * SensorReading is immutable — no update or patch operation permitted
 * Telemetry list returned ordered by `recorded_at DESC` (most recent first)
 * Administrative deletion supported; modification is not
+
+### IrrigationEvent Domain (Phase 8)
+
+* Field must exist before IrrigationEvent creation
+* `started_at` must be timezone-aware and not in the future
+* `ended_at`, when supplied, must be timezone-aware and ≥ `started_at`
+* Cross-field ordering validated after sparse PATCH (effective values checked)
+* `duration_minutes` must be non-negative
+* `water_volume_liters` must be non-negative
+* IrrigationEvent is mutable — operators can correct records after the fact
 
 ---
 
@@ -377,7 +436,9 @@ backend/
 | docs/06-roadmap.md                | Product Roadmap                      |
 | docs/07-phase-history.md          | Implementation History               |
 | docs/08-phase-architecture-handbook.md | Phase Architecture Handbook (authoritative reference) |
+| docs/09-architecture-diagrams.md | Architecture Diagrams (current and target state) |
 | docs/AI_DATA_READINESS_ASSESSMENT.md | AI Data Readiness Assessment (Phase 6) |
+| docs/AGRIFLOW_PALANTIR_ALIGNMENT.md | Palantir Foundry Alignment Assessment (Phase 8) |
 
 ---
 
@@ -420,7 +481,7 @@ http://localhost:8000/docs
 
 ### Current Next Phase
 
-Phase 8 – Irrigation Domain
+Phase 9 – Yield Domain
 
 ### Future Phases
 
@@ -446,7 +507,7 @@ docs/06-roadmap.md
 
 ---
 
-## Current Agricultural Intelligence Platform (Post Phase 7)
+## Current Agricultural Intelligence Platform (Post Phase 8)
 
 ```text
 Farm
@@ -454,7 +515,8 @@ Farm
       ├── Crop                ✅ Phase 3
       ├── SoilProfile         ✅ Phase 4
       ├── WeatherRecord       ✅ Phase 5
-      └── SensorReading       ✅ Phase 7 (IoT Telemetry)
+      ├── SensorReading       ✅ Phase 7 (IoT Telemetry — append-only)
+      └── IrrigationEvent     ✅ Phase 8 (Operational Management Events)
 ```
 
 ## Target Agricultural Intelligence Platform

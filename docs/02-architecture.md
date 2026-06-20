@@ -4,7 +4,7 @@
 
 AGRIFLOW-AI is an Agricultural Intelligence Platform built using a layered architecture that emphasizes maintainability, scalability, separation of concerns, and domain-driven development.
 
-The platform currently implements Farm, Field, Crop, Soil Profile, Weather Intelligence, and Phase 6 AI Readiness Foundation domains and follows a Clean Architecture approach with clearly separated responsibilities across API, Service, Repository, and Database layers.
+The platform currently implements Farm, Field, Crop, Soil Intelligence, Weather Intelligence, Sensor Telemetry, and Irrigation Management domains across eight completed phases, following a Clean Architecture approach with clearly separated responsibilities across API, Service, Repository, and Database layers.
 
 ---
 
@@ -72,7 +72,8 @@ Farm
       ├── Crop
       ├── SoilProfile
       ├── WeatherRecord
-      └── SensorReading   ← Phase 7 (Telemetry, append-only)
+      ├── SensorReading     ← Phase 7 (Telemetry, append-only)
+      └── IrrigationEvent   ← Phase 8 (Operational Management Events)
 ```
 
 Current business domains:
@@ -83,9 +84,10 @@ Current business domains:
 * Soil Intelligence
 * Weather Intelligence
 * Sensor Telemetry (Phase 7)
+* Irrigation Management (Phase 8)
 
 Future domains:
-* Irrigation Intelligence (Phase 8)
+* Irrigation Intelligence (Phase 8 — ✅ Complete)
 * Yield Intelligence (Phase 9)
 * Disease Observation (Phase 10)
 * Satellite Observation (Phase 11)
@@ -110,12 +112,13 @@ backend/
 │   │   ├── soil_profiles
 │   │   ├── weather_records
 │   │   ├── sensor_readings   ← Phase 7
+│   │   ├── irrigation_events ← Phase 8
 │   │   ├── health
 │   │   └── version
 │   │
 │   ├── core
 │   │   ├── config
-│   │   ├── enums.py          ← Phase 7 (shared cross-domain enumerations)
+│   │   ├── enums.py          ← Phase 7 (SensorType) + Phase 8 (IrrigationMethod, WaterSource)
 │   │   ├── logging
 │   │   └── security
 │   │
@@ -157,6 +160,8 @@ app/api/fields
 app/api/crops
 app/api/soil_profiles
 app/api/weather_records
+app/api/sensor_readings
+app/api/irrigation_events
 ```
 
 The API layer should not contain business logic.
@@ -174,17 +179,12 @@ Responsibilities:
 Examples:
 
 ```text
-FieldCreate
-FieldUpdate
-FieldResponse
-
-CropCreate
-CropUpdate
-CropResponse
-
-SoilProfileCreate
-SoilProfileUpdate
-SoilProfileResponse
+FieldCreate / FieldUpdate / FieldResponse
+CropCreate / CropUpdate / CropResponse
+SoilProfileCreate / SoilProfileUpdate / SoilProfileResponse
+WeatherRecordCreate / WeatherRecordUpdate / WeatherRecordResponse
+SensorReadingCreate / SensorReadingResponse  (no Update — immutable)
+IrrigationEventCreate / IrrigationEventUpdate / IrrigationEventResponse
 ```
 
 The schema layer defines what data enters and exits the application.
@@ -207,6 +207,8 @@ FieldService
 CropService
 SoilProfileService
 WeatherRecordService
+SensorReadingService
+IrrigationEventService
 ```
 
 Business rules belong here.
@@ -218,6 +220,9 @@ Examples:
 * Field must exist before SoilProfile creation
 * Only one SoilProfile allowed per Field
 * Harvest date validation
+* `recorded_at` must be timezone-aware and not in the future (SensorReading)
+* `started_at` must be timezone-aware and not in the future (IrrigationEvent)
+* `ended_at`, when supplied, must be ≥ `started_at` including sparse PATCH updates (IrrigationEvent)
 
 ---
 
@@ -238,6 +243,8 @@ FieldRepository
 CropRepository
 SoilProfileRepository
 WeatherRecordRepository
+SensorReadingRepository
+IrrigationEventRepository
 ```
 
 Repositories should not contain business rules.
@@ -259,6 +266,9 @@ Farm
 Field
 Crop
 SoilProfile
+WeatherRecord
+SensorReading
+IrrigationEvent
 ```
 
 Models represent PostgreSQL tables.
@@ -359,7 +369,8 @@ BaseRepository
       ├── CropRepository
       ├── SoilProfileRepository
       ├── WeatherRecordRepository
-      └── SensorReadingRepository   ← Phase 7
+      ├── SensorReadingRepository     ← Phase 7
+      └── IrrigationEventRepository   ← Phase 8
 ```
 
 Benefits:
@@ -382,7 +393,8 @@ fields
 crops
 soil_profiles
 weather_records
-sensor_readings   ← Phase 7 (append-only telemetry)
+sensor_readings     ← Phase 7 (append-only telemetry)
+irrigation_events   ← Phase 8 (operational management events)
 ```
 
 Relationships:
@@ -395,6 +407,7 @@ Field (N)
    ├────────────► Crop (N)
    ├────────────► WeatherRecord (N)
    ├────────────► SensorReading (N, append-only)   ← Phase 7
+   ├────────────► IrrigationEvent (N)              ← Phase 8
    │
    └────────────► SoilProfile (1)
 ```
@@ -414,7 +427,8 @@ Migration sequence:
 004_create_weather_records_table
 13aabbe35d51_add_soil_profiles_table
 005_add_p1_ai_readiness_columns
-006_create_sensor_readings_table   ← Phase 7 (sensor_type enum + sensor_readings table + 5 indexes)
+006_create_sensor_readings_table      ← Phase 7 (sensor_type enum + sensor_readings + 5 indexes)
+235a51cdf901_create_irrigation_events ← Phase 8 (irrigation_method + water_source enums + 3 indexes)
 ```
 
 Migration flow:
@@ -491,7 +505,13 @@ Implemented APIs:
 * GET    /api/v1/sensor-readings/{sensor_reading_id}
 * DELETE /api/v1/sensor-readings/{sensor_reading_id}
 
-Note: No PATCH. No PUT. SensorReading is immutable append-only telemetry (ADR-007-32).
+## Irrigation Events (Phase 8)
+
+* POST   /api/v1/fields/{field_id}/irrigation-events
+* GET    /api/v1/fields/{field_id}/irrigation-events
+* GET    /api/v1/irrigation-events/{event_id}
+* PATCH  /api/v1/irrigation-events/{event_id}
+* DELETE /api/v1/irrigation-events/{event_id}
 
 ---
 
@@ -506,6 +526,7 @@ Completed Domains:
 * Weather Intelligence Domain
 * AI Readiness Foundation (Phase 6)
 * Sensor Telemetry Domain — SensorReading (Phase 7)
+* Irrigation Management Domain — IrrigationEvent (Phase 8)
 
 Implemented Architecture:
 
@@ -517,9 +538,10 @@ Implemented Architecture:
 * Dependency Injection
 * PostgreSQL Integration
 * Alembic Migration Framework
-* Shared Enum Module (`app/core/enums.py`) — Phase 7
+* Shared Enum Module (`app/core/enums.py`) — Phase 7 (SensorType) + Phase 8 (IrrigationMethod, WaterSource)
 * Telemetry Immutability Pattern — Phase 7
-* Compound Index Strategy — Phase 7
+* Compound Index Strategy — Phase 7 + Phase 8
+* Operational Event Mutable Pattern — Phase 8
 
 ---
 
@@ -711,3 +733,69 @@ A continuously updated virtual model of every field will be maintained, sourced 
 ## Generative-As-A-Service (GaaS)
 
 The AGRIFLOW-AI REST API surface (fully documented in OpenAPI via FastAPI auto-generation) is already GaaS-ready. A future LLM agent will use AGRIFLOW-AI endpoints as tools to answer natural language queries from farmers and agronomists. Phase 7 sensor telemetry is a key context source for irrigation and crop health queries.
+
+---
+
+# Irrigation Management Architecture (Phase 8)
+
+## Mutable Operational Event Pattern
+
+`IrrigationEvent` is the first domain in AGRIFLOW-AI explicitly designed as a **mutable operational event**. Unlike `SensorReading` (which is append-only), irrigation events represent human-logged management actions that may require post-hoc correction.
+
+Full CRUD surface (including PATCH) is provided by the API. This is a deliberate architectural contrast:
+
+| Domain | Pattern | PATCH? | Rationale |
+|---|---|---|---|
+| SensorReading | Append-only telemetry | ✗ | Sensor measurement is a fact — immutable |
+| IrrigationEvent | Mutable operational event | ✓ | Operator log — correctible after the fact |
+
+## Timestamp Architecture
+
+`started_at` is the primary time key:
+- `TIMESTAMPTZ NOT NULL` — timezone-aware mandatory
+- Serves as the TimescaleDB hypertable partition key in future phases
+- Indexed individually and in compound with `field_id`
+- Must not be in the future (service-layer validation → HTTP 400)
+
+`ended_at` is optional and nullable:
+- Supports cases where duration is known but exact end time is not
+- When present, must be timezone-aware and ≥ `started_at`
+- Sparse PATCH guard: when only one timestamp is present in the update payload, the service merges with the existing record before ordering validation
+
+## Enum Lifecycle Fix (ADR-008-01)
+
+Phase 8 introduced a critical PostgreSQL/SQLAlchemy compatibility fix. Prior migrations (`003` and `13aabbe35d51`) used `sa.Enum` to define PostgreSQL ENUM types. In SQLAlchemy 2.0.x, `sa.Enum._copy()` — invoked internally by `op.create_table()` — does not forward `create_type=False`, causing `DuplicateObjectError` on fresh databases.
+
+**Resolution**: Use `postgresql.ENUM` (from `sqlalchemy.dialects.postgresql`) with `create_type=False` and explicit `.create()` / `.drop()` calls. This separates enum type lifecycle management from table DDL entirely.
+
+This pattern is now the authoritative standard for all future migrations that introduce new PostgreSQL ENUM types.
+
+## Index Strategy
+
+Three indexes support the `irrigation_events` table:
+
+| Index | Columns | Primary Use Case |
+|---|---|---|
+| `ix_irrigation_events_field_id` | `(field_id)` | All events for a given field |
+| `ix_irrigation_events_started_at` | `(started_at)` | Events within a time window (cross-field) |
+| `ix_irrigation_events_field_id_started_at` | `(field_id, started_at)` | Field-scoped irrigation history + AI feature pipelines |
+
+The compound index is the primary AI access pattern for FAO-56 water balance computations.
+
+## TimescaleDB Readiness
+
+`irrigation_events.started_at TIMESTAMPTZ NOT NULL` satisfies the hypertable partition key requirement. Future activation:
+
+```sql
+SELECT create_hypertable('irrigation_events', 'started_at', chunk_time_interval => INTERVAL '1 month');
+```
+
+## Architecture Decision Register — Phase 8 Additions
+
+| ADR | Decision |
+|---|---|
+| ADR-008-01 | Use `postgresql.ENUM` with `create_type=False` + explicit lifecycle for all new ENUM types |
+| ADR-008-02 | IrrigationEvent is mutable — PATCH is permitted to allow operator correction |
+| ADR-008-03 | `started_at` TIMESTAMPTZ is the TimescaleDB partition key candidate — indexed individually and in compound |
+| ADR-008-04 | Sparse PATCH ordering guard: service merges payload with persisted record before `ended_at >= started_at` check |
+| ADR-008-05 | `IrrigationMethod` and `WaterSource` placed in `app/core/enums.py` for future reuse by AI models and Digital Twin |

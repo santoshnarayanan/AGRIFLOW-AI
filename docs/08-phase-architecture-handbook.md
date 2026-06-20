@@ -1,9 +1,9 @@
 # AGRIFLOW-AI Phase Architecture Handbook
 
 **Document:** Architecture Reference & Implementation History  
-**Version:** 1.0  
+**Version:** 1.1  
 **Date:** June 2026  
-**Scope:** Phase 1 through Phase 7 — complete implementation record and future architecture guide  
+**Scope:** Phase 1 through Phase 8 — complete implementation record and future architecture guide  
 **Status:** Living Document
 
 ---
@@ -20,16 +20,17 @@
 8. [Phase 5 — Weather Intelligence Domain](#8-phase-5--weather-intelligence-domain)
 9. [Phase 6 — AI Readiness Foundation](#9-phase-6--ai-readiness-foundation)
 10. [Phase 7 — Sensor Telemetry Domain](#10-phase-7--sensor-telemetry-domain)
-11. [Current Domain Architecture (Post Phase 7)](#11-current-domain-architecture-post-phase-7)
-12. [Future Architecture: TimescaleDB](#12-future-architecture-timescaledb)
-13. [Future Architecture: Apache Cassandra](#13-future-architecture-apache-cassandra)
-14. [Future Architecture: CQRS](#14-future-architecture-cqrs)
-15. [Future Architecture: Redpanda / Kafka](#15-future-architecture-redpanda--kafka)
-16. [Future Architecture: Temporal Workflows](#16-future-architecture-temporal-workflows)
-17. [Future Architecture: Digital Twin](#17-future-architecture-digital-twin)
-18. [Future Architecture: Generative-As-A-Service (GaaS)](#18-future-architecture-generative-as-a-service-gaas)
-19. [Architecture Decision Register](#19-architecture-decision-register)
-20. [Technology Evolution Roadmap](#20-technology-evolution-roadmap)
+11. [Phase 8 — Irrigation Management Domain](#11-phase-8--irrigation-management-domain)
+12. [Current Domain Architecture (Post Phase 8)](#12-current-domain-architecture-post-phase-8)
+13. [Future Architecture: TimescaleDB](#13-future-architecture-timescaledb)
+14. [Future Architecture: Apache Cassandra](#14-future-architecture-apache-cassandra)
+15. [Future Architecture: CQRS](#15-future-architecture-cqrs)
+16. [Future Architecture: Redpanda / Kafka](#16-future-architecture-redpanda--kafka)
+17. [Future Architecture: Temporal Workflows](#17-future-architecture-temporal-workflows)
+18. [Future Architecture: Digital Twin](#18-future-architecture-digital-twin)
+19. [Future Architecture: Generative-As-A-Service (GaaS)](#19-future-architecture-generative-as-a-service-gaas)
+20. [Architecture Decision Register](#20-architecture-decision-register)
+21. [Technology Evolution Roadmap](#21-technology-evolution-roadmap)
 
 ---
 
@@ -984,6 +985,8 @@ Phase 7 sensor readings directly address several critical AI data gaps:
 
 ## 11. Current Domain Architecture (Post Phase 7)
 
+> **Note:** This section reflects the state as of Phase 7 completion. For the updated post-Phase 8 state, see [Section 12](#12-current-domain-architecture-post-phase-8).
+
 ### Complete Entity Relationship
 
 ```mermaid
@@ -1090,6 +1093,7 @@ erDiagram
 | `004_create_weather_records_table` | WeatherRecord table | `7d4f2a9b1e63` |
 | `005_add_p1_ai_readiness_columns` | P1 AI columns across 4 tables | `f3a8c1d9e047` |
 | `006_create_sensor_readings_table` | SensorReading table + `sensor_type` enum | `a8f3d1b6e924` |
+| `235a51cdf901_create_irrigation_events_table` | IrrigationEvent table + `irrigation_method` + `water_source` enums | `235a51cdf901` |
 
 ### Complete API Surface (Post Phase 7)
 
@@ -1133,11 +1137,192 @@ Sensor Readings
   GET    /api/v1/fields/{field_id}/sensor-readings
   GET    /api/v1/sensor-readings/{sensor_reading_id}
   DELETE /api/v1/sensor-readings/{sensor_reading_id}
+
+Irrigation Events
+  POST   /api/v1/fields/{field_id}/irrigation-events
+  GET    /api/v1/fields/{field_id}/irrigation-events
+  GET    /api/v1/irrigation-events/{event_id}
+  PATCH  /api/v1/irrigation-events/{event_id}
+  DELETE /api/v1/irrigation-events/{event_id}
 ```
 
 ---
 
-## 12. Future Architecture: TimescaleDB
+## 12. Current Domain Architecture (Post Phase 8)
+
+### Complete Entity Relationship (Post Phase 8)
+
+```mermaid
+erDiagram
+    Farm {
+        UUID id PK
+        string farm_code
+        string farm_name
+        string owner_name
+        string country
+        string state
+        numeric latitude
+        numeric longitude
+        numeric total_area_hectares
+        bool is_active
+        timestamptz created_at
+        timestamptz updated_at
+    }
+    Field {
+        UUID id PK
+        UUID farm_id FK
+        string name
+        numeric area_hectares
+        string soil_type
+        numeric latitude
+        numeric longitude
+        numeric elevation_m
+        timestamptz created_at
+        timestamptz updated_at
+    }
+    Crop {
+        UUID id PK
+        UUID field_id FK
+        string crop_name
+        string crop_variety
+        date planting_date
+        date expected_harvest_date
+        date actual_harvest_date
+        enum status
+        numeric actual_yield_tons_ha
+        numeric expected_yield_tons_ha
+        numeric seeding_rate_kg_ha
+        string growth_stage
+        timestamptz created_at
+        timestamptz updated_at
+    }
+    SoilProfile {
+        UUID id PK
+        UUID field_id FK
+        enum soil_type
+        numeric ph
+        numeric organic_matter
+        numeric nitrogen
+        numeric phosphorus
+        numeric potassium
+        numeric soil_depth_cm
+        numeric cation_exchange_capacity_meq
+        text notes
+        timestamptz created_at
+        timestamptz updated_at
+    }
+    WeatherRecord {
+        UUID id PK
+        UUID field_id FK
+        timestamptz recorded_at
+        numeric temperature_c
+        numeric humidity_percent
+        numeric rainfall_mm
+        numeric wind_speed_kmh
+        string data_source
+        numeric solar_radiation_wm2
+        numeric temperature_min_c
+        numeric temperature_max_c
+        timestamptz created_at
+        timestamptz updated_at
+    }
+    SensorReading {
+        UUID id PK
+        UUID field_id FK
+        enum sensor_type
+        double sensor_value
+        string unit
+        timestamptz recorded_at
+        text notes
+        timestamptz created_at
+        timestamptz updated_at
+    }
+    IrrigationEvent {
+        UUID id PK
+        UUID field_id FK
+        timestamptz started_at
+        timestamptz ended_at
+        numeric duration_minutes
+        numeric water_volume_liters
+        enum irrigation_method
+        enum water_source
+        text notes
+        timestamptz created_at
+        timestamptz updated_at
+    }
+
+    Farm ||--o{ Field : "has"
+    Field ||--o{ Crop : "grows"
+    Field ||--o| SoilProfile : "has"
+    Field ||--o{ WeatherRecord : "records"
+    Field ||--o{ SensorReading : "generates"
+    Field ||--o{ IrrigationEvent : "receives"
+```
+
+### Current API Surface (Post Phase 8)
+
+```
+Health
+  GET  /api/v1/health/live
+  GET  /api/v1/health/ready
+
+Version
+  GET  /api/v1/version
+
+Fields
+  POST   /api/v1/farms/{farm_id}/fields
+  GET    /api/v1/farms/{farm_id}/fields
+  GET    /api/v1/fields/{field_id}
+  PATCH  /api/v1/fields/{field_id}
+  DELETE /api/v1/fields/{field_id}
+
+Crops
+  POST   /api/v1/fields/{field_id}/crops
+  GET    /api/v1/fields/{field_id}/crops
+  GET    /api/v1/crops/{crop_id}
+  PATCH  /api/v1/crops/{crop_id}
+  DELETE /api/v1/crops/{crop_id}
+
+Soil Profiles
+  POST   /api/v1/fields/{field_id}/soil-profile
+  GET    /api/v1/fields/{field_id}/soil-profile
+  PATCH  /api/v1/soil-profiles/{soil_profile_id}
+  DELETE /api/v1/soil-profiles/{soil_profile_id}
+
+Weather Records
+  POST   /api/v1/fields/{field_id}/weather-records
+  GET    /api/v1/fields/{field_id}/weather-records
+  GET    /api/v1/weather-records/{weather_record_id}
+  PATCH  /api/v1/weather-records/{weather_record_id}
+  DELETE /api/v1/weather-records/{weather_record_id}
+
+Sensor Readings (Phase 7 — append-only)
+  POST   /api/v1/fields/{field_id}/sensor-readings
+  GET    /api/v1/fields/{field_id}/sensor-readings
+  GET    /api/v1/sensor-readings/{sensor_reading_id}
+  DELETE /api/v1/sensor-readings/{sensor_reading_id}
+
+Irrigation Events (Phase 8 — mutable)
+  POST   /api/v1/fields/{field_id}/irrigation-events
+  GET    /api/v1/fields/{field_id}/irrigation-events
+  GET    /api/v1/irrigation-events/{event_id}
+  PATCH  /api/v1/irrigation-events/{event_id}
+  DELETE /api/v1/irrigation-events/{event_id}
+```
+
+### Shared Enum Module (Post Phase 8)
+
+`app/core/enums.py` now contains three shared cross-domain enumerations:
+
+| Enum | Phase | Used By |
+|---|---|---|
+| `SensorType` | 7 | SensorReading, future SensorDevice, Digital Twin, AI Engine |
+| `IrrigationMethod` | 8 | IrrigationEvent, future Digital Twin water balance, AI Irrigation Optimizer |
+| `WaterSource` | 8 | IrrigationEvent, future water management analytics |
+
+---
+
+## 13. Future Architecture: TimescaleDB
 
 ### Problem Statement
 
@@ -1173,6 +1358,17 @@ SELECT create_hypertable(
 ```
 
 **Zero application code changes required.** The ORM model, repository, service, and API layers remain completely unchanged. `list_by_field` with `ORDER BY recorded_at DESC` naturally aligns with the hypertable scan direction.
+
+Similarly, `irrigation_events.started_at TIMESTAMPTZ NOT NULL` (Phase 8) is the second TimescaleDB-ready table:
+
+```sql
+SELECT create_hypertable(
+    'irrigation_events',
+    'started_at',
+    chunk_time_interval => INTERVAL '1 month',
+    migrate_data => TRUE
+);
+```
 
 ### Continuous Aggregates (Future)
 
@@ -1212,7 +1408,7 @@ graph LR
 
 ---
 
-## 13. Future Architecture: Apache Cassandra
+## 14. Future Architecture: Apache Cassandra
 
 ### Problem Statement
 
@@ -1282,7 +1478,7 @@ The service receives whichever repository is injected via `deps.py`. No service 
 
 ---
 
-## 14. Future Architecture: CQRS
+## 15. Future Architecture: CQRS
 
 ### Problem Statement
 
@@ -1333,7 +1529,7 @@ Current write-side code is **already CQRS-ready**:
 
 ---
 
-## 15. Future Architecture: Redpanda / Kafka
+## 16. Future Architecture: Redpanda / Kafka
 
 ### Problem Statement
 
@@ -1406,7 +1602,7 @@ def __init__(
 
 ---
 
-## 16. Future Architecture: Temporal Workflows
+## 17. Future Architecture: Temporal Workflows
 
 ### Problem Statement
 
@@ -1471,7 +1667,7 @@ Temporal is a side-car concern. The AGRIFLOW-AI application layer is unmodified 
 
 ---
 
-## 17. Future Architecture: Digital Twin
+## 18. Future Architecture: Digital Twin
 
 ### Problem Statement
 
@@ -1541,7 +1737,7 @@ The `SensorType` shared enum in `app/core/enums.py` (established in Phase 7) was
 
 ---
 
-## 18. Future Architecture: Generative-As-A-Service (GaaS)
+## 19. Future Architecture: Generative-As-A-Service (GaaS)
 
 ### Problem Statement
 
@@ -1602,7 +1798,7 @@ The only missing piece is the GaaS orchestration layer — the underlying data A
 
 ---
 
-## 19. Architecture Decision Register
+## 20. Architecture Decision Register
 
 ### All ADRs by Phase
 
@@ -1648,10 +1844,16 @@ The only missing piece is the GaaS orchestration layer — the underlying data A
 | ADR-007-31 | 7 | Administrative deletion returns 204 No Content |
 | ADR-007-32 | 7 | No PATCH or PUT endpoint for SensorReading |
 | ADR-007-33 | 7 | Domain exceptions are translated to HTTP in routers |
+| ADR-008-01 | 8 | Use `postgresql.ENUM` with `create_type=False` + explicit `.create()` / `.drop()` for all new ENUM types |
+| ADR-008-02 | 8 | IrrigationEvent is mutable — PATCH is permitted to allow operator correction |
+| ADR-008-03 | 8 | `started_at TIMESTAMPTZ NOT NULL` is the TimescaleDB hypertable partition key candidate |
+| ADR-008-04 | 8 | Sparse PATCH ordering guard: service merges payload with persisted record before `ended_at >= started_at` check |
+| ADR-008-05 | 8 | `IrrigationMethod` and `WaterSource` placed in `app/core/enums.py` for Digital Twin and AI model reuse |
+| ADR-008-06 | 8 | `InvalidIrrigationTimestampError` maps to HTTP 400 Bad Request (client-correctable logic error) |
 
 ---
 
-## 20. Technology Evolution Roadmap
+## 21. Technology Evolution Roadmap
 
 ### Current Stack
 

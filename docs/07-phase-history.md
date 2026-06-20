@@ -834,7 +834,7 @@ All prior numeric columns in AGRIFLOW-AI use `NUMERIC(p,s)` with fixed precision
 
 #### Domain Hierarchy
 
-```
+```text
 Farm
 └── Field
      ├── Crop
@@ -883,6 +883,118 @@ Sensor Readings
 
 ---
 
+## Phase 8 – Irrigation Management Domain
+
+Status: ✅ Complete
+
+### What Was Built
+
+**Core domain components:**
+
+* `IrrigationMethod` and `WaterSource` enums added to `app/core/enums.py`
+* `IrrigationEvent` ORM model (`backend/app/db/models/irrigation_event.py`)
+* Alembic migration `235a51cdf901_create_irrigation_events_table`
+* `IrrigationEventCreate`, `IrrigationEventUpdate`, `IrrigationEventResponse` Pydantic schemas
+* `IrrigationEventRepository` with `create`, `get_by_id`, `list_by_field` (paginated, `started_at DESC`), `update`, `delete`, `exists`
+* `IrrigationEventService` with field existence validation, service-level timestamp validation, sparse PATCH ordering guard
+* `IrrigationEventNotFoundError` and `InvalidIrrigationTimestampError` domain exception types
+* IrrigationEvent API router with 5 endpoints (POST, GET list, GET single, PATCH, DELETE)
+* `get_irrigation_event_service()` factory and `IrrigationEventServiceDep` alias in `app/api/deps.py`
+* Router registered in `app/api/router.py`
+* Swagger documentation validated end-to-end
+
+**Database schema:**
+
+Table: `irrigation_events`  
+Enums: `irrigation_method` (8 values), `water_source` (5 values)  
+Indexes: `ix_irrigation_events_field_id`, `ix_irrigation_events_started_at`, `ix_irrigation_events_field_id_started_at` (compound)
+
+### Architecture Decisions
+
+| ADR | Decision |
+|---|---|
+| ADR-008-01 | Use `postgresql.ENUM` with `create_type=False` + explicit `.create()` / `.drop()` calls for all future ENUM types |
+| ADR-008-02 | IrrigationEvent is mutable — PATCH is permitted to allow operator correction of logged events |
+| ADR-008-03 | `started_at TIMESTAMPTZ NOT NULL` is the TimescaleDB hypertable partition key candidate |
+| ADR-008-04 | Sparse PATCH ordering guard: service merges payload with persisted `started_at` before `ended_at >= started_at` check |
+| ADR-008-05 | `IrrigationMethod` and `WaterSource` placed in `app/core/enums.py` for future Digital Twin and AI model reuse |
+
+### Migration Issue Encountered — PostgreSQL ENUM Lifecycle Bug
+
+**Problem:** `DuplicateObjectError: type "irrigation_method" already exists` on fresh database installations.
+
+**Root cause:** In SQLAlchemy 2.0.x, `sa.Enum._copy()` — invoked internally by `op.create_table()` when it clones the table definition — does not forward `create_type=False`. On databases where the ENUM type had already been created by the explicit `CREATE TYPE` call in the migration, `op.create_table()` attempted to create it again, resulting in `DuplicateObjectError`.
+
+**Resolution:** Replace `sa.Enum(...)` column definitions with `postgresql.ENUM(name=..., create_type=False)` from `sqlalchemy.dialects.postgresql`. This prevents `op.create_table()` from emitting any `CREATE TYPE` DDL. The enum type lifecycle is owned entirely by:
+- `upgrade()`: `irrigation_method_enum.create(op.get_bind(), checkfirst=True)`
+- `downgrade()`: `irrigation_method_enum.drop(op.get_bind(), checkfirst=False)`
+
+This is now the authoritative pattern for all future ENUM migrations in AGRIFLOW-AI.
+
+### Enum Lifecycle Fix
+
+Phase 8 is the first migration to use the `postgresql.ENUM` with `create_type=False` pattern. This supersedes the `sa.Enum` pattern used in migrations `003` and `13aabbe35d51`. Those prior migrations work correctly on databases created sequentially but may exhibit `DuplicateObjectError` in certain edge cases on fresh installations when running `alembic upgrade head`. Phase 8 establishes the correct pattern to prevent this in all future phases.
+
+### Lessons Learned
+
+* **`postgresql.ENUM` vs `sa.Enum` for Alembic migrations**: `sa.Enum._copy()` in SQLAlchemy 2.0.x does not forward `create_type=False`. Always use `postgresql.ENUM` with explicit `.create()` / `.drop()` calls for any new PostgreSQL ENUM types.
+* **Mutable vs Immutable events**: Not all event domains should be immutable. IoT telemetry (`SensorReading`) is immutable because it records physical sensor state — corrections are new readings. Operational management events (`IrrigationEvent`) are mutable because operators legitimately correct records after logging them.
+* **Sparse PATCH cross-field validation**: When only one timestamp is provided in a PATCH payload, the service must retrieve the existing record and merge values before performing cross-field ordering checks. Pydantic alone cannot guard against `ended_at < started_at` when `started_at` is omitted from the update payload.
+* **Shared enum module growth**: `app/core/enums.py` now holds three shared enum types (`SensorType`, `IrrigationMethod`, `WaterSource`). This confirms the pattern is working correctly and establishes the module as the neutral import point for all future cross-domain enumerations.
+* **TimescaleDB readiness is bidirectional**: Both `sensor_readings.recorded_at` and `irrigation_events.started_at` are hypertable-ready. Future TimescaleDB activation requires no application code changes for either table.
+
+### Swagger Validation
+
+All Phase 8 endpoints were validated through the Swagger UI (`/docs`) after full stack startup:
+* `POST /api/v1/fields/{field_id}/irrigation-events` — verified 201 Created
+* `GET /api/v1/fields/{field_id}/irrigation-events` — verified 200 OK with pagination
+* `GET /api/v1/irrigation-events/{event_id}` — verified 200 OK and 404
+* `PATCH /api/v1/irrigation-events/{event_id}` — verified 200 OK, 404, and 400 for invalid timestamps
+* `DELETE /api/v1/irrigation-events/{event_id}` — verified 204 No Content
+
+### Current Platform Status (Post Phase 8)
+
+#### Domain Hierarchy
+
+```text
+Farm
+└── Field
+     ├── Crop
+     ├── SoilProfile
+     ├── WeatherRecord
+     ├── SensorReading   ← Phase 7 (append-only telemetry)
+     └── IrrigationEvent ← Phase 8 (mutable operational events)
+```
+
+#### Current Database Tables
+
+* alembic_version
+* farms
+* fields
+* crops
+* soil_profiles
+* weather_records
+* sensor_readings
+* irrigation_events
+
+#### Current Migration Head
+
+`235a51cdf901_create_irrigation_events_table`
+
+#### Current API Coverage
+
+Fields, Crops, Soil Profiles, Weather Records, Sensor Readings: (unchanged — see Phase 2–7 entries)
+
+Irrigation Events (Phase 8):
+
+* POST   /api/v1/fields/{field_id}/irrigation-events
+* GET    /api/v1/fields/{field_id}/irrigation-events
+* GET    /api/v1/irrigation-events/{event_id}
+* PATCH  /api/v1/irrigation-events/{event_id}
+* DELETE /api/v1/irrigation-events/{event_id}
+
+---
+
 ### Next Planned Evolution
 
-Phase 8 – Irrigation Domain
+Phase 9 – Yield Domain

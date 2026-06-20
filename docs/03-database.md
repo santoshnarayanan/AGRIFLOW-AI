@@ -1,67 +1,128 @@
 # Database Design
 
+**Last Updated:** Phase 8 — Irrigation Management Domain Complete  
+**Migration Head:** `235a51cdf901_create_irrigation_events_table`
+
+---
+
+## Current Schema Overview
+
+AGRIFLOW-AI operates seven PostgreSQL tables after Phase 8 completion. All tables inherit the `AuditableModel` mixin (UUID PK, `created_at TIMESTAMPTZ`, `updated_at TIMESTAMPTZ`). All foreign keys to `fields.id` use `ON DELETE CASCADE`.
+
+```mermaid
+erDiagram
+    farms ||--o{ fields : "has"
+    fields ||--o{ crops : "grows"
+    fields ||--|{ soil_profiles : "has one"
+    fields ||--o{ weather_records : "records"
+    fields ||--o{ sensor_readings : "generates"
+    fields ||--o{ irrigation_events : "receives"
+```
+
+---
+
+## Current Domain Hierarchy
+
+```text
+Farm
+└── Field
+     ├── Crop
+     ├── SoilProfile         (1:1)
+     ├── WeatherRecord
+     ├── SensorReading       ← Phase 7 (append-only)
+     └── IrrigationEvent     ← Phase 8 (mutable operational events)
+```
+
+---
+
 ## Current Schema
 
 ### farms
-Primary agricultural entity.
+Primary agricultural entity. Root aggregate for all domain hierarchies.
 
-| Column | Type |
-|---|---|
-| id | UUID |
-| name | VARCHAR |
-| latitude | NUMERIC |
-| longitude | NUMERIC |
-| created_at | TIMESTAMP |
-| updated_at | TIMESTAMP |
+| Column | Type | Nullable | Notes |
+|---|---|---|---|
+| `id` | `UUID` | No | Primary key (UUID v4) |
+| `farm_code` | `VARCHAR` | Yes | Optional user-defined code |
+| `farm_name` | `VARCHAR` | No | Human-readable farm name |
+| `owner_name` | `VARCHAR` | Yes | Owner or operator |
+| `country` | `VARCHAR` | Yes | Location |
+| `state` | `VARCHAR` | Yes | Location |
+| `city` | `VARCHAR` | Yes | Location |
+| `latitude` | `NUMERIC(10,6)` | Yes | Geolocation |
+| `longitude` | `NUMERIC(10,6)` | Yes | Geolocation |
+| `total_area_hectares` | `NUMERIC(12,4)` | Yes | Total farm area |
+| `is_active` | `BOOLEAN` | No | Default `true` |
+| `created_at` | `TIMESTAMPTZ` | No | Audit timestamp |
+| `updated_at` | `TIMESTAMPTZ` | No | Audit timestamp |
 
 ### fields
 Represents a field belonging to a farm.
 
-| Column | Type |
-|---|---|
-| id | UUID |
-| farm_id | UUID (FK -> farms.id) |
-| name | VARCHAR(255) |
-| area_hectares | NUMERIC(10,2) |
-| soil_type | VARCHAR(50) |
-| latitude | NUMERIC(10,6) |
-| longitude | NUMERIC(10,6) |
-| created_at | TIMESTAMP |
-| updated_at | TIMESTAMP |
+| Column | Type | Nullable | Notes |
+|---|---|---|---|
+| `id` | `UUID` | No | Primary key |
+| `farm_id` | `UUID` (FK → farms.id) | No | ON DELETE CASCADE |
+| `name` | `VARCHAR(255)` | No | Unique within farm |
+| `area_hectares` | `NUMERIC(10,2)` | Yes | Field area |
+| `soil_type` | `VARCHAR(50)` | Yes | Descriptive soil type |
+| `latitude` | `NUMERIC(10,6)` | Yes | Geolocation |
+| `longitude` | `NUMERIC(10,6)` | Yes | Geolocation |
+| `elevation_m` | `NUMERIC(8,2)` | Yes | Elevation (Phase 6 AI attribute) |
+| `created_at` | `TIMESTAMPTZ` | No | Audit timestamp |
+| `updated_at` | `TIMESTAMPTZ` | No | Audit timestamp |
 
 ### crops
 Represents a crop cycle belonging to a field.
 
-| Column | Type |
-|---|---|
-| id | UUID |
-| field_id | UUID (FK -> fields.id) |
-| crop_name | VARCHAR(255) |
-| crop_variety | VARCHAR(255) |
-| planting_date | DATE |
-| expected_harvest_date | DATE |
-| actual_harvest_date | DATE |
-| status | ENUM(crop_status) |
-| created_at | TIMESTAMP |
-| updated_at | TIMESTAMP |
+| Column | Type | Nullable | Notes |
+|---|---|---|---|
+| `id` | `UUID` | No | Primary key |
+| `field_id` | `UUID` (FK → fields.id) | No | ON DELETE CASCADE |
+| `crop_name` | `VARCHAR(255)` | No | Crop name |
+| `crop_variety` | `VARCHAR(255)` | Yes | Variety/cultivar |
+| `planting_date` | `DATE` | No | Planting date |
+| `expected_harvest_date` | `DATE` | Yes | Expected harvest |
+| `actual_harvest_date` | `DATE` | Yes | Actual harvest |
+| `status` | `ENUM(crop_status)` | No | Lifecycle state |
+| `actual_yield_tons_ha` | `NUMERIC(8,3)` | Yes | AI attribute (Phase 6) |
+| `expected_yield_tons_ha` | `NUMERIC(8,3)` | Yes | AI attribute (Phase 6) |
+| `seeding_rate_kg_ha` | `NUMERIC(8,3)` | Yes | AI attribute (Phase 6) |
+| `growth_stage` | `VARCHAR(50)` | Yes | AI attribute (Phase 6) |
+| `created_at` | `TIMESTAMPTZ` | No | Audit timestamp |
+| `updated_at` | `TIMESTAMPTZ` | No | Audit timestamp |
+
+#### crop_status Enum
+
+```sql
+CREATE TYPE crop_status AS ENUM ('PLANNED', 'PLANTED', 'GROWING', 'HARVESTED');
+```
 
 ### soil_profiles
 
-Represents the soil intelligence profile for a field.
+Represents the soil intelligence profile for a field. One-to-one with `fields`.
 
-| Column         | Type                           |
-| -------------- | ------------------------------ |
-| id             | UUID                           |
-| field_id       | UUID (FK -> fields.id, UNIQUE) |
-| soil_type      | ENUM(soil_type)                |
-| ph             | NUMERIC(4,2)                   |
-| organic_matter | NUMERIC(5,2)                   |
-| nitrogen       | NUMERIC(10,2)                  |
-| phosphorus     | NUMERIC(10,2)                  |
-| potassium      | NUMERIC(10,2)                  |
-| notes          | TEXT                           |
-| created_at     | TIMESTAMP                      |
-| updated_at     | TIMESTAMP                      |
+| Column | Type | Nullable | Notes |
+|---|---|---|---|
+| `id` | `UUID` | No | Primary key |
+| `field_id` | `UUID` (FK → fields.id, UNIQUE) | No | One-to-one enforcement |
+| `soil_type` | `ENUM(soil_type)` | No | Soil classification |
+| `ph` | `NUMERIC(4,2)` | Yes | pH value |
+| `organic_matter` | `NUMERIC(5,2)` | Yes | Percentage |
+| `nitrogen` | `NUMERIC(10,2)` | Yes | mg/kg |
+| `phosphorus` | `NUMERIC(10,2)` | Yes | mg/kg |
+| `potassium` | `NUMERIC(10,2)` | Yes | mg/kg |
+| `soil_depth_cm` | `NUMERIC(6,2)` | Yes | AI attribute (Phase 6) |
+| `cation_exchange_capacity_meq` | `NUMERIC(8,2)` | Yes | AI attribute (Phase 6) |
+| `notes` | `TEXT` | Yes | Free-text |
+| `created_at` | `TIMESTAMPTZ` | No | Audit timestamp |
+| `updated_at` | `TIMESTAMPTZ` | No | Audit timestamp |
+
+#### soil_type Enum
+
+```sql
+CREATE TYPE soil_type AS ENUM ('CLAY', 'SANDY', 'LOAMY', 'SILTY', 'PEATY', 'CHALKY');
+```
 
 
 
@@ -69,23 +130,26 @@ Represents the soil intelligence profile for a field.
 
 Represents historical weather observations for a field.
 
-| Column | Type |
-|---|---|
-| id | UUID |
-| field_id | UUID (FK -> fields.id) |
-| recorded_at | TIMESTAMP |
-| temperature_c | NUMERIC(5,2) |
-| humidity_percent | NUMERIC(5,2) |
-| rainfall_mm | NUMERIC(8,2) |
-| wind_speed_kmh | NUMERIC(8,2) |
-| data_source | VARCHAR(100) |
-| created_at | TIMESTAMP |
-| updated_at | TIMESTAMP |
+| Column | Type | Nullable | Notes |
+|---|---|---|---|
+| `id` | `UUID` | No | Primary key |
+| `field_id` | `UUID` (FK → fields.id) | No | ON DELETE CASCADE |
+| `recorded_at` | `TIMESTAMPTZ` | No | Timezone-aware observation time |
+| `temperature_c` | `NUMERIC(5,2)` | Yes | Ambient temperature |
+| `humidity_percent` | `NUMERIC(5,2)` | Yes | Relative humidity |
+| `rainfall_mm` | `NUMERIC(8,2)` | Yes | Precipitation |
+| `wind_speed_kmh` | `NUMERIC(8,2)` | Yes | Wind speed |
+| `data_source` | `VARCHAR(100)` | Yes | Station ID or provider |
+| `solar_radiation_wm2` | `NUMERIC(8,2)` | Yes | AI attribute (Phase 6) |
+| `temperature_min_c` | `NUMERIC(5,2)` | Yes | AI attribute (Phase 6) |
+| `temperature_max_c` | `NUMERIC(5,2)` | Yes | AI attribute (Phase 6) |
+| `created_at` | `TIMESTAMPTZ` | No | Audit timestamp |
+| `updated_at` | `TIMESTAMPTZ` | No | Audit timestamp |
 
 
 ## sensor_readings
 
-Represents IoT sensor telemetry observations for a field. Append-only — no updates permitted.
+Represents IoT sensor telemetry observations for a field. **Append-only — no updates permitted.**
 
 | Column | Type | Nullable | Notes |
 |---|---|---|---|
@@ -142,28 +206,103 @@ Migration 006 uses explicit `CREATE TYPE sensor_type AS ENUM (...)` in the upgra
 
 ---
 
+## irrigation_events (Phase 8)
+
+Represents human-logged irrigation management events for a field. **Mutable — PATCH is supported.**
+
+| Column | Type | Nullable | Notes |
+|---|---|---|---|
+| `id` | `UUID` | No | Primary key |
+| `field_id` | `UUID` (FK → fields.id) | No | ON DELETE CASCADE |
+| `started_at` | `TIMESTAMPTZ` | No | Irrigation start; primary time key; TimescaleDB partition candidate |
+| `ended_at` | `TIMESTAMPTZ` | Yes | Optional — may be omitted when only duration is known |
+| `duration_minutes` | `NUMERIC(8,2)` | Yes | Duration in minutes; independent of `ended_at` |
+| `water_volume_liters` | `NUMERIC(10,3)` | Yes | Water volume applied; nullable for non-metered systems |
+| `irrigation_method` | `ENUM(irrigation_method)` | No | Delivery method |
+| `water_source` | `ENUM(water_source)` | Yes | Water origin |
+| `notes` | `TEXT` | Yes | Operator free-text annotations |
+| `created_at` | `TIMESTAMPTZ` | No | Audit timestamp |
+| `updated_at` | `TIMESTAMPTZ` | No | Audit timestamp |
+
+### irrigation_method Enum
+
+```sql
+CREATE TYPE irrigation_method AS ENUM (
+    'DRIP',
+    'SPRINKLER',
+    'FLOOD',
+    'FURROW',
+    'CENTER_PIVOT',
+    'SUBSURFACE',
+    'MANUAL',
+    'AUTOMATED'
+);
+```
+
+### water_source Enum
+
+```sql
+CREATE TYPE water_source AS ENUM (
+    'GROUNDWATER',
+    'SURFACE_WATER',
+    'RAINWATER',
+    'MUNICIPAL',
+    'RECYCLED_WATER'
+);
+```
+
+### irrigation_events Indexes
+
+| Index | Columns | Type | Purpose |
+|---|---|---|---|
+| `ix_irrigation_events_field_id` | `field_id` | Single | All events for a given field |
+| `ix_irrigation_events_started_at` | `started_at` | Single | Events in a time window (cross-field) |
+| `ix_irrigation_events_field_id_started_at` | `(field_id, started_at)` | Compound | Primary access pattern for field irrigation history and AI features |
+
+### Design Decisions
+
+**Mutable vs Immutable:**
+Unlike `SensorReading` (immutable telemetry), `IrrigationEvent` is mutable. Irrigation events are operator-logged actions that may need correction after the fact (e.g., wrong duration entered, method changed post-event).
+
+**`started_at` as TimescaleDB partition key:**
+`started_at TIMESTAMPTZ NOT NULL` satisfies the hypertable partition key requirement. Future activation requires no application code changes:
+```sql
+SELECT create_hypertable('irrigation_events', 'started_at', chunk_time_interval => INTERVAL '1 month');
+```
+
+**Enum lifecycle — postgresql.ENUM with create_type=False:**
+Phase 8 discovered that `sa.Enum._copy()` in SQLAlchemy 2.0.x does not forward `create_type=False` to the cloned table during `op.create_table()`. This caused `DuplicateObjectError` on fresh databases. The resolution: use `postgresql.ENUM` from `sqlalchemy.dialects.postgresql` with `create_type=False` and explicit `.create()` / `.drop()` calls. This is now the authoritative enum migration pattern.
+
+**ON DELETE CASCADE:**
+`field_id` FK uses `ON DELETE CASCADE` — consistent with all other Field children.
+
+---
+
 ## Relationships
 
-Farm (1) -> (N) Fields
+Farm (1) → (N) Fields
 
-Field (1) -> (N) Crops
+Field (1) → (N) Crops
 
-Field (1) -> (1) SoilProfile
+Field (1) → (1) SoilProfile
 
-Field (1) -> (N) WeatherRecords
+Field (1) → (N) WeatherRecords
 
-Field (1) -> (N) SensorReadings  ← Phase 7 (ON DELETE CASCADE)
+Field (1) → (N) SensorReadings  ← Phase 7 (ON DELETE CASCADE, append-only)
+
+Field (1) → (N) IrrigationEvents  ← Phase 8 (ON DELETE CASCADE, mutable)
 
 
 ## Current Domain Hierarchy
 
-```
+```text
 Farm
 └── Field
      ├── Crop
-     ├── SoilProfile
+     ├── SoilProfile         (1:1)
      ├── WeatherRecord
-     └── SensorReading   ← Phase 7
+     ├── SensorReading       ← Phase 7 (append-only)
+     └── IrrigationEvent     ← Phase 8 (mutable operational events)
 ```
 
 
@@ -178,6 +317,7 @@ Farm
 | `004_create_weather_records_table` | weather_records table |
 | `005_add_p1_ai_readiness_columns` | P1 AI attributes across 4 tables |
 | `006_create_sensor_readings_table` | sensor_readings table + `sensor_type` enum + 5 indexes |
+| `235a51cdf901_create_irrigation_events_table` | irrigation_events table + `irrigation_method` + `water_source` enums + 3 indexes |
 
 ## Crop Status Lifecycle
 
@@ -228,27 +368,45 @@ Farm
 
 No PATCH. No PUT. SensorReading is immutable telemetry.
 
+### Irrigation Event APIs (Phase 8)
+
+* POST   /api/v1/fields/{field_id}/irrigation-events
+* GET    /api/v1/fields/{field_id}/irrigation-events
+* GET    /api/v1/irrigation-events/{event_id}
+* PATCH  /api/v1/irrigation-events/{event_id}
+* DELETE /api/v1/irrigation-events/{event_id}
+
 
 ## Future Database Evolution
 
-- Irrigation Management (`irrigation_events` table)
-- Yield Tracking (`yield_records` table)
-- Disease Observation (`disease_observations` table)
-- Satellite Imagery (`satellite_observations` table)
+- Yield Tracking (`yield_records` table) — Phase 9
+- Disease Observation (`disease_observations` table) — Phase 10
+- Satellite Imagery (`satellite_observations` table) — Phase 11
 - GIS / PostGIS Support (field boundary polygons)
 - AI Recommendation Engine (inference output tables)
 
 ### TimescaleDB Hypertable Promotion
 
-`sensor_readings` is designed for zero-friction TimescaleDB conversion. The partition key (`recorded_at TIMESTAMPTZ NOT NULL`) already satisfies the hypertable requirement.
+Both `sensor_readings` and `irrigation_events` are designed for zero-friction TimescaleDB conversion.
 
-Activation DDL (no application code changes required):
+**sensor_readings:** Partition key `recorded_at TIMESTAMPTZ NOT NULL` (Phase 7)
 
 ```sql
 SELECT create_hypertable(
     'sensor_readings',
     'recorded_at',
     chunk_time_interval => INTERVAL '1 week',
+    migrate_data => TRUE
+);
+```
+
+**irrigation_events:** Partition key `started_at TIMESTAMPTZ NOT NULL` (Phase 8)
+
+```sql
+SELECT create_hypertable(
+    'irrigation_events',
+    'started_at',
+    chunk_time_interval => INTERVAL '1 month',
     migrate_data => TRUE
 );
 ```

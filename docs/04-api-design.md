@@ -163,6 +163,11 @@ Field
 Field
 └── SensorReadings (append-only telemetry)
 
+### Irrigation Event Domain (Phase 8)
+
+Field
+└── IrrigationEvents (mutable operational events)
+
 ---
 
 ## HTTP Status Code Conventions
@@ -223,6 +228,21 @@ Field
 * Get Weather Record
 * Update Weather Record
 * Delete Weather Record
+
+### Sensor Reading APIs (Phase 7)
+
+* Create Sensor Reading
+* List Sensor Readings
+* Get Sensor Reading
+* Delete Sensor Reading (administrative only — no PATCH)
+
+### Irrigation Event APIs (Phase 8)
+
+* Create Irrigation Event
+* List Irrigation Events
+* Get Irrigation Event
+* Update Irrigation Event
+* Delete Irrigation Event
 
 ---
 
@@ -317,11 +337,18 @@ Field
 * GET    /api/v1/sensor-readings/{sensor_reading_id}
 * DELETE /api/v1/sensor-readings/{sensor_reading_id}
 
+### Irrigation Events (Phase 8)
+
+* POST   /api/v1/fields/{field_id}/irrigation-events
+* GET    /api/v1/fields/{field_id}/irrigation-events
+* GET    /api/v1/irrigation-events/{event_id}
+* PATCH  /api/v1/irrigation-events/{event_id}
+* DELETE /api/v1/irrigation-events/{event_id}
+
 ---
 
 ## Future API Evolution
 
-* Irrigation APIs (Phase 8)
 * Yield Analytics APIs (Phase 9)
 * Disease Observation APIs (Phase 10)
 * Satellite Imagery APIs (Phase 11)
@@ -475,3 +502,151 @@ Rationale: A timezone-naive or future-dated timestamp is syntactically valid JSO
 | 204 No Content | Reading deleted | Successful DELETE |
 | 404 Not Found | Resource absent | Field or reading UUID not found |
 | 422 Unprocessable Entity | Invalid timestamp | Timezone-naive or future `recorded_at` |
+
+---
+
+## Irrigation Event Domain Endpoints (Phase 8)
+
+### Create Irrigation Event
+
+```
+POST /api/v1/fields/{field_id}/irrigation-events
+```
+
+**Status:** 201 Created
+
+**Request Model:** `IrrigationEventCreate`
+
+```json
+{
+  "started_at": "2026-06-19T06:00:00Z",
+  "ended_at": "2026-06-19T07:30:00Z",
+  "duration_minutes": 90.0,
+  "water_volume_liters": 2400.0,
+  "irrigation_method": "DRIP",
+  "water_source": "GROUNDWATER",
+  "notes": "Morning drip cycle for Field A"
+}
+```
+
+**Response Model:** `IrrigationEventResponse`
+
+**Exception Mapping:**
+
+| Exception | HTTP Status | Condition |
+|---|---|---|
+| `FieldNotFoundError` | 404 Not Found | Parent field UUID does not exist |
+| `InvalidIrrigationTimestampError` | 400 Bad Request | `started_at` is in the future or `ended_at` < `started_at` |
+
+---
+
+### List Irrigation Events for Field
+
+```
+GET /api/v1/fields/{field_id}/irrigation-events?limit=100&offset=0
+```
+
+**Status:** 200 OK
+
+**Query Parameters:** `limit` (default 100), `offset` (default 0)
+
+**Response Model:** `PaginatedResponse[IrrigationEventResponse]`
+
+**Ordering:** `started_at DESC` — most recent event first.
+
+**Exception Mapping:**
+
+| Exception | HTTP Status | Condition |
+|---|---|---|
+| `FieldNotFoundError` | 404 Not Found | Parent field UUID does not exist |
+
+---
+
+### Get Irrigation Event
+
+```
+GET /api/v1/irrigation-events/{event_id}
+```
+
+**Status:** 200 OK
+
+**Response Model:** `IrrigationEventResponse`
+
+**Exception Mapping:**
+
+| Exception | HTTP Status | Condition |
+|---|---|---|
+| `IrrigationEventNotFoundError` | 404 Not Found | Event UUID does not exist |
+
+---
+
+### Update Irrigation Event
+
+```
+PATCH /api/v1/irrigation-events/{event_id}
+```
+
+**Status:** 200 OK
+
+**Request Model:** `IrrigationEventUpdate` (all fields optional)
+
+```json
+{
+  "ended_at": "2026-06-19T08:00:00Z",
+  "water_volume_liters": 2600.0,
+  "notes": "Corrected volume after meter check"
+}
+```
+
+**Response Model:** `IrrigationEventResponse`
+
+**Exception Mapping:**
+
+| Exception | HTTP Status | Condition |
+|---|---|---|
+| `IrrigationEventNotFoundError` | 404 Not Found | Event UUID does not exist |
+| `InvalidIrrigationTimestampError` | 400 Bad Request | Updated `ended_at` < effective `started_at` |
+
+**Sparse PATCH guard:** When only `ended_at` is provided, the service merges it with the persisted `started_at` before performing the ordering check. This prevents silent violations where a partial update makes `ended_at` precede `started_at`.
+
+---
+
+### Delete Irrigation Event
+
+```
+DELETE /api/v1/irrigation-events/{event_id}
+```
+
+**Status:** 204 No Content
+
+**Response body:** None
+
+**Exception Mapping:**
+
+| Exception | HTTP Status | Condition |
+|---|---|---|
+| `IrrigationEventNotFoundError` | 404 Not Found | Event UUID does not exist |
+
+---
+
+## Irrigation Event API Architectural Decisions
+
+### PATCH is permitted (ADR-008-02)
+
+Unlike `SensorReading` (immutable telemetry), `IrrigationEvent` supports PATCH. Irrigation events are human-logged management actions. Operators may need to correct volume, duration, or end time after the event. Mutability is the correct model for operational management data.
+
+### 400 for Invalid Timestamps (ADR-008-03)
+
+`InvalidIrrigationTimestampError` maps to HTTP 400 (Bad Request), not 422 (Unprocessable Entity).
+
+Rationale: `started_at` in the future or `ended_at` < `started_at` represent semantically incorrect requests from the client's perspective — a logical contradiction in the request payload rather than an unprocessable semantic. HTTP 400 is the appropriate signal for correctable client logic errors.
+
+### HTTP Status Code Reference for Irrigation Event Domain
+
+| Code | Meaning | When Used |
+|---|---|---|
+| 201 Created | Event persisted | Successful POST |
+| 200 OK | Event(s) returned | Successful GET or PATCH |
+| 204 No Content | Event deleted | Successful DELETE |
+| 400 Bad Request | Invalid timestamp | Future `started_at` or `ended_at` < `started_at` |
+| 404 Not Found | Resource absent | Field or event UUID not found |
