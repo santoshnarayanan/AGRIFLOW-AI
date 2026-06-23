@@ -1,5 +1,12 @@
 from .common import ErrorResponse, HealthResponse, PaginatedResponse, VersionResponse
 from .crop import CropBase, CropCreate, CropResponse, CropUpdate
+from .disease_observation import (
+    CreateDiseaseObservationRequest,
+    DiseaseObservationBase,
+    DiseaseObservationListResponse,
+    DiseaseObservationResponse,
+    UpdateDiseaseObservationRequest,
+)
 from .field import FieldCreate, FieldResponse, FieldUpdate
 from .irrigation_event import (
     IrrigationEventBase,
@@ -31,10 +38,14 @@ from .yield_record import (
 )
 
 __all__ = [
+    "CreateDiseaseObservationRequest",
     "CropBase",
     "CropCreate",
     "CropResponse",
     "CropUpdate",
+    "DiseaseObservationBase",
+    "DiseaseObservationListResponse",
+    "DiseaseObservationResponse",
     "ErrorResponse",
     "FieldCreate",
     "FieldResponse",
@@ -51,6 +62,7 @@ __all__ = [
     "SoilProfileCreate",
     "SoilProfileResponse",
     "SoilProfileUpdate",
+    "UpdateDiseaseObservationRequest",
     "VersionResponse",
     "WeatherRecordBase",
     "WeatherRecordCreate",
