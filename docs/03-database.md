@@ -411,6 +411,17 @@ SELECT create_hypertable(
 );
 ```
 
+**yield_records:** Partition key `recorded_at TIMESTAMPTZ NOT NULL` (Phase 9)
+
+```sql
+SELECT create_hypertable(
+    'yield_records',
+    'recorded_at',
+    chunk_time_interval => INTERVAL '1 season',
+    migrate_data => TRUE
+);
+```
+
 Capabilities gained:
 * Automatic time-based chunk partitioning
 * Chunk exclusion for time-range queries
@@ -426,6 +437,97 @@ Primary table partition: `field_id` (partition key) + `recorded_at DESC` (cluste
 
 Migration requires no changes to the application service layer.
 
+
+## Phase 9 — Yield Domain (yield_records table)
+
+### `yield_measurement_method` Enum
+
+```sql
+CREATE TYPE yield_measurement_method AS ENUM (
+    'MANUAL_SCALE',
+    'COMBINE_MONITOR',
+    'YIELD_MAP',
+    'REMOTE_SENSING',
+    'CROP_CUT',
+    'LABORATORY_ANALYSIS',
+    'ESTIMATED'
+);
+```
+
+Created via `postgresql.ENUM` with `create_type=False` (ADR-008-01 pattern). Owned by migration `b7e2a9f4c8d3`.
+
+### `yield_records` Table
+
+```sql
+CREATE TABLE yield_records (
+    id                       UUID         NOT NULL DEFAULT gen_random_uuid(),
+    crop_id                  UUID         NOT NULL,   -- FK → crops.id ON DELETE CASCADE
+    field_id                 UUID         NOT NULL,   -- FK → fields.id ON DELETE CASCADE (denormalized)
+    recorded_at              TIMESTAMPTZ  NOT NULL,
+    yield_value_tons_ha      NUMERIC(10,4) NOT NULL,
+    measurement_method       yield_measurement_method NOT NULL,
+    area_harvested_ha        NUMERIC(10,4),
+    moisture_content_percent NUMERIC(5,2),
+    test_weight_kg_hl        NUMERIC(6,3),
+    quality_grade            VARCHAR(50),
+    notes                    TEXT,
+    created_at               TIMESTAMPTZ  NOT NULL DEFAULT now(),
+    updated_at               TIMESTAMPTZ  NOT NULL DEFAULT now(),
+    CONSTRAINT pk_yield_records PRIMARY KEY (id),
+    CONSTRAINT fk_yield_records_crop_id
+        FOREIGN KEY (crop_id) REFERENCES crops(id) ON DELETE CASCADE,
+    CONSTRAINT fk_yield_records_field_id
+        FOREIGN KEY (field_id) REFERENCES fields(id) ON DELETE CASCADE
+);
+```
+
+**Column notes:**
+
+| Column | Type | Notes |
+|---|---|---|
+| `crop_id` | UUID FK | Primary domain anchor — yield is per crop cycle (ADR-009-01) |
+| `field_id` | UUID FK | Denormalized from crop for direct field queries (ADR-009-02) |
+| `recorded_at` | TIMESTAMPTZ | TimescaleDB partition key candidate (ADR-009-03) |
+| `yield_value_tons_ha` | NUMERIC(10,4) | Non-negative; service validates > 0 context |
+| `measurement_method` | ENUM | Provenance for AI data quality weighting |
+| `area_harvested_ha` | NUMERIC(10,4) | Nullable; service enforces > 0 when supplied (ADR-009-06) |
+| `moisture_content_percent` | NUMERIC(5,2) | Nullable; Pydantic enforces [0, 100] |
+| `test_weight_kg_hl` | NUMERIC(6,3) | Nullable; service enforces > 0 when supplied |
+| `quality_grade` | VARCHAR(50) | Free-form, e.g. "Grade 1" |
+
+### Indexes
+
+```sql
+-- Single-column
+CREATE INDEX ix_yield_records_crop_id    ON yield_records (crop_id);
+CREATE INDEX ix_yield_records_field_id   ON yield_records (field_id);
+CREATE INDEX ix_yield_records_recorded_at ON yield_records (recorded_at);
+
+-- Compound (primary AI feature pipeline path)
+CREATE INDEX ix_yield_records_crop_id_recorded_at ON yield_records (crop_id, recorded_at);
+```
+
+### Relationships
+
+```
+Crop    (1) → (N) YieldRecords  ← Phase 9 (ON DELETE CASCADE, mutable grandchild)
+Field   (1) → (N) YieldRecords  ← Phase 9 (ON DELETE CASCADE, denormalized FK)
+```
+
+### TimescaleDB Readiness
+
+**yield_records:** Partition key `recorded_at TIMESTAMPTZ NOT NULL` (Phase 9)
+
+```sql
+SELECT create_hypertable(
+    'yield_records',
+    'recorded_at',
+    chunk_time_interval => INTERVAL '1 season',
+    migrate_data => TRUE
+);
+```
+
+---
 
 ## Phase 6 AI Readiness Foundation (Completed)
 

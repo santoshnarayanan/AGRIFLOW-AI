@@ -97,13 +97,13 @@ timeline
 ## 2. Current Domain Architecture
 
 ### Title
-AGRIFLOW-AI Current Domain Architecture — Post Phase 8
+AGRIFLOW-AI Current Domain Architecture — Post Phase 9
 
 ### Purpose
-Show the complete domain model as it exists after Phase 8, including all entities, their relationships, cardinalities, and key attributes. This is the authoritative domain map for current state.
+Show the complete domain model as it exists after Phase 9, including all entities, their relationships, cardinalities, and key attributes. This is the authoritative domain map for current state.
 
 ### Explanation
-`Farm` is the root aggregate. All domain entities trace their ancestry to a `Farm` via the `Field` pivot. `SoilProfile` has a strict 1:1 cardinality with `Field`. `Crop`, `WeatherRecord`, `SensorReading`, and `IrrigationEvent` are 1:N collections per `Field`. `SensorReading` is the only domain with an explicit immutability contract. `IrrigationEvent` is the first mutable operational event domain.
+`Farm` is the root aggregate. All domain entities trace their ancestry to a `Farm` via the `Field` pivot. `SoilProfile` has a strict 1:1 cardinality with `Field`. `Crop`, `WeatherRecord`, `SensorReading`, and `IrrigationEvent` are 1:N collections per `Field`. `YieldRecord` is the first grandchild domain — it anchors to `Crop` (primary FK) and carries a denormalized `field_id` for direct field-scoped queries. `SensorReading` is the only domain with an explicit immutability contract. `IrrigationEvent` and `YieldRecord` are mutable operational event domains.
 
 ```mermaid
 graph TD
@@ -121,21 +121,26 @@ graph TD
 
     IrrigationEvent["💧 IrrigationEvent\n──────────────\nid: UUID PK\nfield_id: UUID FK\nstarted_at: TIMESTAMPTZ\nended_at: TIMESTAMPTZ (opt)\nduration_minutes: NUMERIC\nwater_volume_liters: NUMERIC\nirrigation_method: ENUM\nwater_source: ENUM\nnotes: TEXT\ncreated_at / updated_at\n✓ MUTABLE — PATCH supported"]
 
+    YieldRecord["🌾 YieldRecord\n──────────────\nid: UUID PK\ncrop_id: UUID FK ← primary anchor\nfield_id: UUID FK (denormalized)\nrecorded_at: TIMESTAMPTZ\nyield_value_tons_ha: NUMERIC\nmeasurement_method: ENUM\narea_harvested_ha: NUMERIC (opt)\nmoisture_content_percent: NUMERIC (opt)\ntest_weight_kg_hl: NUMERIC (opt)\nquality_grade: VARCHAR (opt)\nnotes: TEXT\ncreated_at / updated_at\n✓ MUTABLE — PATCH supported"]
+
     Farm -->|"1 : N\nhas fields"| Field
     Field -->|"1 : N\ngrows crops"| Crop
     Field -->|"1 : 1\nhas profile"| SoilProfile
     Field -->|"1 : N\nrecords weather"| WeatherRecord
     Field -->|"1 : N\ngenerates telemetry"| SensorReading
     Field -->|"1 : N\nreceives irrigation"| IrrigationEvent
+    Field -.->|"1 : N\ndenormalized FK"| YieldRecord
+    Crop -->|"1 : N\nmeasures yield"| YieldRecord
 ```
 
 ### Key Architectural Observations
 
-- `Farm → Field → {Crop, SoilProfile, WeatherRecord, SensorReading, IrrigationEvent}` is the stable aggregate hierarchy. All new domains in Phases 9–11 will anchor to `Field`.
+- `Farm → Field → {Crop, SoilProfile, WeatherRecord, SensorReading, IrrigationEvent}` is the stable aggregate hierarchy. `YieldRecord` introduces the first grandchild path: `Farm → Field → Crop → YieldRecord`.
 - `SoilProfile` is the only 1:1 entity. Its uniqueness is enforced at two levels: `UNIQUE` constraint in PostgreSQL and `DuplicateSoilProfileError` at the service layer.
-- `WeatherRecord`, `SensorReading`, and `IrrigationEvent` are all time-keyed domains with `TIMESTAMPTZ`. All three are TimescaleDB hypertable candidates.
-- `SensorReading` is immutable (no PATCH, no UPDATE); `IrrigationEvent` is mutable (full CRUD). This contrast reflects the fundamental difference between sensor telemetry (immutable physical fact) and operational management records (correctible human actions).
-- All seven tables carry `created_at` and `updated_at` via `AuditableModel`.
+- `WeatherRecord`, `SensorReading`, `IrrigationEvent`, and `YieldRecord` are all time-keyed domains with `TIMESTAMPTZ`. All four are TimescaleDB hypertable candidates.
+- `SensorReading` is immutable (no PATCH, no UPDATE); `IrrigationEvent` and `YieldRecord` are mutable (full CRUD). This contrast reflects the fundamental difference between sensor telemetry (immutable physical fact) and operational management records (correctible human actions).
+- `YieldRecord` is the first entity to carry two parent FKs (`crop_id` primary anchor, `field_id` denormalized). `field_id` is resolved server-side at creation and immutably stored.
+- All eight tables carry `created_at` and `updated_at` via `AuditableModel`.
 
 ---
 
@@ -174,12 +179,12 @@ graph TB
     subgraph "Model Layer  [app/db/models/]"
         ORM["SQLAlchemy ORM Model\nmodels/{domain}.py\n• Table definition\n• Column types + constraints\n• Relationships\n• Inherits AuditableModel"]
         AuditMixin["AuditableModel Mixin\n• id: UUID PK\n• created_at: TIMESTAMPTZ\n• updated_at: TIMESTAMPTZ"]
-        CoreEnums["app/core/enums.py\n• SensorType (shared)\n• Future cross-domain enums"]
+        CoreEnums["app/core/enums.py\n• SensorType (Phase 7)\n• IrrigationMethod (Phase 8)\n• WaterSource (Phase 8)\n• YieldMeasurementMethod (Phase 9)"]
     end
 
     subgraph "Database Layer"
-        PG[("PostgreSQL 17\n• farms\n• fields\n• crops\n• soil_profiles\n• weather_records\n• sensor_readings\n• irrigation_events\n• alembic_version")]
-        Alembic["Alembic\nMigration Engine\n001 → 235a51cdf901\n(current head)"]
+        PG[("PostgreSQL 17\n• farms\n• fields\n• crops\n• soil_profiles\n• weather_records\n• sensor_readings\n• irrigation_events\n• yield_records\n• alembic_version")]
+        Alembic["Alembic\nMigration Engine\n001 → b7e2a9f4c8d3\n(current head)"]
     end
 
     Client -->|"HTTP Request"| Router
@@ -202,7 +207,7 @@ graph TB
 - **`deps.py` is the composition root.** All object construction and wiring happens there. Routes and services are unaware of each other's construction details.
 - **`BaseRepository` provides the CRUD contract.** Concrete repositories re-declare inherited methods with typed signatures for IDE and mypy support, but add no new CRUD logic.
 - **`AuditableModel` is the universal base.** Adding any new table without inheriting `AuditableModel` is an architectural violation.
-- **`app/core/enums.py` is the shared vocabulary layer.** `SensorType` (Phase 7) and `IrrigationMethod` / `WaterSource` (Phase 8) are placed there to enable reuse by Digital Twin, AI Engine, and GaaS components in future phases.
+- **`app/core/enums.py` is the shared vocabulary layer.** `SensorType` (Phase 7), `IrrigationMethod` / `WaterSource` (Phase 8), and `YieldMeasurementMethod` (Phase 9) are placed there to enable reuse by Digital Twin, AI Engine, and GaaS components in future phases.
 
 ---
 
@@ -1303,7 +1308,7 @@ graph LR
         P1["Phase 1–2\nReactive Farming\n• Farm & Field records\n• Manual data entry\n• Basic CRUD APIs"]
         P2["Phase 3–5\nData-Driven Farming\n• Crop lifecycle tracking\n• Soil intelligence\n• Weather observation"]
         P3["Phase 6–7\nPredictive Foundation\n• AI-ready attributes\n• IoT telemetry\n• Immutable sensor data"]
-        P4["Phase 8–11\nPredictive Farming\n• Irrigation tracking\n• Yield records\n• Disease observation\n• Satellite imagery"]
+        P4["Phase 8–11\nPredictive Farming\n• Irrigation tracking ✅\n• Yield records ✅\n• Disease observation\n• Satellite imagery"]
         P5["Phase 12–14\nIntelligent Farming\n• AI yield prediction\n• Disease risk scoring\n• Irrigation optimization\n• Digital Twin v1"]
         P6["Phase 15+\nAutonomous Agriculture\n• Full Digital Twin\n• GaaS Farm Copilot\n• Event-driven platform\n• Autonomous actions"]
     end
@@ -1313,9 +1318,9 @@ graph LR
 
 ### Key Architectural Observations
 
-- **Every component traces to a Phase 1–7 architectural decision.** The UUID primary key strategy enables Digital Twin state keys. The `AuditableModel` timestamps enable time-series analytics. The `app/core/enums.py` shared enum module enables Digital Twin sensor state mapping. No foundational refactoring is required at Phase 15.
+- **Every component traces to a Phase 1–9 architectural decision.** The UUID primary key strategy enables Digital Twin state keys. The `AuditableModel` timestamps enable time-series analytics. The `app/core/enums.py` shared enum module enables Digital Twin sensor state mapping. No foundational refactoring is required at Phase 15.
 - **Redpanda is the central integration fabric.** Every major platform capability — Digital Twin, AI Feature Store, CQRS, Temporal, Alert Engine — connects to the platform via Redpanda topics. This ensures the core domain APIs remain stable as new consumers are added.
-- **The five-layer Clean Architecture scales to Phase 15 without modification.** New domains (Irrigation, Yield, Disease, Satellite) follow the same `Model → Schema → Repository → Service → Router` pattern established in Phase 2. The only additions are Redpanda publishing in the service layer and Temporal workflow triggering at the extension point.
+- **The five-layer Clean Architecture scales to Phase 15 without modification.** Completed domains (Irrigation ✅, Yield ✅) and future domains (Disease, Satellite) follow the same `Model → Schema → Repository → Service → Router` pattern established in Phase 2. The only additions are Redpanda publishing in the service layer and Temporal workflow triggering at the extension point.
 - **Azure is the preferred infrastructure platform** for enterprise and cooperative deployments due to Azure OpenAI Service data sovereignty, Azure Kubernetes Service (AKS) orchestration, Azure API Management gateway, and Azure AI Search vector capabilities — all available within a single Azure tenancy.
 - **GaaS is the ultimate user interface.** The Phase 15 Farm Copilot makes the entire platform accessible to farm operators who have no interest in dashboards, APIs, or ML model outputs — they simply ask what they need to know and receive a grounded, cited, actionable recommendation.
 
@@ -1332,7 +1337,7 @@ graph LR
 
 **Living Document:** This document should be updated at the completion of each phase to reflect new domain additions, architectural decisions, and technology adoptions.
 
-**Last Updated:** Phase 7 completion — June 2026
+**Last Updated:** Phase 9 completion — June 2026
 
 ---
 

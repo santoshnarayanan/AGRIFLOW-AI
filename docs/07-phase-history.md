@@ -997,4 +997,159 @@ Irrigation Events (Phase 8):
 
 ### Next Planned Evolution
 
-Phase 9 – Yield Domain
+Phase 10 – Disease Observation Domain
+
+---
+
+## Phase 9 – Yield Domain
+
+### What Was Built
+
+Phase 9 introduced `YieldRecord` — the first grandchild domain in AGRIFLOW-AI — establishing a dedicated time-series observation log for crop yield measurements.
+
+**New Files (7):**
+
+| File | Purpose |
+|---|---|
+| `backend/app/db/models/yield_record.py` | ORM model |
+| `backend/app/schemas/yield_record.py` | Pydantic schemas (Base, Create, Update, Response) |
+| `backend/app/db/repositories/yield_record.py` | Repository |
+| `backend/app/services/yield_record.py` | Service + domain exceptions + helpers |
+| `backend/app/api/yield_records/__init__.py` | Package marker |
+| `backend/app/api/yield_records/router.py` | API router (5 endpoints) |
+| `backend/app/db/migrations/versions/b7e2a9f4c8d3_create_yield_records_table.py` | Alembic migration |
+
+**Modified Files (7):**
+
+| File | Change |
+|---|---|
+| `backend/app/core/enums.py` | Added `YieldMeasurementMethod` (7 values) |
+| `backend/app/db/models/crop.py` | Added `yield_records` relationship |
+| `backend/app/db/models/field.py` | Added `yield_records` relationship |
+| `backend/app/db/repositories/__init__.py` | Exported `YieldRecordRepository` |
+| `backend/app/services/__init__.py` | Exported `YieldRecordService`, `YieldRecordNotFoundError`, `InvalidYieldRecordError` |
+| `backend/app/api/deps.py` | Added `get_yield_record_service` factory + `YieldRecordServiceDep` |
+| `backend/app/api/router.py` | Included `yield_records_router` |
+
+### Architecture Decisions
+
+**ADR-009-01 — Crop-Anchored FK**
+
+`YieldRecord` anchors to `crop_id` as its primary FK, not `field_id` alone. Yield is a per-crop-cycle measurement. This establishes the first grandchild domain in AGRIFLOW-AI:
+
+```
+Farm → Field → Crop → YieldRecord
+```
+
+**ADR-009-02 — Denormalized `field_id`**
+
+`field_id` is stored directly on `yield_records` to enable `GET /fields/{field_id}/yield-records`-style queries without a JOIN through `crops`. Both FKs are `NOT NULL` with `ON DELETE CASCADE`. The service resolves `field_id` from the crop record at creation time, guaranteeing consistency.
+
+**ADR-009-03 — `recorded_at TIMESTAMPTZ` as Primary Time Key**
+
+`recorded_at` is the TimescaleDB partition key candidate. Compound index `(crop_id, recorded_at)` is the primary AI feature pipeline access pattern for Phase 12 Yield Prediction Engine.
+
+**ADR-009-04 — Mutable Domain**
+
+`YieldRecord` is mutable (PATCH is permitted). Operators legitimately correct measurement values after logging (recalibrated moisture, corrected area). Contrasts with `SensorReading` (append-only).
+
+**ADR-009-05 — Immutable `crop_id`**
+
+`crop_id` cannot be changed after creation. Changing the crop association of a yield measurement is not a valid correction; the record should be deleted and re-created. `YieldRecordUpdate` schema excludes `crop_id`.
+
+**ADR-009-06 — `area_harvested_ha > 0` Service Guard**
+
+Pydantic schema allows `area_harvested_ha >= 0` (`ge=0`). The service layer tightens this to `> 0`: a zero-area harvest observation is agronomically invalid. Same reasoning applies to `test_weight_kg_hl`.
+
+**ADR-009-07 — `YieldMeasurementMethod` in `app/core/enums.py`**
+
+The new `YieldMeasurementMethod` enum (7 values: MANUAL_SCALE, COMBINE_MONITOR, YIELD_MAP, REMOTE_SENSING, CROP_CUT, LABORATORY_ANALYSIS, ESTIMATED) is placed in the shared `app/core/enums.py` module for reuse by the Phase 12 Yield Prediction Engine, GaaS YieldAdvisor, and Digital Twin field productivity state.
+
+**ADR-009-08 — Shared `CropNotFoundError`**
+
+`CropNotFoundError` is imported from `app.services.crop` rather than re-declared in the yield service. Follows the `FieldNotFoundError` reuse pattern established in `IrrigationEventService`.
+
+**ADR-009-11 — PostgreSQL ENUM Lifecycle**
+
+`postgresql.ENUM` with `create_type=False` + explicit `.create(checkfirst=True)` / `.drop(checkfirst=False)` is applied — mandatory ADR-008-01 pattern for all new ENUM types.
+
+### Service Layer Validation Strategy
+
+Two-layer validation matching the established project pattern:
+
+| Layer | Guard |
+|---|---|
+| Pydantic schema | `recorded_at` timezone awareness, `yield_value_tons_ha >= 0`, `moisture_content_percent` in [0, 100], `area/test_weight >= 0`, `quality_grade max_length=50` |
+| Service layer | `recorded_at` not in future (UTC comparison), `area_harvested_ha > 0` when supplied, `test_weight_kg_hl > 0` when supplied, crop exists check |
+
+Three independently-testable module-level helper functions: `_validate_not_future`, `_validate_area`, `_validate_test_weight`.
+
+### Index Strategy
+
+Four indexes established in migration `b7e2a9f4c8d3`:
+
+| Index | Columns | Purpose |
+|---|---|---|
+| `ix_yield_records_crop_id` | `(crop_id)` | All records for a crop cycle |
+| `ix_yield_records_field_id` | `(field_id)` | All records for a field (direct path) |
+| `ix_yield_records_recorded_at` | `(recorded_at)` | Time-range queries |
+| `ix_yield_records_crop_id_recorded_at` | `(crop_id, recorded_at)` | Compound — primary AI feature pipeline path |
+
+### Delivered APIs
+
+```
+POST   /api/v1/crops/{crop_id}/yield-records   — 201 Created
+GET    /api/v1/crops/{crop_id}/yield-records   — 200 OK (paginated, recorded_at DESC)
+GET    /api/v1/yield-records/{id}              — 200 OK
+PATCH  /api/v1/yield-records/{id}             — 200 OK
+DELETE /api/v1/yield-records/{id}             — 204 No Content
+```
+
+### Current Platform Status (Post Phase 9)
+
+#### Domain Hierarchy
+
+```text
+Farm
+└── Field
+     ├── Crop
+     │    └── YieldRecord  ← Phase 9 (grandchild, mutable)
+     ├── SoilProfile
+     ├── WeatherRecord
+     ├── SensorReading    ← Phase 7 (append-only telemetry)
+     └── IrrigationEvent  ← Phase 8 (mutable operational events)
+```
+
+#### Current Database Tables
+
+* alembic_version
+* farms
+* fields
+* crops
+* soil_profiles
+* weather_records
+* sensor_readings
+* irrigation_events
+* yield_records
+
+#### Current Migration Head
+
+`b7e2a9f4c8d3_create_yield_records_table`
+
+#### Current API Coverage
+
+Fields, Crops, Soil Profiles, Weather Records, Sensor Readings, Irrigation Events: (unchanged — see Phase 2–8 entries)
+
+Yield Records (Phase 9):
+
+* POST   /api/v1/crops/{crop_id}/yield-records
+* GET    /api/v1/crops/{crop_id}/yield-records
+* GET    /api/v1/yield-records/{yield_record_id}
+* PATCH  /api/v1/yield-records/{yield_record_id}
+* DELETE /api/v1/yield-records/{yield_record_id}
+
+---
+
+### Next Planned Evolution
+
+Phase 10 – Disease Observation Domain

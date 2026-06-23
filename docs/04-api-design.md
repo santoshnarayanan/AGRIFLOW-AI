@@ -629,6 +629,188 @@ DELETE /api/v1/irrigation-events/{event_id}
 
 ---
 
+---
+
+# Yield Record API (Phase 9)
+
+## Endpoints
+
+### Create Yield Record
+
+```
+POST /api/v1/crops/{crop_id}/yield-records
+```
+
+**Status:** 201 Created
+
+**Request Body:** `YieldRecordCreate`
+
+```json
+{
+  "recorded_at": "2026-06-23T08:00:00+02:00",
+  "yield_value_tons_ha": "7.4250",
+  "measurement_method": "COMBINE_MONITOR",
+  "area_harvested_ha": "4.5000",
+  "moisture_content_percent": "14.30",
+  "test_weight_kg_hl": "76.500",
+  "quality_grade": "Grade 1",
+  "notes": "North section harvested first"
+}
+```
+
+**Note:** `crop_id` is taken from the URL path. `field_id` is resolved server-side from the crop record — it must not be supplied.
+
+**Response Model:** `YieldRecordResponse`
+
+**Exception Mapping:**
+
+| Exception | HTTP Status | Condition |
+|---|---|---|
+| `CropNotFoundError` | 404 Not Found | Crop UUID does not exist |
+| `InvalidYieldRecordError` | 400 Bad Request | `recorded_at` in future, `area_harvested_ha <= 0`, or `test_weight_kg_hl <= 0` |
+
+---
+
+### List Yield Records for a Crop Cycle
+
+```
+GET /api/v1/crops/{crop_id}/yield-records?limit=100&offset=0
+```
+
+**Status:** 200 OK
+
+**Query Parameters:**
+
+| Parameter | Default | Range | Description |
+|---|---|---|---|
+| `limit` | 100 | 1–500 | Maximum records to return |
+| `offset` | 0 | ≥ 0 | Records to skip |
+
+**Response Model:** `PaginatedResponse[YieldRecordResponse]`
+
+```json
+{
+  "items": [...],
+  "total": 3,
+  "limit": 100,
+  "offset": 0
+}
+```
+
+Ordered by `recorded_at DESC` (most recent measurement first).
+
+---
+
+### Get Yield Record
+
+```
+GET /api/v1/yield-records/{yield_record_id}
+```
+
+**Status:** 200 OK
+
+**Response Model:** `YieldRecordResponse`
+
+```json
+{
+  "id": "a1b2c3d4-...",
+  "crop_id": "e5f6a7b8-...",
+  "field_id": "c9d0e1f2-...",
+  "recorded_at": "2026-06-23T08:00:00+02:00",
+  "yield_value_tons_ha": "7.4250",
+  "measurement_method": "COMBINE_MONITOR",
+  "area_harvested_ha": "4.5000",
+  "moisture_content_percent": "14.30",
+  "test_weight_kg_hl": "76.500",
+  "quality_grade": "Grade 1",
+  "notes": "North section harvested first",
+  "created_at": "2026-06-23T06:05:00Z",
+  "updated_at": "2026-06-23T06:05:00Z"
+}
+```
+
+**Exception Mapping:**
+
+| Exception | HTTP Status | Condition |
+|---|---|---|
+| `None` return from service | 404 Not Found | Yield record UUID does not exist |
+
+---
+
+### Update Yield Record
+
+```
+PATCH /api/v1/yield-records/{yield_record_id}
+```
+
+**Status:** 200 OK
+
+**Request Body:** `YieldRecordUpdate` (all fields optional — sparse PATCH)
+
+```json
+{
+  "moisture_content_percent": "13.80",
+  "notes": "Updated after lab confirmation"
+}
+```
+
+**Note:** `crop_id` and `field_id` are immutable and cannot be supplied.
+
+**Response Model:** `YieldRecordResponse`
+
+**Exception Mapping:**
+
+| Exception | HTTP Status | Condition |
+|---|---|---|
+| `YieldRecordNotFoundError` | 404 Not Found | Yield record UUID does not exist |
+| `InvalidYieldRecordError` | 400 Bad Request | Updated `recorded_at` in future, or `area_harvested_ha`/`test_weight_kg_hl` <= 0 |
+
+---
+
+### Delete Yield Record
+
+```
+DELETE /api/v1/yield-records/{yield_record_id}
+```
+
+**Status:** 204 No Content
+
+**Response body:** None
+
+**Exception Mapping:**
+
+| Exception | HTTP Status | Condition |
+|---|---|---|
+| `YieldRecordNotFoundError` | 404 Not Found | Yield record UUID does not exist |
+
+---
+
+## Yield Record API Architectural Decisions
+
+### POST anchors to `/crops/{crop_id}` (ADR-009-01)
+
+The creation endpoint uses `/crops/{crop_id}/yield-records` rather than `/fields/{field_id}/yield-records`. Yield is a per-crop-cycle measurement. Anchoring to the field would require the client to supply both `crop_id` and `field_id`, introducing a redundant constraint that the server can resolve itself. The server resolves `field_id` from the crop record.
+
+### 400 for Invalid Measurement Values (ADR-009-09)
+
+`InvalidYieldRecordError` maps to HTTP 400 (Bad Request). Violations such as future `recorded_at`, zero harvested area, or zero test weight represent correctable client logic errors — not schema errors (which return 422) or missing resources (which return 404).
+
+### `crop_id` Immutability at API Level (ADR-009-05)
+
+`YieldRecordUpdate` excludes `crop_id`. If a record was logged against the wrong crop, it must be deleted and re-created. Allowing `crop_id` mutation would break the audit trail and invalidate any AI feature vectors already computed from this record.
+
+### HTTP Status Code Reference for Yield Record Domain
+
+| Code | Meaning | When Used |
+|---|---|---|
+| 201 Created | Record persisted | Successful POST |
+| 200 OK | Record(s) returned | Successful GET or PATCH |
+| 204 No Content | Record deleted | Successful DELETE |
+| 400 Bad Request | Invalid measurement | Future `recorded_at`, `area <= 0`, or `test_weight <= 0` |
+| 404 Not Found | Resource absent | Crop or yield record UUID not found |
+
+---
+
 ## Irrigation Event API Architectural Decisions
 
 ### PATCH is permitted (ADR-008-02)

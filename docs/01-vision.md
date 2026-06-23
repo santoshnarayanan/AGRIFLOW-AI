@@ -158,6 +158,7 @@ The digital twin will integrate:
 * Sensor telemetry
 * Satellite observations
 * Operational events
+* Yield measurements
 
 This digital representation will allow:
 

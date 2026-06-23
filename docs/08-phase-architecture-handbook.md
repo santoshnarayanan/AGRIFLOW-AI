@@ -3,7 +3,7 @@
 **Document:** Architecture Reference & Implementation History  
 **Version:** 1.1  
 **Date:** June 2026  
-**Scope:** Phase 1 through Phase 8 — complete implementation record and future architecture guide  
+**Scope:** Phase 1 through Phase 9 — complete implementation record and future architecture guide  
 **Status:** Living Document
 
 ---
@@ -21,16 +21,17 @@
 9. [Phase 6 — AI Readiness Foundation](#9-phase-6--ai-readiness-foundation)
 10. [Phase 7 — Sensor Telemetry Domain](#10-phase-7--sensor-telemetry-domain)
 11. [Phase 8 — Irrigation Management Domain](#11-phase-8--irrigation-management-domain)
-12. [Current Domain Architecture (Post Phase 8)](#12-current-domain-architecture-post-phase-8)
-13. [Future Architecture: TimescaleDB](#13-future-architecture-timescaledb)
-14. [Future Architecture: Apache Cassandra](#14-future-architecture-apache-cassandra)
-15. [Future Architecture: CQRS](#15-future-architecture-cqrs)
-16. [Future Architecture: Redpanda / Kafka](#16-future-architecture-redpanda--kafka)
-17. [Future Architecture: Temporal Workflows](#17-future-architecture-temporal-workflows)
-18. [Future Architecture: Digital Twin](#18-future-architecture-digital-twin)
-19. [Future Architecture: Generative-As-A-Service (GaaS)](#19-future-architecture-generative-as-a-service-gaas)
-20. [Architecture Decision Register](#20-architecture-decision-register)
-21. [Technology Evolution Roadmap](#21-technology-evolution-roadmap)
+12. [Phase 9 — Yield Domain](#12-phase-9--yield-domain)
+13. [Current Domain Architecture (Post Phase 9)](#13-current-domain-architecture-post-phase-9)
+14. [Future Architecture: TimescaleDB](#14-future-architecture-timescaledb)
+15. [Future Architecture: Apache Cassandra](#15-future-architecture-apache-cassandra)
+16. [Future Architecture: CQRS](#16-future-architecture-cqrs)
+17. [Future Architecture: Redpanda / Kafka](#17-future-architecture-redpanda--kafka)
+18. [Future Architecture: Temporal Workflows](#18-future-architecture-temporal-workflows)
+19. [Future Architecture: Digital Twin](#19-future-architecture-digital-twin)
+20. [Future Architecture: Generative-As-A-Service (GaaS)](#20-future-architecture-generative-as-a-service-gaas)
+21. [Architecture Decision Register](#21-architecture-decision-register)
+22. [Technology Evolution Roadmap](#22-technology-evolution-roadmap)
 
 ---
 
@@ -1148,9 +1149,67 @@ Irrigation Events
 
 ---
 
-## 12. Current Domain Architecture (Post Phase 8)
+## 12. Phase 9 — Yield Domain
 
-### Complete Entity Relationship (Post Phase 8)
+### Overview
+
+Phase 9 introduced `YieldRecord` — the first grandchild entity in AGRIFLOW-AI — providing a discrete, time-keyed yield observation log for crop cycles. The Crop model retained its scalar `actual_yield_tons_ha` / `expected_yield_tons_ha` summary columns; `YieldRecord` adds granularity, measurement method provenance, and grain quality attributes.
+
+### New Architectural Pattern: Grandchild Domain
+
+`YieldRecord` anchors to `crop_id` (not `field_id`) as its primary FK, establishing the first three-level parent chain:
+
+```
+Farm → Field → Crop → YieldRecord
+```
+
+`field_id` is denormalized directly onto `yield_records` for direct field-scoped access (ADR-009-02). This is the first time a domain entity carries two parent FKs, and the first `Response` schema in the project that exposes both.
+
+### Implementation Summary
+
+| Layer | Artifact | Notes |
+|---|---|---|
+| Enum | `YieldMeasurementMethod` in `app/core/enums.py` | 7 values; placed for Phase 12 Yield Prediction Engine reuse |
+| ORM | `backend/app/db/models/yield_record.py` | Inherits `AuditableModel, Base`; compound index `(crop_id, recorded_at)` |
+| Migration | `b7e2a9f4c8d3_create_yield_records_table` | `yield_measurement_method` enum + `yield_records` table + 4 indexes |
+| Schemas | `backend/app/schemas/yield_record.py` | Base, Create, Update, Response; `_require_timezone_aware` helper |
+| Repository | `backend/app/db/repositories/yield_record.py` | `list_by_crop` (compound index), `list_by_field` (field_id index), `exists` |
+| Service | `backend/app/services/yield_record.py` | `YieldRecordNotFoundError`, `InvalidYieldRecordError`, 3 helper functions |
+| DI | `backend/app/api/deps.py` | `get_yield_record_service` + `YieldRecordServiceDep` |
+| Router | `backend/app/api/yield_records/router.py` | 5 endpoints |
+
+### ADR-009 Series
+
+| ADR | Decision |
+|---|---|
+| ADR-009-01 | `YieldRecord` anchors to `crop_id` as primary FK — yield is per crop cycle, not per field point-in-time |
+| ADR-009-02 | `field_id` denormalized on `yield_records` — direct field-scoped query path without JOIN through `crops` |
+| ADR-009-03 | `recorded_at TIMESTAMPTZ NOT NULL` — primary time key and TimescaleDB partition key candidate |
+| ADR-009-04 | `YieldRecord` is mutable — PATCH permitted for operator measurement corrections |
+| ADR-009-05 | `crop_id` immutable after creation — excluded from `YieldRecordUpdate`; delete and re-create if wrong |
+| ADR-009-06 | `area_harvested_ha > 0` when supplied — Pydantic `ge=0` tightened at service layer (zero area is invalid) |
+| ADR-009-07 | `YieldMeasurementMethod` in `app/core/enums.py` — Phase 12 + GaaS YieldAdvisor + Digital Twin reuse |
+| ADR-009-08 | `CropNotFoundError` imported from `app.services.crop` — shared exception, not re-declared |
+| ADR-009-09 | `InvalidYieldRecordError` → HTTP 400 — client-correctable logic errors |
+| ADR-009-10 | `create_yield_record` has documented extension point for Redpanda, Digital Twin, Phase 12 triggers |
+| ADR-009-11 | `postgresql.ENUM` with `create_type=False` — mandatory ADR-008-01 pattern applied |
+| ADR-009-12 | Both list endpoints include pagination (`limit`/`offset`) from Phase 9 onwards |
+
+### Delivered Endpoints
+
+```
+POST   /api/v1/crops/{crop_id}/yield-records   — 201 Created
+GET    /api/v1/crops/{crop_id}/yield-records   — 200 OK (paginated, recorded_at DESC)
+GET    /api/v1/yield-records/{id}              — 200 OK
+PATCH  /api/v1/yield-records/{id}             — 200 OK
+DELETE /api/v1/yield-records/{id}             — 204 No Content
+```
+
+---
+
+## 13. Current Domain Architecture (Post Phase 9)
+
+### Complete Entity Relationship (Post Phase 9)
 
 ```mermaid
 erDiagram
@@ -1251,15 +1310,33 @@ erDiagram
         timestamptz updated_at
     }
 
+    YieldRecord {
+        UUID id PK
+        UUID crop_id FK
+        UUID field_id FK
+        timestamptz recorded_at
+        numeric yield_value_tons_ha
+        enum measurement_method
+        numeric area_harvested_ha
+        numeric moisture_content_percent
+        numeric test_weight_kg_hl
+        string quality_grade
+        text notes
+        timestamptz created_at
+        timestamptz updated_at
+    }
+
     Farm ||--o{ Field : "has"
     Field ||--o{ Crop : "grows"
     Field ||--o| SoilProfile : "has"
     Field ||--o{ WeatherRecord : "records"
     Field ||--o{ SensorReading : "generates"
     Field ||--o{ IrrigationEvent : "receives"
+    Field ||--o{ YieldRecord : "yields (denormalized)"
+    Crop ||--o{ YieldRecord : "measures"
 ```
 
-### Current API Surface (Post Phase 8)
+### Current API Surface (Post Phase 9)
 
 ```
 Health
@@ -1308,21 +1385,29 @@ Irrigation Events (Phase 8 — mutable)
   GET    /api/v1/irrigation-events/{event_id}
   PATCH  /api/v1/irrigation-events/{event_id}
   DELETE /api/v1/irrigation-events/{event_id}
+
+Yield Records (Phase 9 — mutable, grandchild)
+  POST   /api/v1/crops/{crop_id}/yield-records
+  GET    /api/v1/crops/{crop_id}/yield-records
+  GET    /api/v1/yield-records/{yield_record_id}
+  PATCH  /api/v1/yield-records/{yield_record_id}
+  DELETE /api/v1/yield-records/{yield_record_id}
 ```
 
-### Shared Enum Module (Post Phase 8)
+### Shared Enum Module (Post Phase 9)
 
-`app/core/enums.py` now contains three shared cross-domain enumerations:
+`app/core/enums.py` now contains four shared cross-domain enumerations:
 
 | Enum | Phase | Used By |
 |---|---|---|
 | `SensorType` | 7 | SensorReading, future SensorDevice, Digital Twin, AI Engine |
 | `IrrigationMethod` | 8 | IrrigationEvent, future Digital Twin water balance, AI Irrigation Optimizer |
 | `WaterSource` | 8 | IrrigationEvent, future water management analytics |
+| `YieldMeasurementMethod` | 9 | YieldRecord, Phase 12 Yield Prediction Engine, GaaS YieldAdvisor |
 
 ---
 
-## 13. Future Architecture: TimescaleDB
+## 14. Future Architecture: TimescaleDB
 
 ### Problem Statement
 
@@ -1408,7 +1493,7 @@ graph LR
 
 ---
 
-## 14. Future Architecture: Apache Cassandra
+## 15. Future Architecture: Apache Cassandra
 
 ### Problem Statement
 
@@ -1478,7 +1563,7 @@ The service receives whichever repository is injected via `deps.py`. No service 
 
 ---
 
-## 15. Future Architecture: CQRS
+## 16. Future Architecture: CQRS
 
 ### Problem Statement
 
@@ -1529,7 +1614,7 @@ Current write-side code is **already CQRS-ready**:
 
 ---
 
-## 16. Future Architecture: Redpanda / Kafka
+## 17. Future Architecture: Redpanda / Kafka
 
 ### Problem Statement
 
@@ -1602,7 +1687,7 @@ def __init__(
 
 ---
 
-## 17. Future Architecture: Temporal Workflows
+## 18. Future Architecture: Temporal Workflows
 
 ### Problem Statement
 
@@ -1667,7 +1752,7 @@ Temporal is a side-car concern. The AGRIFLOW-AI application layer is unmodified 
 
 ---
 
-## 18. Future Architecture: Digital Twin
+## 19. Future Architecture: Digital Twin
 
 ### Problem Statement
 
@@ -1737,7 +1822,7 @@ The `SensorType` shared enum in `app/core/enums.py` (established in Phase 7) was
 
 ---
 
-## 19. Future Architecture: Generative-As-A-Service (GaaS)
+## 20. Future Architecture: Generative-As-A-Service (GaaS)
 
 ### Problem Statement
 
@@ -1798,7 +1883,7 @@ The only missing piece is the GaaS orchestration layer — the underlying data A
 
 ---
 
-## 20. Architecture Decision Register
+## 21. Architecture Decision Register
 
 ### All ADRs by Phase
 
@@ -1853,7 +1938,7 @@ The only missing piece is the GaaS orchestration layer — the underlying data A
 
 ---
 
-## 21. Technology Evolution Roadmap
+## 22. Technology Evolution Roadmap
 
 ### Current Stack
 
@@ -1925,8 +2010,8 @@ graph TB
 | ✅ 5 | Weather | Climate time-series |
 | ✅ 6 | AI Readiness | P1 attribute foundation |
 | ✅ 7 | Sensor | IoT telemetry |
-| 🔜 8 | Irrigation | Water management |
-| 🔜 9 | Yield | Harvest intelligence |
+| ✅ 8 | Irrigation | Water management |
+| ✅ 9 | Yield | Harvest intelligence |
 | 🔜 10 | Disease Observation | Plant health |
 | 🔜 11 | Satellite | Remote sensing |
 | 🔮 12 | Yield Prediction Engine | First AI model |
@@ -1938,4 +2023,4 @@ graph TB
 
 *This document is the authoritative implementation history and architecture reference for AGRIFLOW-AI. It should be updated at the completion of each phase.*
 
-*Last updated: Phase 7 completion — June 2026*
+*Last updated: Phase 9 completion — June 2026*

@@ -4,7 +4,7 @@
 
 AGRIFLOW-AI is an Agricultural Intelligence Platform built using a layered architecture that emphasizes maintainability, scalability, separation of concerns, and domain-driven development.
 
-The platform currently implements Farm, Field, Crop, Soil Intelligence, Weather Intelligence, Sensor Telemetry, and Irrigation Management domains across eight completed phases, following a Clean Architecture approach with clearly separated responsibilities across API, Service, Repository, and Database layers.
+The platform currently implements Farm, Field, Crop, Soil Intelligence, Weather Intelligence, Sensor Telemetry, Irrigation Management, and Yield domains across nine completed phases, following a Clean Architecture approach with clearly separated responsibilities across API, Service, Repository, and Database layers.
 
 ---
 
@@ -70,10 +70,11 @@ PostgreSQL
 Farm
  └── Field
       ├── Crop
+      │    └── YieldRecord   ← Phase 9 (Grandchild Domain, Mutable)
       ├── SoilProfile
       ├── WeatherRecord
-      ├── SensorReading     ← Phase 7 (Telemetry, append-only)
-      └── IrrigationEvent   ← Phase 8 (Operational Management Events)
+      ├── SensorReading      ← Phase 7 (Telemetry, append-only)
+      └── IrrigationEvent    ← Phase 8 (Operational Management Events)
 ```
 
 Current business domains:
@@ -799,3 +800,74 @@ SELECT create_hypertable('irrigation_events', 'started_at', chunk_time_interval 
 | ADR-008-03 | `started_at` TIMESTAMPTZ is the TimescaleDB partition key candidate — indexed individually and in compound |
 | ADR-008-04 | Sparse PATCH ordering guard: service merges payload with persisted record before `ended_at >= started_at` check |
 | ADR-008-05 | `IrrigationMethod` and `WaterSource` placed in `app/core/enums.py` for future reuse by AI models and Digital Twin |
+
+---
+
+# Yield Domain Architecture (Phase 9)
+
+Phase 9 introduced `YieldRecord` — the first grandchild entity in AGRIFLOW-AI — establishing a dedicated time-series observation log for crop yield measurements, separate from the scalar summary columns on the `Crop` model.
+
+## Grandchild Domain Pattern
+
+`YieldRecord` is anchored to `crop_id` as its primary FK because yield is a per-crop-cycle measurement, not a per-field point-in-time event (ADR-009-01):
+
+```
+Farm → Field → Crop → YieldRecord
+```
+
+`field_id` is **denormalized** directly onto `yield_records` (ADR-009-02) to enable field-scoped queries (`list_by_field`) without a JOIN through `crops`. Both FKs carry `ON DELETE CASCADE`.
+
+## Mutable Domain
+
+`YieldRecord` is mutable (ADR-009-04). PATCH is permitted so operators can correct measurement values (recalibrated moisture content, corrected harvested area) after logging. `crop_id` is the one immutable field (ADR-009-05) — the schema's `Update` model excludes it.
+
+## Service-Side `field_id` Resolution
+
+`YieldRecordService.create_yield_record()` accepts `crop_id` (from the URL path) and resolves `field_id` from the crop ORM instance before building the insert data. The caller never supplies `field_id` — this guarantees the denormalized column is always consistent.
+
+## Dual-Parent Response Schema
+
+`YieldRecordResponse` is the first response schema in the project that exposes two parent FKs (`crop_id` and `field_id`). This reflects the dual-anchor design and makes the denormalized path transparent to API consumers.
+
+## Shared Enum Growth
+
+`app/core/enums.py` now holds four shared enum types:
+
+| Enum | Phase | Domain |
+|---|---|---|
+| `SensorType` | Phase 7 | SensorReading |
+| `IrrigationMethod` | Phase 8 | IrrigationEvent |
+| `WaterSource` | Phase 8 | IrrigationEvent |
+| `YieldMeasurementMethod` | Phase 9 | YieldRecord, Phase 12 Yield Prediction Engine |
+
+## Index Strategy
+
+Four indexes support the `yield_records` table:
+
+| Index | Columns | Primary Use Case |
+|---|---|---|
+| `ix_yield_records_crop_id` | `(crop_id)` | All records for a crop cycle |
+| `ix_yield_records_field_id` | `(field_id)` | All records for a field (direct path) |
+| `ix_yield_records_recorded_at` | `(recorded_at)` | Time-range queries across all fields |
+| `ix_yield_records_crop_id_recorded_at` | `(crop_id, recorded_at)` | Compound — primary AI feature pipeline access |
+
+## TimescaleDB Readiness
+
+`yield_records.recorded_at TIMESTAMPTZ NOT NULL` satisfies the hypertable partition key requirement. Future activation:
+
+```sql
+SELECT create_hypertable('yield_records', 'recorded_at', chunk_time_interval => INTERVAL '1 season');
+```
+
+## Architecture Decision Register — Phase 9 Additions
+
+| ADR | Decision |
+|---|---|
+| ADR-009-01 | `YieldRecord` anchors to `crop_id` as primary FK — yield is per crop cycle |
+| ADR-009-02 | `field_id` denormalized on `yield_records` for direct field-scoped queries without JOIN |
+| ADR-009-03 | `recorded_at TIMESTAMPTZ NOT NULL` is the primary time key and TimescaleDB partition key candidate |
+| ADR-009-04 | `YieldRecord` is mutable — PATCH permitted for operator measurement corrections |
+| ADR-009-05 | `crop_id` is immutable after creation — excluded from `YieldRecordUpdate` schema |
+| ADR-009-06 | `area_harvested_ha > 0` (not `>= 0`) when supplied — Pydantic `ge=0` tightened at service layer |
+| ADR-009-07 | `YieldMeasurementMethod` placed in `app/core/enums.py` for Phase 12 Yield Prediction Engine reuse |
+| ADR-009-08 | `CropNotFoundError` imported from `app.services.crop` — shared domain exception, not re-declared |
