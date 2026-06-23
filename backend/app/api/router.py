@@ -15,6 +15,7 @@ from app.api.sensor_readings.router import router as sensor_readings_router
 from app.api.soil_profiles.router import router as soil_profiles_router
 from app.api.version.router import router as version_router
 from app.api.weather_records.router import router as weather_records_router
+from app.api.yield_records.router import router as yield_records_router
 
 api_router = APIRouter()
 
@@ -26,3 +27,4 @@ api_router.include_router(soil_profiles_router)
 api_router.include_router(weather_records_router)
 api_router.include_router(sensor_readings_router)
 api_router.include_router(irrigation_events_router)
+api_router.include_router(yield_records_router)
