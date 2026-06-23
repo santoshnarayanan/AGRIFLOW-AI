@@ -27,6 +27,7 @@ from app.db.base import AuditableModel, Base
 
 if TYPE_CHECKING:
     from app.db.models.field import Field
+    from app.db.models.yield_record import YieldRecord
 
 
 class CropStatus(str, enum.Enum):
@@ -126,6 +127,11 @@ class Crop(AuditableModel, Base):
 
     # ── Relationships ─────────────────────────────────────────────────────────
     field: Mapped[Field] = relationship(back_populates="crops")
+    yield_records: Mapped[list[YieldRecord]] = relationship(
+        back_populates="crop",
+        cascade="all, delete-orphan",
+        order_by="desc(YieldRecord.recorded_at)",
+    )
 
     def __repr__(self) -> str:
         return (

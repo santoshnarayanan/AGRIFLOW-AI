@@ -6,6 +6,7 @@ from app.db.models.irrigation_event import IrrigationEvent
 from app.db.models.sensor_reading import SensorReading
 from app.db.models.soil_profile import SoilProfile
 from app.db.models.weather_record import WeatherRecord
+from app.db.models.yield_record import YieldRecord
 
 __all__ = [
     "Crop",
@@ -15,4 +16,5 @@ __all__ = [
     "SensorReading",
     "SoilProfile",
     "WeatherRecord",
+    "YieldRecord",
 ]

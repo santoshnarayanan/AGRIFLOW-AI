@@ -25,6 +25,7 @@ if TYPE_CHECKING:
     from app.db.models.sensor_reading import SensorReading
     from app.db.models.soil_profile import SoilProfile
     from app.db.models.weather_record import WeatherRecord
+    from app.db.models.yield_record import YieldRecord
 
 
 class Field(AuditableModel, Base):
@@ -93,6 +94,11 @@ class Field(AuditableModel, Base):
         back_populates="field",
         cascade="all, delete-orphan",
         order_by="desc(IrrigationEvent.started_at)",
+    )
+    yield_records: Mapped[list[YieldRecord]] = relationship(
+        back_populates="field",
+        cascade="all, delete-orphan",
+        order_by="desc(YieldRecord.recorded_at)",
     )
 
     def __repr__(self) -> str:
