@@ -118,3 +118,51 @@ class YieldMeasurementMethod(str, enum.Enum):
     CROP_CUT = "CROP_CUT"
     LABORATORY_ANALYSIS = "LABORATORY_ANALYSIS"
     ESTIMATED = "ESTIMATED"
+
+
+class DiseaseSeverity(str, enum.Enum):
+    """
+    Severity classification of a disease observation on a crop.
+
+    Used by:
+    - DiseaseObservation  (Phase 10)
+    - Disease Risk Scoring Engine  (Phase 13 — label for model training)
+    - GaaS PlantHealthAdvisor      (future — natural language risk queries)
+    - Digital Twin crop health state  (future)
+
+    Severity definitions:
+    - LOW      minor symptoms; localised; no immediate yield threat
+    - MEDIUM   moderate spread; intervention recommended
+    - HIGH     significant disease pressure; yield loss expected
+    - CRITICAL severe outbreak; urgent action required
+    """
+
+    LOW = "LOW"
+    MEDIUM = "MEDIUM"
+    HIGH = "HIGH"
+    CRITICAL = "CRITICAL"
+
+
+class DiagnosisMethod(str, enum.Enum):
+    """
+    Method by which a disease observation was identified or confirmed.
+
+    Placed in this shared module for cross-domain reuse across:
+    - DiseaseObservation  (Phase 10)
+    - Disease Risk Scoring Engine  (Phase 13 — data quality weighting)
+    - GaaS PlantHealthAdvisor      (future)
+    - Digital Twin plant health state  (future)
+
+    Method-specific confidence notes:
+    - LAB_ANALYSIS      highest confidence; pathogen confirmed at species level
+    - AGRONOMIST        high confidence; expert field assessment
+    - IMAGE_AI          moderate confidence; depends on model accuracy and image quality
+    - VISUAL_INSPECTION moderate confidence; farmer assessment without instruments
+    - SENSOR_DETECTED   future capability; environmental threshold inference
+    """
+
+    VISUAL_INSPECTION = "VISUAL_INSPECTION"
+    LAB_ANALYSIS = "LAB_ANALYSIS"
+    IMAGE_AI = "IMAGE_AI"
+    AGRONOMIST = "AGRONOMIST"
+    SENSOR_DETECTED = "SENSOR_DETECTED"
