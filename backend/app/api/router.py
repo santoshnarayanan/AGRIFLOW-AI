@@ -8,6 +8,7 @@ Adding a new domain module = one include_router call.
 from fastapi import APIRouter
 
 from app.api.crops.router import router as crops_router
+from app.api.disease_observations.router import router as disease_observations_router
 from app.api.fields.router import router as fields_router
 from app.api.health.router import router as health_router
 from app.api.irrigation_events.router import router as irrigation_events_router
@@ -23,6 +24,7 @@ api_router.include_router(health_router)
 api_router.include_router(version_router)
 api_router.include_router(fields_router)
 api_router.include_router(crops_router)
+api_router.include_router(disease_observations_router)
 api_router.include_router(soil_profiles_router)
 api_router.include_router(weather_records_router)
 api_router.include_router(sensor_readings_router)
