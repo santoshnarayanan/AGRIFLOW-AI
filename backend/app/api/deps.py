@@ -20,6 +20,7 @@ from fastapi import Depends
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.db.repositories.crop import CropRepository
+from app.db.repositories.disease_observation import DiseaseObservationRepository
 from app.db.repositories.farm import FarmRepository
 from app.db.repositories.field import FieldRepository
 from app.db.repositories.irrigation_event import IrrigationEventRepository
@@ -29,6 +30,7 @@ from app.db.repositories.weather_record import WeatherRecordRepository
 from app.db.repositories.yield_record import YieldRecordRepository
 from app.db.session import AsyncSessionFactory
 from app.services.crop import CropService
+from app.services.disease_observation import DiseaseObservationService
 from app.services.field import FieldService
 from app.services.irrigation_event import IrrigationEventService
 from app.services.sensor_reading import SensorReadingService
@@ -73,6 +75,19 @@ def get_crop_service(session: SessionDep) -> CropService:
 
 
 CropServiceDep = Annotated[CropService, Depends(get_crop_service)]
+
+
+def get_disease_observation_service(session: SessionDep) -> DiseaseObservationService:
+    """Construct a ``DiseaseObservationService`` wired to the request-scoped session."""
+    return DiseaseObservationService(
+        disease_observation_repository=DiseaseObservationRepository(session),
+        crop_repository=CropRepository(session),
+    )
+
+
+DiseaseObservationServiceDep = Annotated[
+    DiseaseObservationService, Depends(get_disease_observation_service)
+]
 
 
 def get_soil_profile_service(session: SessionDep) -> SoilProfileService:
