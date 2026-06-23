@@ -32,6 +32,11 @@ from .weather_record import (
     WeatherRecordNotFoundError,
     WeatherRecordService,
 )
+from .yield_record import (
+    InvalidYieldRecordError,
+    YieldRecordNotFoundError,
+    YieldRecordService,
+)
 
 __all__ = [
     "CropNotFoundError",
@@ -56,4 +61,7 @@ __all__ = [
     "SoilProfileService",
     "WeatherRecordNotFoundError",
     "WeatherRecordService",
+    "InvalidYieldRecordError",
+    "YieldRecordNotFoundError",
+    "YieldRecordService",
 ]
