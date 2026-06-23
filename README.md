@@ -2,9 +2,9 @@
 
 ## AI-Powered Agricultural Intelligence Platform
 
-AGRIFLOW-AI is an Agricultural Intelligence Platform designed to help farmers, agronomists, cooperatives, and agricultural enterprises manage farm operations, monitor crop lifecycles, analyze soil health, and build toward AI-driven agricultural decision intelligence.
+AGRIFLOW-AI is an Agricultural Intelligence Platform designed to help farmers, agronomists, cooperatives, and agricultural enterprises manage farm operations, monitor crop lifecycles, analyze soil health, track irrigation events, record yield measurements, and build toward AI-driven agricultural decision intelligence.
 
-The platform combines farm management, field management, crop management, soil intelligence, weather intelligence, sensor integration, and future AI-powered recommendations into a unified agricultural operating platform.
+The platform combines farm management, field management, crop management, soil intelligence, weather intelligence, sensor telemetry, irrigation management, yield tracking, and future AI-powered recommendations into a unified agricultural operating platform.
 
 ---
 
@@ -47,6 +47,8 @@ docs/01-vision.md
 
 ✅ Phase 8 – Irrigation Management Domain
 
+✅ Phase 9 – Yield Domain
+
 ---
 
 ### Current Domain Hierarchy
@@ -55,10 +57,11 @@ docs/01-vision.md
 Farm
  └── Field
       ├── Crop
+      │    └── YieldRecord    (Phase 9 — mutable, grandchild domain)
       ├── SoilProfile
       ├── WeatherRecord
-      ├── SensorReading     (Phase 7 — append-only telemetry)
-      └── IrrigationEvent   (Phase 8 — operational management events)
+      ├── SensorReading       (Phase 7 — append-only telemetry)
+      └── IrrigationEvent     (Phase 8 — mutable operational events)
 ```
 
 ---
@@ -74,7 +77,10 @@ soil_profiles
 weather_records
 sensor_readings
 irrigation_events
+yield_records
 ```
+
+Current migration head: `b7e2a9f4c8d3_create_yield_records_table`
 
 ---
 
@@ -119,15 +125,6 @@ PostgreSQL
 | Containerization    | Docker         |
 | Version Control     | Git + GitHub   |
 
-### Irrigation Management
-
-* Irrigation event logging per field
-* Delivery method classification (DRIP, SPRINKLER, FLOOD, FURROW, CENTER_PIVOT, SUBSURFACE, MANUAL, AUTOMATED)
-* Water source tracking (GROUNDWATER, SURFACE_WATER, RAINWATER, MUNICIPAL, RECYCLED_WATER)
-* Duration and water volume tracking
-* Start/end timestamp management with timezone validation
-* IrrigationEvent CRUD APIs
-
 ---
 
 ## Current Features
@@ -171,176 +168,34 @@ PostgreSQL
 * WeatherRecord CRUD APIs
 * Time-series weather data foundation
 
----
+### Sensor Telemetry (Phase 7)
 
-## Phase 8 Completion Summary
+* IoT sensor data persistence
+* 11 sensor types: SOIL_MOISTURE, SOIL_TEMPERATURE, AIR_TEMPERATURE, AIR_HUMIDITY, LIGHT_INTENSITY, LEAF_WETNESS, ELECTRICAL_CONDUCTIVITY, SOIL_SALINITY, WATER_LEVEL, BATTERY_STATUS, DEVICE_HEALTH
+* Append-only — immutable telemetry record
+* Timezone-aware timestamp validation
+* TimescaleDB hypertable upgrade path
 
-Phase 8 introduced AGRIFLOW-AI's first operational management event domain: IrrigationEvent.
+### Irrigation Management (Phase 8)
 
-Completed:
+* Irrigation event logging per field
+* 8 delivery methods: DRIP, SPRINKLER, FLOOD, FURROW, CENTER_PIVOT, SUBSURFACE, MANUAL, AUTOMATED
+* 5 water sources: GROUNDWATER, SURFACE_WATER, RAINWATER, MUNICIPAL, RECYCLED_WATER
+* Duration and water volume tracking
+* Timezone-aware timestamp validation with cross-field ordering guard
+* Mutable — operators can correct records after logging
+* TimescaleDB hypertable upgrade path
 
-* `IrrigationMethod` and `WaterSource` enums added to `app/core/enums.py`
-* IrrigationEvent ORM model with `started_at` (TIMESTAMPTZ primary time key), `ended_at`, `duration_minutes`, `water_volume_liters`, `irrigation_method`, `water_source`
-* Alembic migration `235a51cdf901`: `irrigation_events` table, `irrigation_method` PostgreSQL enum (8 values), `water_source` PostgreSQL enum (5 values), 3 indexes (2 individual, 1 compound)
-* IrrigationEvent Pydantic schemas — `IrrigationEventCreate`, `IrrigationEventUpdate`, `IrrigationEventResponse`
-* `IrrigationEventRepository` with create, list, get, update, delete, exists operations
-* `IrrigationEventService` with field existence validation, future timestamp rejection, cross-field sparse PATCH ordering guard
-* IrrigationEvent API Router — 5 endpoints (POST, GET list, GET single, PATCH, DELETE)
-* Full dependency injection registration in `app/api/deps.py`
-* Swagger documentation validated end-to-end
+### Yield Intelligence (Phase 9)
 
-Irrigation methods supported: DRIP, SPRINKLER, FLOOD, FURROW, CENTER_PIVOT, SUBSURFACE, MANUAL, AUTOMATED
-
-Water sources supported: GROUNDWATER, SURFACE_WATER, RAINWATER, MUNICIPAL, RECYCLED_WATER
-
-Notable migration fix:
-
-`postgresql.ENUM` with `create_type=False` was used (instead of `sa.Enum`) to prevent `DuplicateObjectError` on fresh database installations. This supersedes the `sa.Enum` pattern used in prior migrations and is now the recommended enum lifecycle strategy for all future phases.
-
----
-
-## Phase 7 Completion Summary
-
-Phase 7 introduced AGRIFLOW-AI's first telemetry domain: SensorReading.
-
-Completed:
-
-* Shared enum module (`app/core/enums.py`) with `SensorType` enum (11 sensor categories)
-* SensorReading ORM model with `DOUBLE PRECISION` sensor value and `TIMESTAMPTZ` recorded_at
-* Alembic migration 006: `sensor_readings` table, `sensor_type` PostgreSQL enum, 5 indexes (3 individual, 2 compound)
-* SensorReading Pydantic schemas — `SensorReadingCreate`, `SensorReadingResponse` (no Update schema — immutable by design)
-* SensorReadingRepository with create, list, get, delete operations
-* SensorReadingService with field existence validation, timezone-aware timestamp validation, future timestamp rejection
-* SensorReading API Router — 4 endpoints (no PATCH, no PUT)
-* Full dependency injection registration in `app/api/deps.py`
-
-New sensor types supported:
-
-* SOIL_MOISTURE, SOIL_TEMPERATURE, AIR_TEMPERATURE, AIR_HUMIDITY
-* LIGHT_INTENSITY, LEAF_WETNESS, ELECTRICAL_CONDUCTIVITY
-* SOIL_SALINITY, WATER_LEVEL, BATTERY_STATUS, DEVICE_HEALTH
-
-Architectural decisions introduced (ADR-007 series):
-
-* Telemetry is append-only and immutable
-* Timezone-naive timestamps are rejected (422 Unprocessable Entity)
-* Future timestamps are rejected (422 Unprocessable Entity)
-* Service layer marked as future boundary for Redpanda, Digital Twin, Temporal
-
----
-
-## Phase 6 Completion Summary
-
-Phase 6 focused on establishing the AI Readiness Foundation for AGRIFLOW-AI.
-
-Completed:
-
-* AI Data Readiness Assessment
-* P1 AI Schema Enhancement
-* AI-focused attribute expansion across Field, Crop, SoilProfile, and WeatherRecord domains
-* Validation & Stabilization Pass
-* Router exception-handling hardening
-* Backward compatibility verification
-
-New AI-ready attributes include:
-
-### Field
-
-* elevation_m
-
-### Crop
-
-* actual_yield_tons_ha
-* expected_yield_tons_ha
-* seeding_rate_kg_ha
-* growth_stage
-
-### SoilProfile
-
-* soil_depth_cm
-* cation_exchange_capacity_meq
-
-### WeatherRecord
-
-* solar_radiation_wm2
-* temperature_min_c
-* temperature_max_c
-
-
----
-
-## Current API Coverage
-
-### Health APIs
-
-```http
-GET /api/v1/health/live
-GET /api/v1/health/ready
-```
-
-### Version API
-
-```http
-GET /api/v1/version
-```
-
-### Field APIs
-
-```http
-POST   /api/v1/farms/{farm_id}/fields
-GET    /api/v1/farms/{farm_id}/fields
-GET    /api/v1/fields/{field_id}
-PATCH  /api/v1/fields/{field_id}
-DELETE /api/v1/fields/{field_id}
-```
-
-### Crop APIs
-
-```http
-POST   /api/v1/fields/{field_id}/crops
-GET    /api/v1/fields/{field_id}/crops
-GET    /api/v1/crops/{crop_id}
-PATCH  /api/v1/crops/{crop_id}
-DELETE /api/v1/crops/{crop_id}
-```
-
-### Soil Profile APIs
-
-```http
-POST   /api/v1/fields/{field_id}/soil-profile
-GET    /api/v1/fields/{field_id}/soil-profile
-PATCH  /api/v1/soil-profiles/{soil_profile_id}
-DELETE /api/v1/soil-profiles/{soil_profile_id}
-```
-
-### Weather Record APIs
-
-```http
-POST   /api/v1/fields/{field_id}/weather-records
-GET    /api/v1/fields/{field_id}/weather-records
-GET    /api/v1/weather-records/{weather_record_id}
-PATCH  /api/v1/weather-records/{weather_record_id}
-DELETE /api/v1/weather-records/{weather_record_id}
-```
-
-### Sensor Reading APIs (Phase 7)
-
-```http
-POST   /api/v1/fields/{field_id}/sensor-readings
-GET    /api/v1/fields/{field_id}/sensor-readings
-GET    /api/v1/sensor-readings/{sensor_reading_id}
-DELETE /api/v1/sensor-readings/{sensor_reading_id}
-```
-
-### Irrigation Event APIs (Phase 8)
-
-```http
-POST   /api/v1/fields/{field_id}/irrigation-events
-GET    /api/v1/fields/{field_id}/irrigation-events
-GET    /api/v1/irrigation-events/{event_id}
-PATCH  /api/v1/irrigation-events/{event_id}
-DELETE /api/v1/irrigation-events/{event_id}
-```
+* Discrete yield observation records per crop cycle
+* 7 measurement methods: MANUAL_SCALE, COMBINE_MONITOR, YIELD_MAP, REMOTE_SENSING, CROP_CUT, LABORATORY_ANALYSIS, ESTIMATED
+* Grain quality attributes: moisture content, test weight, quality grade
+* Harvested area tracking
+* Server-side `field_id` resolution from crop record
+* Mutable — operators can correct measurements after logging
+* Primary training label source for Phase 12 Yield Prediction Engine
+* TimescaleDB hypertable upgrade path
 
 ---
 
@@ -388,10 +243,23 @@ DELETE /api/v1/irrigation-events/{event_id}
 * Field must exist before IrrigationEvent creation
 * `started_at` must be timezone-aware and not in the future
 * `ended_at`, when supplied, must be timezone-aware and ≥ `started_at`
-* Cross-field ordering validated after sparse PATCH (effective values checked)
+* Cross-field ordering validated after sparse PATCH (effective values merged before check)
 * `duration_minutes` must be non-negative
 * `water_volume_liters` must be non-negative
 * IrrigationEvent is mutable — operators can correct records after the fact
+
+### YieldRecord Domain (Phase 9)
+
+* Crop must exist before YieldRecord creation
+* `field_id` resolved server-side from the crop record — not supplied by the caller
+* `crop_id` is immutable after creation — excluded from update schema
+* `recorded_at` must be timezone-aware and not in the future
+* `yield_value_tons_ha` must be ≥ 0 (Pydantic); contextually > 0 enforced by service
+* `area_harvested_ha`, when supplied, must be > 0
+* `test_weight_kg_hl`, when supplied, must be > 0
+* `moisture_content_percent`, when supplied, must be within [0, 100]
+* `quality_grade`, when supplied, max length 50 characters
+* YieldRecord is mutable — operators can correct measurements after logging
 
 ---
 
@@ -412,10 +280,23 @@ AGRIFLOW-AI
 backend/
 ├── app
 │   ├── api
+│   │   ├── crops/
+│   │   ├── fields/
+│   │   ├── irrigation_events/
+│   │   ├── sensor_readings/
+│   │   ├── soil_profiles/
+│   │   ├── weather_records/
+│   │   ├── yield_records/       ← Phase 9
+│   │   ├── deps.py
+│   │   └── router.py
 │   ├── core
+│   │   └── enums.py             ← SensorType, IrrigationMethod, WaterSource, YieldMeasurementMethod
 │   ├── db
-│   ├── schemas
-│   ├── services
+│   │   ├── migrations/versions/
+│   │   ├── models/              ← ORM models (Farm, Field, Crop, SoilProfile, WeatherRecord, SensorReading, IrrigationEvent, YieldRecord)
+│   │   └── repositories/        ← Repository layer per domain
+│   ├── schemas/                 ← Pydantic schemas per domain
+│   ├── services/                ← Service layer per domain
 │   └── main.py
 ├── Dockerfile
 ├── alembic.ini
@@ -426,19 +307,20 @@ backend/
 
 ## Documentation
 
-| Document                          | Description                          |
-| --------------------------------- | ------------------------------------ |
-| docs/01-vision.md                 | Product Vision & Strategic Direction |
-| docs/02-architecture.md           | Technical Architecture               |
-| docs/03-database.md               | Database Design                      |
-| docs/04-api-design.md             | API Design                           |
-| docs/05-local-setup.md            | Local Development Setup              |
-| docs/06-roadmap.md                | Product Roadmap                      |
-| docs/07-phase-history.md          | Implementation History               |
-| docs/08-phase-architecture-handbook.md | Phase Architecture Handbook (authoritative reference) |
-| docs/09-architecture-diagrams.md | Architecture Diagrams (current and target state) |
-| docs/AI_DATA_READINESS_ASSESSMENT.md | AI Data Readiness Assessment (Phase 6) |
-| docs/AGRIFLOW_PALANTIR_ALIGNMENT.md | Palantir Foundry Alignment Assessment (Phase 8) |
+| Document | Description |
+| --- | --- |
+| `docs/01-vision.md` | Product Vision & Strategic Direction |
+| `docs/02-architecture.md` | Technical Architecture (Phase 1–9 complete) |
+| `docs/03-database.md` | Database Design & Schema Reference |
+| `docs/04-api-design.md` | API Design & Endpoint Catalog |
+| `docs/05-local-setup.md` | Local Development Setup |
+| `docs/06-roadmap.md` | Product Roadmap (Phase 1–9 complete) |
+| `docs/07-phase-history.md` | Phase-by-Phase Implementation History |
+| `docs/08-phase-architecture-handbook.md` | Phase Architecture Handbook (authoritative ADR reference) |
+| `docs/09-architecture-diagrams.md` | Architecture Diagrams (current and target state, Mermaid) |
+| `docs/plan/AI_DATA_READINESS_ASSESSMENT.md` | AI Data Readiness Assessment (Phase 6) |
+| `docs/AGRIFLOW_PALANTIR_ALIGNMENT.md` | Palantir Foundry Alignment Assessment (Phases 1–8) |
+| `docs/plan/phase_9_yield_domain_93352ec2.plan.md` | Phase 9 Yield Domain — Implementation Plan |
 
 ---
 
@@ -479,45 +361,64 @@ http://localhost:8000/docs
 
 ## Roadmap Summary
 
+### Completed
+
+✅ Phase 1 – Foundation  
+✅ Phase 2 – Field Domain  
+✅ Phase 3 – Crop Domain  
+✅ Phase 4 – Soil Intelligence Domain  
+✅ Phase 5 – Weather Intelligence Domain  
+✅ Phase 6 – AI Readiness Foundation  
+✅ Phase 7 – SensorReading Domain  
+✅ Phase 8 – Irrigation Management Domain  
+✅ Phase 9 – Yield Domain  
+
 ### Current Next Phase
-
-Phase 9 – Yield Domain
-
-### Future Phases
-
-Phase 9 – Yield Domain
 
 Phase 10 – Disease Observation Domain
 
+### Planned Phases
+
 Phase 11 – Satellite Observation Domain
 
-Phase 12 – Yield Prediction Engine
+Phase 12 – Yield Prediction Engine (first AI model, uses Phase 9 YieldRecord labels)
 
 Phase 13 – Disease Prediction Engine
 
 Phase 14 – Irrigation Recommendation Engine
 
-Phase 15 – Farm Intelligence Platform
+Phase 15 – Farm Intelligence Platform (Full Digital Twin + GaaS Farm Copilot)
 
-For the detailed roadmap see:
-
-```text
-docs/06-roadmap.md
-```
+For the detailed roadmap see `docs/06-roadmap.md`
 
 ---
 
-## Current Agricultural Intelligence Platform (Post Phase 8)
+## Current Agricultural Intelligence Platform (Post Phase 9)
 
 ```text
 Farm
  └── Field
       ├── Crop                ✅ Phase 3
+      │    └── YieldRecord    ✅ Phase 9 (Harvest Intelligence — mutable, grandchild)
       ├── SoilProfile         ✅ Phase 4
       ├── WeatherRecord       ✅ Phase 5
       ├── SensorReading       ✅ Phase 7 (IoT Telemetry — append-only)
-      └── IrrigationEvent     ✅ Phase 8 (Operational Management Events)
+      └── IrrigationEvent     ✅ Phase 8 (Operational Management Events — mutable)
 ```
+
+### Implemented Domains
+
+| Domain | Phase | Entities | Notes |
+|---|---|---|---|
+| Farm | 1 | Farm | Root aggregate |
+| Field | 2 | Field | Farm ↔ Field hierarchy |
+| Crop | 3 | Crop | Lifecycle management |
+| Soil Intelligence | 4 | SoilProfile | 1:1 per Field |
+| Weather Intelligence | 5 | WeatherRecord | Time-series observations |
+| AI Readiness | 6 | (attributes) | Cross-domain AI features |
+| Sensor Telemetry | 7 | SensorReading | Append-only IoT data |
+| Irrigation Management | 8 | IrrigationEvent | Mutable operational events |
+| Yield | 9 | YieldRecord | Mutable, grandchild (Crop-anchored) |
 
 ## Target Agricultural Intelligence Platform
 
@@ -525,33 +426,51 @@ Farm
 Farm
  └── Field
       ├── Crop
+      │    └── YieldRecord         ✅ Phase 9 Complete
       ├── SoilProfile
       ├── WeatherRecord
       ├── SensorReading
       ├── IrrigationEvent
-      ├── YieldRecord
-      └── SatelliteObservation
+      ├── DiseaseObservation       🔜 Phase 10
+      └── SatelliteObservation     🔜 Phase 11
 ```
 
 ---
 
-## Long-Term Goal
+## Long-Term Goals
 
 AGRIFLOW-AI seeks to become the operating system for modern agriculture by combining operational data, environmental intelligence, predictive analytics, and artificial intelligence into a single platform that helps agricultural organizations improve productivity, sustainability, and decision-making.
 
-The long-term evolution can be summarized as:
+### Platform Evolution
 
 ```text
-Reactive Farming
+Phase 1–3   Reactive Farming       Farm, Field, Crop records
       ↓
-Data-Driven Farming
+Phase 4–6   Data-Driven Farming    Soil, Weather, AI-ready attributes
       ↓
-Predictive Farming
+Phase 7–9   Predictive Foundation  Sensor telemetry, Irrigation, Yield records  ← Current
       ↓
-Intelligent Farming
+Phase 10–11 Environmental Coverage Disease observation, Satellite imagery
       ↓
-Autonomous Agriculture
+Phase 12–14 Intelligent Farming    AI yield prediction, disease risk, irrigation optimization
+      ↓
+Phase 15+   Autonomous Agriculture Full Digital Twin + GaaS Farm Copilot
 ```
+
+### AI Layer Goals (Phase 12+)
+
+* **Yield Prediction Engine** — supervised model trained on YieldRecord time-series (Phase 9 foundation)
+* **Disease Risk Engine** — risk scoring using sensor telemetry and weather patterns
+* **Irrigation Recommendation Engine** — FAO-56 water balance optimization using IrrigationEvent history
+* **Farm Intelligence Platform** — Digital Twin + event-driven architecture + GaaS natural language interface
+
+### Infrastructure Goals
+
+* **TimescaleDB** — hypertable promotion for `sensor_readings`, `irrigation_events`, `yield_records`
+* **Redpanda** — event streaming for real-time Digital Twin state updates
+* **PostGIS** — field boundary polygon support for precision agriculture
+* **Temporal** — stateful agricultural workflow orchestration
+* **Azure** — enterprise and cooperative deployment target (AKS, Azure OpenAI, Azure AI Search)
 
 ---
 
