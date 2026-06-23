@@ -10,15 +10,17 @@ Separation of concerns
                                       constraints are expressed exactly once.
 - CreateDiseaseObservationRequest   — inbound payload for POST
                                       /crops/{crop_id}/disease-observations.
-                                      ``field_id`` is intentionally excluded;
-                                      it is resolved server-side from the crop
-                                      record, matching the pattern used by
-                                      YieldRecordCreate and WeatherRecordCreate.
-                                      ``observed_at``, ``disease_name``,
-                                      ``severity``, and ``diagnosis_method`` are
-                                      required; treatment and extent fields are
-                                      optional because observation detail varies
-                                      by diagnosis method and field conditions.
+                                      ``crop_id`` and ``field_id`` are intentionally
+                                      excluded; ``crop_id`` is resolved from the URL
+                                      path by the router and ``field_id`` is resolved
+                                      server-side from the crop record, matching the
+                                      pattern used by YieldRecordCreate and
+                                      WeatherRecordCreate.  ``observed_at``,
+                                      ``disease_name``, ``severity``, and
+                                      ``diagnosis_method`` are required; treatment
+                                      and extent fields are optional because
+                                      observation detail varies by diagnosis method
+                                      and field conditions.
 - UpdateDiseaseObservationRequest   — inbound payload for PATCH
                                       /disease-observations/{observation_id}.
                                       Every field is optional to support sparse
@@ -155,7 +157,7 @@ class CreateDiseaseObservationRequest(BaseModel):
     """
     Request body for POST /crops/{crop_id}/disease-observations.
 
-    ``crop_id`` is required in the payload for explicit crop-cycle anchoring.
+    ``crop_id`` is excluded — it is injected from the URL path by the router.
     ``field_id`` is excluded — it is resolved server-side from the crop record
     (the service fetches the crop to extract its field_id).
 
@@ -165,10 +167,6 @@ class CreateDiseaseObservationRequest(BaseModel):
     by diagnosis method and field conditions.
     """
 
-    crop_id: uuid.UUID = Field(
-        ...,
-        description="UUID of the crop cycle this disease observation belongs to",
-    )
     observed_at: datetime = Field(
         ...,
         description=(

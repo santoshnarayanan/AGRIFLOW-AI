@@ -1,5 +1,6 @@
 from .base import BaseRepository
 from .crop import CropRepository
+from .disease_observation import DiseaseObservationRepository
 from .farm import FarmRepository
 from .field import FieldRepository
 from .irrigation_event import IrrigationEventRepository
@@ -11,6 +12,7 @@ from .yield_record import YieldRecordRepository
 __all__ = [
     "BaseRepository",
     "CropRepository",
+    "DiseaseObservationRepository",
     "FarmRepository",
     "FieldRepository",
     "IrrigationEventRepository",
