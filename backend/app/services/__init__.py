@@ -4,6 +4,11 @@ from .crop import (
     InvalidHarvestDateError,
     InvalidYieldDataError,
 )
+from .disease_observation import (
+    DiseaseObservationNotFoundError,
+    DiseaseObservationService,
+    InvalidDiseaseObservationError,
+)
 from .field import (
     DuplicateFieldNameError,
     FarmNotFoundError,
@@ -41,11 +46,14 @@ from .yield_record import (
 __all__ = [
     "CropNotFoundError",
     "CropService",
+    "DiseaseObservationNotFoundError",
+    "DiseaseObservationService",
     "DuplicateFieldNameError",
     "DuplicateSoilProfileError",
     "FarmNotFoundError",
     "FieldNotFoundError",
     "FieldService",
+    "InvalidDiseaseObservationError",
     "InvalidHarvestDateError",
     "InvalidIrrigationTimestampError",
     "InvalidSensorTimestampError",
