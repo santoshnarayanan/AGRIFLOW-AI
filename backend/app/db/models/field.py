@@ -20,6 +20,7 @@ from app.db.base import AuditableModel, Base
 
 if TYPE_CHECKING:
     from app.db.models.crop import Crop
+    from app.db.models.disease_observation import DiseaseObservation
     from app.db.models.farm import Farm
     from app.db.models.irrigation_event import IrrigationEvent
     from app.db.models.sensor_reading import SensorReading
@@ -99,6 +100,11 @@ class Field(AuditableModel, Base):
         back_populates="field",
         cascade="all, delete-orphan",
         order_by="desc(YieldRecord.recorded_at)",
+    )
+    disease_observations: Mapped[list[DiseaseObservation]] = relationship(
+        back_populates="field",
+        cascade="all, delete-orphan",
+        order_by="desc(DiseaseObservation.observed_at)",
     )
 
     def __repr__(self) -> str:
