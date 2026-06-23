@@ -26,6 +26,7 @@ from app.db.repositories.irrigation_event import IrrigationEventRepository
 from app.db.repositories.sensor_reading import SensorReadingRepository
 from app.db.repositories.soil_profile import SoilProfileRepository
 from app.db.repositories.weather_record import WeatherRecordRepository
+from app.db.repositories.yield_record import YieldRecordRepository
 from app.db.session import AsyncSessionFactory
 from app.services.crop import CropService
 from app.services.field import FieldService
@@ -33,6 +34,7 @@ from app.services.irrigation_event import IrrigationEventService
 from app.services.sensor_reading import SensorReadingService
 from app.services.soil_profile import SoilProfileService
 from app.services.weather_record import WeatherRecordService
+from app.services.yield_record import YieldRecordService
 
 
 # ── Database session ──────────────────────────────────────────────────────────
@@ -115,3 +117,14 @@ def get_irrigation_event_service(session: SessionDep) -> IrrigationEventService:
 
 
 IrrigationEventServiceDep = Annotated[IrrigationEventService, Depends(get_irrigation_event_service)]
+
+
+def get_yield_record_service(session: SessionDep) -> YieldRecordService:
+    """Construct a ``YieldRecordService`` wired to the request-scoped session."""
+    return YieldRecordService(
+        yield_record_repository=YieldRecordRepository(session),
+        crop_repository=CropRepository(session),
+    )
+
+
+YieldRecordServiceDep = Annotated[YieldRecordService, Depends(get_yield_record_service)]
