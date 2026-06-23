@@ -23,6 +23,12 @@ from .weather_record import (
     WeatherRecordResponse,
     WeatherRecordUpdate,
 )
+from .yield_record import (
+    YieldRecordBase,
+    YieldRecordCreate,
+    YieldRecordResponse,
+    YieldRecordUpdate,
+)
 
 __all__ = [
     "CropBase",
@@ -50,4 +56,8 @@ __all__ = [
     "WeatherRecordCreate",
     "WeatherRecordResponse",
     "WeatherRecordUpdate",
+    "YieldRecordBase",
+    "YieldRecordCreate",
+    "YieldRecordResponse",
+    "YieldRecordUpdate",
 ]
