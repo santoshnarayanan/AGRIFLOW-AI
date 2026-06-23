@@ -90,3 +90,31 @@ class WaterSource(str, enum.Enum):
     RAINWATER = "RAINWATER"
     MUNICIPAL = "MUNICIPAL"
     RECYCLED_WATER = "RECYCLED_WATER"
+
+
+class YieldMeasurementMethod(str, enum.Enum):
+    """
+    Method used to obtain a yield measurement for a crop cycle.
+
+    Placed in this shared module for cross-domain reuse across:
+    - YieldRecord  (Phase 9)
+    - Yield Prediction Engine  (Phase 12 — data quality weighting in training pipeline)
+    - GaaS YieldAdvisor        (future — natural language yield history queries)
+    - Digital Twin field productivity state  (future)
+
+    Method-specific data quality notes:
+    - COMBINE_MONITOR / YIELD_MAP  high spatial resolution; suitable for precision-ag
+    - CROP_CUT                     FAO standard; statistically validated
+    - LABORATORY_ANALYSIS          highest accuracy; low spatial coverage
+    - REMOTE_SENSING               broad coverage; requires calibration against ground truth
+    - MANUAL_SCALE                 reliable for small plots; labour-intensive at scale
+    - ESTIMATED                    lowest confidence; for use when no instrument data exists
+    """
+
+    MANUAL_SCALE = "MANUAL_SCALE"
+    COMBINE_MONITOR = "COMBINE_MONITOR"
+    YIELD_MAP = "YIELD_MAP"
+    REMOTE_SENSING = "REMOTE_SENSING"
+    CROP_CUT = "CROP_CUT"
+    LABORATORY_ANALYSIS = "LABORATORY_ANALYSIS"
+    ESTIMATED = "ESTIMATED"
