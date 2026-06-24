@@ -25,7 +25,35 @@ Just as enterprise control towers provide visibility and decision support across
 The platform will continuously monitor farms, fields, crops, soil conditions, weather patterns, irrigation systems, sensor networks, and operational activities to generate actionable recommendations and predictive insights.
 
 The long-term objective is to enable farmers to make faster, better, and more sustainable decisions through data-driven intelligence.
-![AI Agriculture Vision](../images/vision/Agriflow-AI-Vision.png)
+
+### Agricultural Intelligence Transformation
+
+The platform bridges traditional reactive farming with intelligence-driven management by centralizing operational, environmental, and telemetry data into a single decision layer.
+
+```mermaid
+flowchart TB
+    subgraph Today["Today's Challenge"]
+        RF["Reactive Farming\nExperience · Intuition · Manual observation"]
+    end
+
+    subgraph Tower["AGRIFLOW-AI — Agricultural Control Tower"]
+        direction TB
+        MON["Continuous Monitoring\nFarms · Fields · Crops · Soil · Weather · Sensors"]
+        PROC["Domain Services & Validation\nOperational records · Time-series data · Business rules"]
+        INTEL["Predictive & Prescriptive Intelligence\nInsights · Forecasts · Recommendations"]
+        MON --> PROC --> INTEL
+    end
+
+    subgraph Outcomes["Intelligence-Driven Outcomes"]
+        direction LR
+        PF["Predictive Decisions"]
+        SU["Sustainable Operations"]
+        RES["Faster Risk Response"]
+    end
+
+    RF -->|"Transform"| Tower
+    Tower --> Outcomes
+```
 
 ---
 
@@ -96,7 +124,42 @@ Future farming systems must reduce waste while improving:
 
 AGRIFLOW-AI is envisioned as the digital control tower for agricultural operations.
 
-![AI Agriculture Vision](../images/vision/Agriflow-AI-Future.png)
+### Control Tower Architecture
+
+The control tower unifies visibility across all farm data sources, transforms raw signals into intelligence, and drives actionable, optimized decisions for every stakeholder.
+
+```mermaid
+flowchart TB
+    subgraph DataSources["Data Sources"]
+        direction LR
+        DS1["Farm & Field Operations"]
+        DS2["Crop Lifecycle & Yield"]
+        DS3["Soil & Weather Intelligence"]
+        DS4["Sensor Telemetry"]
+        DS5["Irrigation Events"]
+        DS6["Satellite Imagery · Future"]
+    end
+
+    subgraph ControlTower["AGRIFLOW-AI Control Tower"]
+        direction TB
+        VIS["Visibility\nContinuous monitoring across all domains"]
+        INT["Intelligence\nInsights · Predictions · Risk assessments"]
+        ACT["Actionability\nPlant · Irrigate · Fertilize · Harvest · Respond"]
+        OPT["Optimization\nProductivity · Profitability · Sustainability · Resources"]
+        VIS --> INT --> ACT --> OPT
+    end
+
+    subgraph Delivery["Decision Support"]
+        direction LR
+        D1["Farm Dashboard"]
+        D2["Mobile Operations"]
+        D3["AI Farm Copilot · Future"]
+        D4["Precision Equipment · Future"]
+    end
+
+    DataSources --> VIS
+    OPT --> Delivery
+```
 
 The platform will provide:
 
@@ -168,6 +231,34 @@ This digital representation will allow:
 * Resource optimization
 * Future forecasting
 
+```mermaid
+flowchart TB
+    subgraph Physical["Physical Farm"]
+        PF["Fields · Crops · Equipment · Sensors"]
+    end
+
+    subgraph Twin["Digital Twin — Continuously Updated"]
+        direction TB
+        FD["Farm & Field State"]
+        CD["Crop Lifecycle State"]
+        SD["Soil & Weather State"]
+        TD["Sensor Telemetry State"]
+        OD["Operational Events\nIrrigation · Yield · Disease"]
+        FD --- CD --- SD --- TD --- OD
+    end
+
+    subgraph Capabilities["Twin Capabilities"]
+        direction LR
+        C1["Scenario Simulation"]
+        C2["Predictive Planning"]
+        C3["Risk Analysis"]
+        C4["Resource Optimization"]
+    end
+
+    PF <-->|"Real-time sync"| Twin
+    Twin --> Capabilities
+```
+
 The digital twin becomes the foundation for advanced agricultural intelligence.
 
 ---
@@ -214,7 +305,7 @@ The goal is to provide expert-level decision support accessible to every farm.
 
 # Core Intelligence Domains
 
-AGRIFLOW-AI will gradually expand across multiple intelligence domains.
+AGRIFLOW-AI expands across multiple intelligence domains. Implemented domains include Farm, Field, Crop, Soil, Weather, Sensor, Irrigation, and Yield Intelligence. Disease, Satellite, and AI Decision Intelligence are on the roadmap.
 
 ## Farm Intelligence
 
@@ -250,7 +341,7 @@ Leveraging remote sensing and geospatial analytics.
 
 ## Yield Intelligence
 
-Forecasting production and improving harvest planning.
+Forecasting production and improving harvest planning. YieldRecord observations (Phase 9) provide the training label foundation for the Yield Prediction Engine.
 
 ## AI Decision Intelligence
 
@@ -320,13 +411,18 @@ The long-term future of agriculture will increasingly involve:
 
 AGRIFLOW-AI aims to become the intelligence layer that connects these technologies into a unified agricultural operating system.
 
-The platform's evolution can be summarized as:
+### Platform Evolution Arc
 
-Reactive Farming
-→ Data-Driven Farming
-→ Predictive Farming
-→ Intelligent Farming
-→ Autonomous Agriculture
+```mermaid
+flowchart LR
+    P1["Reactive Farming\nManual observation\nExperience-driven decisions"]
+    P2["Data-Driven Farming\nStructured records\nSoil · Weather · Crop data"]
+    P3["Predictive Foundation\nIoT telemetry\nIrrigation · Yield intelligence"]
+    P4["Intelligent Farming\nAI models · Digital Twin\nDisease & satellite data"]
+    P5["Autonomous Agriculture\nEvent-driven platform\nGaaS Farm Copilot"]
+
+    P1 --> P2 --> P3 --> P4 --> P5
+```
 
 ---
 
@@ -337,3 +433,9 @@ AGRIFLOW-AI seeks to become the operating system for modern agriculture.
 By combining operational data, environmental intelligence, predictive analytics, and artificial intelligence, the platform aims to help agricultural organizations make smarter decisions, improve sustainability, increase productivity, and build resilience for the future.
 
 The ultimate goal is to transform agriculture into a continuously learning, data-driven, and intelligence-powered ecosystem.
+
+---
+
+## Diagram Notes
+
+All diagrams in this document use [Mermaid](https://mermaid.js.org/) syntax and render natively in GitHub, GitLab, and compatible Markdown viewers. For detailed technical architecture diagrams, see `docs/09-architecture-diagrams.md`.
