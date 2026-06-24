@@ -11,6 +11,38 @@
 
 * GET /api/v1/version
 
+### Sensor Reading
+
+* POST   /api/v1/fields/{field_id}/sensor-readings
+* GET    /api/v1/fields/{field_id}/sensor-readings
+* GET    /api/v1/sensor-readings/{sensor_reading_id}
+* DELETE /api/v1/sensor-readings/{sensor_reading_id}
+
+### Irrigation Event
+
+* POST   /api/v1/fields/{field_id}/irrigation-events
+* GET    /api/v1/fields/{field_id}/irrigation-events
+* GET    /api/v1/irrigation-events/{event_id}
+* PATCH  /api/v1/irrigation-events/{event_id}
+* DELETE /api/v1/irrigation-events/{event_id}
+
+### Yield Record
+
+* POST   /api/v1/crops/{crop_id}/yield-records
+* GET    /api/v1/crops/{crop_id}/yield-records
+* GET    /api/v1/yield-records/{yield_record_id}
+* PATCH  /api/v1/yield-records/{yield_record_id}
+* DELETE /api/v1/yield-records/{yield_record_id}
+
+### Disease Observation
+
+* POST   /api/v1/crops/{crop_id}/disease-observations
+* GET    /api/v1/crops/{crop_id}/disease-observations
+* GET    /api/v1/fields/{field_id}/disease-observations
+* GET    /api/v1/disease-observations/{observation_id}
+* PATCH  /api/v1/disease-observations/{observation_id}
+* DELETE /api/v1/disease-observations/{observation_id}
+
 ---
 
 ## Field Domain Endpoints
@@ -146,7 +178,9 @@ Farm
 ### Crop Domain
 
 Field
-└── Crops
+└── Crop
+     ├── YieldRecords
+     └── DiseaseObservations
 
 ### Soil Profile Domain
 
@@ -158,15 +192,25 @@ Field
 Field
 └── WeatherRecords
 
-### Sensor Reading Domain (Phase 7)
+### Sensor Reading Domain
 
 Field
 └── SensorReadings (append-only telemetry)
 
-### Irrigation Event Domain (Phase 8)
+### Irrigation Event Domain
 
 Field
 └── IrrigationEvents (mutable operational events)
+
+### Yield Record Domain
+
+Crop
+└── YieldRecords (mutable observation records)
+
+### Disease Observation Domain
+
+Crop
+└── DiseaseObservations (mutable observation records)
 
 ---
 
@@ -229,20 +273,37 @@ Field
 * Update Weather Record
 * Delete Weather Record
 
-### Sensor Reading APIs (Phase 7)
+### Sensor Reading APIs
 
 * Create Sensor Reading
 * List Sensor Readings
 * Get Sensor Reading
 * Delete Sensor Reading (administrative only — no PATCH)
 
-### Irrigation Event APIs (Phase 8)
+### Irrigation Event APIs
 
 * Create Irrigation Event
 * List Irrigation Events
 * Get Irrigation Event
 * Update Irrigation Event
 * Delete Irrigation Event
+
+### Yield Record APIs
+
+* Create Yield Record
+* List Yield Records for Crop
+* Get Yield Record
+* Update Yield Record
+* Delete Yield Record
+
+### Disease Observation APIs
+
+* Create Disease Observation
+* List Disease Observations for Crop
+* List Disease Observations for Field
+* Get Disease Observation
+* Update Disease Observation
+* Delete Disease Observation
 
 ---
 
@@ -276,7 +337,7 @@ Field
 * Rainfall cannot be negative
 * Wind speed cannot be negative
 
-### Sensor Reading Domain (Phase 7)
+### Sensor Reading Domain
 
 * Field must exist before sensor reading creation (→ 404 Not Found)
 * `recorded_at` must be timezone-aware; naive datetimes are rejected (→ 422 Unprocessable Entity)
@@ -330,14 +391,14 @@ Field
 * PATCH  /api/v1/weather-records/{weather_record_id}
 * DELETE /api/v1/weather-records/{weather_record_id}
 
-### Sensor Readings (Phase 7)
+### Sensor Readings
 
 * POST   /api/v1/fields/{field_id}/sensor-readings
 * GET    /api/v1/fields/{field_id}/sensor-readings
 * GET    /api/v1/sensor-readings/{sensor_reading_id}
 * DELETE /api/v1/sensor-readings/{sensor_reading_id}
 
-### Irrigation Events (Phase 8)
+### Irrigation Events
 
 * POST   /api/v1/fields/{field_id}/irrigation-events
 * GET    /api/v1/fields/{field_id}/irrigation-events
@@ -345,12 +406,27 @@ Field
 * PATCH  /api/v1/irrigation-events/{event_id}
 * DELETE /api/v1/irrigation-events/{event_id}
 
+### Yield Records
+
+* POST   /api/v1/crops/{crop_id}/yield-records
+* GET    /api/v1/crops/{crop_id}/yield-records
+* GET    /api/v1/yield-records/{yield_record_id}
+* PATCH  /api/v1/yield-records/{yield_record_id}
+* DELETE /api/v1/yield-records/{yield_record_id}
+
+### Disease Observations
+
+* POST   /api/v1/crops/{crop_id}/disease-observations
+* GET    /api/v1/crops/{crop_id}/disease-observations
+* GET    /api/v1/fields/{field_id}/disease-observations
+* GET    /api/v1/disease-observations/{observation_id}
+* PATCH  /api/v1/disease-observations/{observation_id}
+* DELETE /api/v1/disease-observations/{observation_id}
+
 ---
 
 ## Future API Evolution
 
-* Yield Analytics APIs (Phase 9)
-* Disease Observation APIs (Phase 10)
 * Satellite Imagery APIs (Phase 11)
 * AI Recommendation APIs (Phase 12+)
 * Sensor Aggregation APIs (TimescaleDB continuous aggregates)
@@ -360,23 +436,7 @@ Field
 
 ---
 
-## Phase 6 Validation Status
-
-Phase 6 AI Readiness Foundation has been completed.
-
-Validation completed across:
-- ORM Models
-- Schemas
-- Services
-- Routers
-- OpenAPI Documentation
-- Backward Compatibility
-
-Critical router exception handling issues were identified and fixed during stabilization.
-
----
-
-## Sensor Reading Domain Endpoints (Phase 7)
+## Sensor Reading Domain Endpoints
 
 ### Create Sensor Reading
 
@@ -505,7 +565,7 @@ Rationale: A timezone-naive or future-dated timestamp is syntactically valid JSO
 
 ---
 
-## Irrigation Event Domain Endpoints (Phase 8)
+## Irrigation Event Domain Endpoints
 
 ### Create Irrigation Event
 
@@ -631,7 +691,7 @@ DELETE /api/v1/irrigation-events/{event_id}
 
 ---
 
-# Yield Record API (Phase 9)
+# Yield Record API
 
 ## Endpoints
 
@@ -808,6 +868,189 @@ The creation endpoint uses `/crops/{crop_id}/yield-records` rather than `/fields
 | 204 No Content | Record deleted | Successful DELETE |
 | 400 Bad Request | Invalid measurement | Future `recorded_at`, `area <= 0`, or `test_weight <= 0` |
 | 404 Not Found | Resource absent | Crop or yield record UUID not found |
+
+---
+
+# Disease Observation API (Phase 10)
+
+## Endpoints
+
+### Create Disease Observation
+
+```
+POST /api/v1/crops/{crop_id}/disease-observations
+```
+
+**Status:** 201 Created
+
+**Request Model:** `CreateDiseaseObservationRequest`
+
+```json
+{
+  "observed_at": "2026-06-23T08:00:00+02:00",
+  "disease_name": "Late Blight",
+  "severity": "HIGH",
+  "diagnosis_method": "VISUAL_INSPECTION",
+  "affected_area_percent": "12.50",
+  "treatment_applied": "Copper fungicide applied",
+  "notes": "North section showing early symptoms"
+}
+```
+
+**Note:** `crop_id` is taken from the URL path. `field_id` is resolved server-side from the crop record — it must not be supplied.
+
+**Response Model:** `DiseaseObservationResponse`
+
+**Business Rules:**
+
+* Crop must exist before creation
+* `field_id` resolved server-side from crop
+* `observed_at` must not be in the future
+
+**Exception Mapping:**
+
+| Exception | HTTP Status | Condition |
+|---|---|---|
+| `CropNotFoundError` | 404 Not Found | Crop UUID does not exist |
+| `InvalidDiseaseObservationError` | 400 Bad Request | `observed_at` is in the future |
+
+---
+
+### List Disease Observations for Crop
+
+```
+GET /api/v1/crops/{crop_id}/disease-observations?limit=100&offset=0
+```
+
+**Status:** 200 OK
+
+**Query Parameters:**
+
+| Parameter | Default | Range | Description |
+|---|---|---|---|
+| `limit` | 100 | 1–500 | Maximum records to return |
+| `offset` | 0 | ≥ 0 | Records to skip |
+
+**Response Model:** `DiseaseObservationListResponse`
+
+**Ordering:** `observed_at DESC` — most recent observation first.
+
+---
+
+### List Disease Observations for Field
+
+```
+GET /api/v1/fields/{field_id}/disease-observations?limit=100&offset=0
+```
+
+**Status:** 200 OK
+
+**Query Parameters:**
+
+| Parameter | Default | Range | Description |
+|---|---|---|---|
+| `limit` | 100 | 1–500 | Maximum records to return |
+| `offset` | 0 | ≥ 0 | Records to skip |
+
+**Response Model:** `DiseaseObservationListResponse`
+
+**Ordering:** `observed_at DESC` — most recent observation first.
+
+---
+
+### Get Disease Observation
+
+```
+GET /api/v1/disease-observations/{observation_id}
+```
+
+**Status:** 200 OK
+
+**Response Model:** `DiseaseObservationResponse`
+
+**Exception Mapping:**
+
+| Exception | HTTP Status | Condition |
+|---|---|---|
+| `DiseaseObservationNotFoundError` | 404 Not Found | Observation UUID does not exist |
+
+---
+
+### Update Disease Observation
+
+```
+PATCH /api/v1/disease-observations/{observation_id}
+```
+
+**Status:** 200 OK
+
+**Request Model:** `UpdateDiseaseObservationRequest` (all fields optional — sparse PATCH)
+
+```json
+{
+  "severity": "CRITICAL",
+  "notes": "Escalated after follow-up inspection"
+}
+```
+
+**Note:** `crop_id` and `field_id` are immutable and cannot be supplied.
+
+**Response Model:** `DiseaseObservationResponse`
+
+**Exception Mapping:**
+
+| Exception | HTTP Status | Condition |
+|---|---|---|
+| `DiseaseObservationNotFoundError` | 404 Not Found | Observation UUID does not exist |
+| `InvalidDiseaseObservationError` | 400 Bad Request | Updated `observed_at` is in the future |
+
+---
+
+### Delete Disease Observation
+
+```
+DELETE /api/v1/disease-observations/{observation_id}
+```
+
+**Status:** 204 No Content
+
+**Response body:** None
+
+**Exception Mapping:**
+
+| Exception | HTTP Status | Condition |
+|---|---|---|
+| `DiseaseObservationNotFoundError` | 404 Not Found | Observation UUID does not exist |
+
+---
+
+## Disease Observation API Architectural Decisions
+
+### POST anchors to `/crops/{crop_id}` (ADR-010-01)
+
+Disease pressure is a per-crop-cycle measurement. The creation endpoint uses `/crops/{crop_id}/disease-observations`. The server resolves `field_id` from the crop record.
+
+### `field_id` Denormalization (ADR-010-02)
+
+`DiseaseObservationResponse` exposes both `crop_id` and `field_id`. `field_id` is resolved server-side at creation and stored denormalized for direct field-scoped list queries.
+
+### `crop_id` Immutability at API Level (ADR-010-05)
+
+`UpdateDiseaseObservationRequest` excludes `crop_id` and `field_id`. If a record was logged against the wrong crop, it must be deleted and re-created.
+
+### Shared Enum Strategy (ADR-010-06)
+
+`DiseaseSeverity` and `DiagnosisMethod` are defined in `app/core/enums.py` and exposed through OpenAPI schema definitions for Swagger consumers.
+
+### HTTP Status Code Reference for Disease Observation Domain
+
+| Code | Meaning | When Used |
+|---|---|---|
+| 201 Created | Observation persisted | Successful POST |
+| 200 OK | Observation(s) returned | Successful GET or PATCH |
+| 204 No Content | Observation deleted | Successful DELETE |
+| 400 Bad Request | Invalid observation | Future `observed_at` |
+| 404 Not Found | Resource absent | Crop or observation UUID not found |
 
 ---
 

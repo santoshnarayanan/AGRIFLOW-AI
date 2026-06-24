@@ -1,13 +1,13 @@
 # Database Design
 
-**Last Updated:** Phase 8 — Irrigation Management Domain Complete  
-**Migration Head:** `235a51cdf901_create_irrigation_events_table`
+**Last Updated:** Phase 10 — Disease Observation Domain Complete  
+**Migration Head:** `d3e7b2a9f1c4_create_disease_observations_table`
 
 ---
 
 ## Current Schema Overview
 
-AGRIFLOW-AI operates seven PostgreSQL tables after Phase 8 completion. All tables inherit the `AuditableModel` mixin (UUID PK, `created_at TIMESTAMPTZ`, `updated_at TIMESTAMPTZ`). All foreign keys to `fields.id` use `ON DELETE CASCADE`.
+AGRIFLOW-AI operates nine PostgreSQL tables after Phase 10 completion. All tables inherit the `AuditableModel` mixin (UUID PK, `created_at TIMESTAMPTZ`, `updated_at TIMESTAMPTZ`). All foreign keys to `fields.id` and `crops.id` use `ON DELETE CASCADE` where applicable.
 
 ```mermaid
 erDiagram
@@ -17,6 +17,10 @@ erDiagram
     fields ||--o{ weather_records : "records"
     fields ||--o{ sensor_readings : "generates"
     fields ||--o{ irrigation_events : "receives"
+    fields ||--o{ yield_records : "denormalized"
+    fields ||--o{ disease_observations : "denormalized"
+    crops ||--o{ yield_records : "measures"
+    crops ||--o{ disease_observations : "observes"
 ```
 
 ---
@@ -27,10 +31,12 @@ erDiagram
 Farm
 └── Field
      ├── Crop
+     │    ├── YieldRecord
+     │    └── DiseaseObservation
      ├── SoilProfile         (1:1)
      ├── WeatherRecord
-     ├── SensorReading       ← Phase 7 (append-only)
-     └── IrrigationEvent     ← Phase 8 (mutable operational events)
+     ├── SensorReading       (append-only)
+     └── IrrigationEvent     (mutable operational events)
 ```
 
 ---
@@ -288,22 +294,19 @@ Field (1) → (1) SoilProfile
 
 Field (1) → (N) WeatherRecords
 
-Field (1) → (N) SensorReadings  ← Phase 7 (ON DELETE CASCADE, append-only)
+Field (1) → (N) SensorReadings  (ON DELETE CASCADE, append-only)
 
-Field (1) → (N) IrrigationEvents  ← Phase 8 (ON DELETE CASCADE, mutable)
+Field (1) → (N) IrrigationEvents  (ON DELETE CASCADE, mutable)
 
+Crop (1) → (N) YieldRecords  (ON DELETE CASCADE, mutable grandchild)
 
-## Current Domain Hierarchy
+Crop (1) → (N) DiseaseObservations  (ON DELETE CASCADE, mutable grandchild)
 
-```text
-Farm
-└── Field
-     ├── Crop
-     ├── SoilProfile         (1:1)
-     ├── WeatherRecord
-     ├── SensorReading       ← Phase 7 (append-only)
-     └── IrrigationEvent     ← Phase 8 (mutable operational events)
-```
+Field (1) → (N) YieldRecords  (ON DELETE CASCADE, denormalized FK)
+
+Field (1) → (N) DiseaseObservations  (ON DELETE CASCADE, denormalized FK)
+
+`field_id` is denormalized in both `yield_records` and `disease_observations` to enable direct field-scoped queries without a JOIN through `crops` (ADR-009-02, ADR-010-02).
 
 
 ## Implemented Migrations
@@ -318,6 +321,8 @@ Farm
 | `005_add_p1_ai_readiness_columns` | P1 AI attributes across 4 tables |
 | `006_create_sensor_readings_table` | sensor_readings table + `sensor_type` enum + 5 indexes |
 | `235a51cdf901_create_irrigation_events_table` | irrigation_events table + `irrigation_method` + `water_source` enums + 3 indexes |
+| `b7e2a9f4c8d3_create_yield_records_table` | yield_records table + `yield_measurement_method` enum + 4 indexes |
+| `d3e7b2a9f1c4_create_disease_observations_table` | disease_observations table + `disease_severity` + `diagnosis_method` enums + 6 indexes |
 
 ## Crop Status Lifecycle
 
@@ -326,68 +331,15 @@ Farm
 - GROWING
 - HARVESTED
 
-## Current API Coverage
-
-### Field APIs
-
-- POST   /api/v1/farms/{farm_id}/fields
-- GET    /api/v1/farms/{farm_id}/fields
-- GET    /api/v1/fields/{field_id}
-- PATCH  /api/v1/fields/{field_id}
-- DELETE /api/v1/fields/{field_id}
-
-### Crop APIs
-
-- POST   /api/v1/fields/{field_id}/crops
-- GET    /api/v1/fields/{field_id}/crops
-- GET    /api/v1/crops/{crop_id}
-- PATCH  /api/v1/crops/{crop_id}
-- DELETE /api/v1/crops/{crop_id}
-
-### Soil Profile APIs
-
-* POST   /api/v1/fields/{field_id}/soil-profile
-* GET    /api/v1/fields/{field_id}/soil-profile
-* PATCH  /api/v1/soil-profiles/{soil_profile_id}
-* DELETE /api/v1/soil-profiles/{soil_profile_id}
-
-### Weather Record APIs
-
-* POST   /api/v1/fields/{field_id}/weather-records
-* GET    /api/v1/fields/{field_id}/weather-records
-* GET    /api/v1/weather-records/{weather_record_id}
-* PATCH  /api/v1/weather-records/{weather_record_id}
-* DELETE /api/v1/weather-records/{weather_record_id}
-
-### Sensor Reading APIs (Phase 7)
-
-* POST   /api/v1/fields/{field_id}/sensor-readings
-* GET    /api/v1/fields/{field_id}/sensor-readings
-* GET    /api/v1/sensor-readings/{sensor_reading_id}
-* DELETE /api/v1/sensor-readings/{sensor_reading_id}
-
-No PATCH. No PUT. SensorReading is immutable telemetry.
-
-### Irrigation Event APIs (Phase 8)
-
-* POST   /api/v1/fields/{field_id}/irrigation-events
-* GET    /api/v1/fields/{field_id}/irrigation-events
-* GET    /api/v1/irrigation-events/{event_id}
-* PATCH  /api/v1/irrigation-events/{event_id}
-* DELETE /api/v1/irrigation-events/{event_id}
-
-
 ## Future Database Evolution
 
-- Yield Tracking (`yield_records` table) — Phase 9
-- Disease Observation (`disease_observations` table) — Phase 10
 - Satellite Imagery (`satellite_observations` table) — Phase 11
 - GIS / PostGIS Support (field boundary polygons)
 - AI Recommendation Engine (inference output tables)
 
 ### TimescaleDB Hypertable Promotion
 
-Both `sensor_readings` and `irrigation_events` are designed for zero-friction TimescaleDB conversion.
+Both `sensor_readings`, `irrigation_events`, `yield_records`, and `disease_observations` are designed for zero-friction TimescaleDB conversion.
 
 **sensor_readings:** Partition key `recorded_at TIMESTAMPTZ NOT NULL` (Phase 7)
 
@@ -417,6 +369,17 @@ SELECT create_hypertable(
 SELECT create_hypertable(
     'yield_records',
     'recorded_at',
+    chunk_time_interval => INTERVAL '1 season',
+    migrate_data => TRUE
+);
+```
+
+**disease_observations:** Partition key `observed_at TIMESTAMPTZ NOT NULL` (Phase 10)
+
+```sql
+SELECT create_hypertable(
+    'disease_observations',
+    'observed_at',
     chunk_time_interval => INTERVAL '1 season',
     migrate_data => TRUE
 );
@@ -510,9 +473,17 @@ CREATE INDEX ix_yield_records_crop_id_recorded_at ON yield_records (crop_id, rec
 ### Relationships
 
 ```
-Crop    (1) → (N) YieldRecords  ← Phase 9 (ON DELETE CASCADE, mutable grandchild)
-Field   (1) → (N) YieldRecords  ← Phase 9 (ON DELETE CASCADE, denormalized FK)
+Crop    (1) → (N) YieldRecords  (ON DELETE CASCADE, mutable grandchild)
+Field   (1) → (N) YieldRecords  (ON DELETE CASCADE, denormalized FK)
 ```
+
+### Design Decisions
+
+**Grandchild domain pattern:**
+`YieldRecord` anchors on `crop_id` because yield is a per-crop-cycle measurement (ADR-009-01). `field_id` is denormalized for direct field-scoped queries (ADR-009-02).
+
+**Mutable domain:**
+Unlike `SensorReading`, `YieldRecord` is mutable. Operators may correct measurement values after logging.
 
 ### TimescaleDB Readiness
 
@@ -522,6 +493,118 @@ Field   (1) → (N) YieldRecords  ← Phase 9 (ON DELETE CASCADE, denormalized F
 SELECT create_hypertable(
     'yield_records',
     'recorded_at',
+    chunk_time_interval => INTERVAL '1 season',
+    migrate_data => TRUE
+);
+```
+
+---
+
+## Phase 10 — Disease Observation Domain
+
+### `disease_severity` Enum
+
+```sql
+CREATE TYPE disease_severity AS ENUM (
+    'LOW',
+    'MEDIUM',
+    'HIGH',
+    'CRITICAL'
+);
+```
+
+### `diagnosis_method` Enum
+
+```sql
+CREATE TYPE diagnosis_method AS ENUM (
+    'VISUAL_INSPECTION',
+    'LAB_ANALYSIS',
+    'IMAGE_AI',
+    'AGRONOMIST',
+    'SENSOR_DETECTED'
+);
+```
+
+Created via `postgresql.ENUM` with `create_type=False` (ADR-008-01 pattern). Owned by migration `d3e7b2a9f1c4`.
+
+### `disease_observations` Table
+
+```sql
+CREATE TABLE disease_observations (
+    id                    UUID         NOT NULL DEFAULT gen_random_uuid(),
+    crop_id               UUID         NOT NULL,   -- FK → crops.id ON DELETE CASCADE
+    field_id              UUID         NOT NULL,   -- FK → fields.id ON DELETE CASCADE (denormalized)
+    observed_at           TIMESTAMPTZ  NOT NULL,
+    disease_name          VARCHAR(255) NOT NULL,
+    severity              disease_severity NOT NULL,
+    affected_area_percent NUMERIC(5,2),
+    diagnosis_method      diagnosis_method NOT NULL,
+    treatment_applied     TEXT,
+    notes                 TEXT,
+    created_at            TIMESTAMPTZ  NOT NULL DEFAULT now(),
+    updated_at            TIMESTAMPTZ  NOT NULL DEFAULT now(),
+    CONSTRAINT pk_disease_observations PRIMARY KEY (id),
+    CONSTRAINT fk_disease_observations_crop_id
+        FOREIGN KEY (crop_id) REFERENCES crops(id) ON DELETE CASCADE,
+    CONSTRAINT fk_disease_observations_field_id
+        FOREIGN KEY (field_id) REFERENCES fields(id) ON DELETE CASCADE
+);
+```
+
+**Column notes:**
+
+| Column | Type | Notes |
+|---|---|---|
+| `crop_id` | UUID FK | Primary domain anchor — disease pressure is per crop cycle (ADR-010-01) |
+| `field_id` | UUID FK | Denormalized from crop for direct field queries (ADR-010-02) |
+| `observed_at` | TIMESTAMPTZ | TimescaleDB partition key candidate (ADR-010-03) |
+| `disease_name` | VARCHAR(255) | Free-text disease identifier |
+| `severity` | ENUM | LOW, MEDIUM, HIGH, CRITICAL |
+| `affected_area_percent` | NUMERIC(5,2) | Nullable; Pydantic enforces [0, 100] |
+| `diagnosis_method` | ENUM | Identification method for data quality weighting |
+| `treatment_applied` | TEXT | Nullable treatment response notes |
+| `notes` | TEXT | Operator free-text annotations |
+
+### Indexes
+
+```sql
+-- Single-column
+CREATE INDEX ix_disease_observations_crop_id       ON disease_observations (crop_id);
+CREATE INDEX ix_disease_observations_field_id      ON disease_observations (field_id);
+CREATE INDEX ix_disease_observations_observed_at   ON disease_observations (observed_at);
+CREATE INDEX ix_disease_observations_disease_name  ON disease_observations (disease_name);
+CREATE INDEX ix_disease_observations_severity      ON disease_observations (severity);
+
+-- Compound (primary AI feature pipeline path)
+CREATE INDEX ix_disease_observations_crop_id_observed_at ON disease_observations (crop_id, observed_at);
+```
+
+### Relationships
+
+```
+Crop    (1) → (N) DiseaseObservations  (ON DELETE CASCADE, mutable grandchild)
+Field   (1) → (N) DiseaseObservations  (ON DELETE CASCADE, denormalized FK)
+```
+
+### Design Decisions
+
+**Grandchild domain pattern:**
+`DiseaseObservation` anchors on `crop_id` because disease pressure belongs to a specific crop cycle (ADR-010-01). `field_id` is denormalized for direct field-scoped queries (ADR-010-02).
+
+**Mutable domain:**
+`DiseaseObservation` is mutable. Operators may correct severity, diagnosis method, treatment notes, or extent after logging (ADR-010-04). `crop_id` is immutable after creation (ADR-010-05).
+
+**Shared enum strategy:**
+`DiseaseSeverity` and `DiagnosisMethod` are placed in `app/core/enums.py` for reuse by the Disease Risk Scoring Engine and GaaS PlantHealthAdvisor (ADR-010-06).
+
+### TimescaleDB Readiness
+
+**disease_observations:** Partition key `observed_at TIMESTAMPTZ NOT NULL` (Phase 10)
+
+```sql
+SELECT create_hypertable(
+    'disease_observations',
+    'observed_at',
     chunk_time_interval => INTERVAL '1 season',
     migrate_data => TRUE
 );
