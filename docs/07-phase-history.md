@@ -1153,3 +1153,175 @@ Yield Records (Phase 9):
 ### Next Planned Evolution
 
 Phase 10 – Disease Observation Domain
+
+---
+
+## Phase 10 – Disease Observation Domain
+
+Status: ✅ Complete
+
+### Completed
+
+* `DiseaseSeverity` enum added to `app/core/enums.py` (LOW, MEDIUM, HIGH, CRITICAL)
+* `DiagnosisMethod` enum added to `app/core/enums.py` (VISUAL_INSPECTION, LAB_ANALYSIS, IMAGE_AI, AGRONOMIST, SENSOR_DETECTED)
+* DiseaseObservation ORM Model (`backend/app/db/models/disease_observation.py`)
+* Alembic migration `d3e7b2a9f1c4_create_disease_observations_table`
+* DiseaseObservation Pydantic Schemas (`CreateDiseaseObservationRequest`, `UpdateDiseaseObservationRequest`, `DiseaseObservationResponse`)
+* `DiseaseObservationRepository` with `create`, `get_by_id`, `get_by_crop`, `get_by_field`, `update`, `delete`
+* `DiseaseObservationService` with crop existence validation, server-side `field_id` resolution, future `observed_at` rejection
+* `DiseaseObservationNotFoundError` and `InvalidDiseaseObservationError` domain exception types
+* DiseaseObservation API router with 6 endpoints (POST, GET list by crop, GET list by field, GET single, PATCH, DELETE)
+* `get_disease_observation_service()` factory and `DiseaseObservationServiceDep` alias in `app/api/deps.py`
+* Router registered in `app/api/router.py`
+* Swagger validation for `DiseaseSeverity` and `DiagnosisMethod` enum exposure
+
+### Database Changes
+
+* Added `disease_severity` PostgreSQL ENUM type (LOW, MEDIUM, HIGH, CRITICAL)
+* Added `diagnosis_method` PostgreSQL ENUM type (VISUAL_INSPECTION, LAB_ANALYSIS, IMAGE_AI, AGRONOMIST, SENSOR_DETECTED)
+* Added `disease_observations` table with columns:
+
+| Column | Type | Notes |
+|---|---|---|
+| `id` | `UUID` | Primary key |
+| `crop_id` | `UUID` (FK) | References `crops.id` ON DELETE CASCADE |
+| `field_id` | `UUID` (FK) | Denormalized; references `fields.id` ON DELETE CASCADE |
+| `observed_at` | `TIMESTAMPTZ NOT NULL` | Primary time key |
+| `disease_name` | `VARCHAR(255)` | Free-text disease identifier |
+| `severity` | `disease_severity` ENUM | Severity classification |
+| `affected_area_percent` | `NUMERIC(5,2)` | Nullable; percentage affected [0, 100] |
+| `diagnosis_method` | `diagnosis_method` ENUM | Identification method |
+| `treatment_applied` | `TEXT` | Nullable treatment notes |
+| `notes` | `TEXT` | Nullable operator annotations |
+| `created_at` | `TIMESTAMPTZ` | Audit timestamp |
+| `updated_at` | `TIMESTAMPTZ` | Audit timestamp |
+
+* Added 6 indexes — 5 individual, 1 compound:
+
+| Index | Columns | Purpose |
+|---|---|---|
+| `ix_disease_observations_crop_id` | `crop_id` | All observations for a crop cycle |
+| `ix_disease_observations_field_id` | `field_id` | All observations for a field (direct path) |
+| `ix_disease_observations_observed_at` | `observed_at` | Time-range queries |
+| `ix_disease_observations_disease_name` | `disease_name` | Filter by disease name |
+| `ix_disease_observations_severity` | `severity` | Filter by severity |
+| `ix_disease_observations_crop_id_observed_at` | `(crop_id, observed_at)` | Primary AI feature pipeline path |
+
+### Domain Hierarchy Established
+
+```text
+Farm
+└── Field
+     ├── Crop
+     │    ├── YieldRecord
+     │    └── DiseaseObservation
+     ├── SoilProfile
+     ├── WeatherRecord
+     ├── SensorReading       (append-only)
+     └── IrrigationEvent     (mutable operational events)
+```
+
+### API Endpoints Added
+
+```http
+POST   /api/v1/crops/{crop_id}/disease-observations              201 Created
+GET    /api/v1/crops/{crop_id}/disease-observations              200 OK  (observed_at DESC, paginated)
+GET    /api/v1/fields/{field_id}/disease-observations            200 OK  (observed_at DESC, paginated)
+GET    /api/v1/disease-observations/{observation_id}             200 OK
+PATCH  /api/v1/disease-observations/{observation_id}             200 OK
+DELETE /api/v1/disease-observations/{observation_id}            204 No Content
+```
+
+### Business Rules Implemented
+
+* Crop must exist before DiseaseObservation creation (raises `CropNotFoundError` → 404)
+* `crop_id` supplied through route path — not in request body
+* `field_id` resolved server-side from crop record — not supplied by caller
+* `observed_at` must be timezone-aware and not in the future (raises `InvalidDiseaseObservationError` → 400)
+* `affected_area_percent`, when supplied, must be within [0, 100] (Pydantic schema validation)
+* `crop_id` and `field_id` immutable after creation — excluded from update schema
+* PATCH is permitted — DiseaseObservation is a mutable observation record
+* List responses ordered by `observed_at DESC` (most recent observation first)
+
+### Architecture Decisions
+
+| ADR | Decision |
+|---|---|
+| ADR-010-01 | `DiseaseObservation` anchors to `crop_id` — disease pressure is per crop cycle |
+| ADR-010-02 | `field_id` denormalized on `disease_observations` for direct field-scoped queries without JOIN |
+| ADR-010-03 | `observed_at TIMESTAMPTZ NOT NULL` is the primary time key and TimescaleDB partition key candidate |
+| ADR-010-04 | `DiseaseObservation` is mutable — PATCH permitted for operator corrections |
+| ADR-010-05 | `crop_id` immutable after creation — excluded from `UpdateDiseaseObservationRequest` |
+| ADR-010-06 | `DiseaseSeverity` and `DiagnosisMethod` placed in `app/core/enums.py` for cross-domain reuse |
+
+### Lessons Learned
+
+* The grandchild domain pattern established in Phase 9 (YieldRecord) transferred cleanly to DiseaseObservation — crop anchoring, denormalized `field_id`, and mutable PATCH semantics required no architectural invention.
+* Field-scoped list endpoints (`GET /fields/{field_id}/disease-observations`) validate the denormalized FK design — direct queries without JOIN through `crops` are the intended access pattern.
+* Reusing `CropNotFoundError` from `app.services.crop` maintains consistency with YieldRecord and avoids exception proliferation in the services package.
+* `postgresql.ENUM` with `create_type=False` is now routine — Phase 10 migration applied the ADR-008-01 pattern without incident.
+
+### Future Considerations
+
+* **TimescaleDB:** `disease_observations.observed_at TIMESTAMPTZ NOT NULL` is hypertable-ready; `create_hypertable('disease_observations', 'observed_at')` requires no application code changes.
+* **Disease Risk Scoring Engine (Phase 13):** `DiseaseObservation` severity labels and `observed_at` time-series are the primary training label source.
+* **Redpanda:** `DiseaseObservationService.create_observation()` contains a documented extension point for `DiseaseObservationCreated` domain events.
+* **GaaS PlantHealthAdvisor:** Disease observation list endpoints provide context for natural language crop health queries.
+
+### Current Platform Status (Post Phase 10)
+
+#### Domain Hierarchy
+
+```text
+Farm
+└── Field
+     ├── Crop
+     │    ├── YieldRecord
+     │    └── DiseaseObservation
+     ├── SoilProfile
+     ├── WeatherRecord
+     ├── SensorReading       (append-only)
+     └── IrrigationEvent     (mutable operational events)
+```
+
+#### Current Database Tables
+
+* alembic_version
+* farms
+* fields
+* crops
+* soil_profiles
+* weather_records
+* sensor_readings
+* irrigation_events
+* yield_records
+* disease_observations
+
+#### Current Migration Head
+
+`d3e7b2a9f1c4_create_disease_observations_table`
+
+#### Current Architecture
+
+```
+Model → Schema → Repository → Service → API
+```
+
+#### Current API Coverage
+
+Health, Version, Fields, Crops, Soil Profiles, Weather Records, Sensor Readings, Irrigation Events, Yield Records: (unchanged — see Phase 1–9 entries)
+
+Disease Observations (Phase 10):
+
+* POST   /api/v1/crops/{crop_id}/disease-observations
+* GET    /api/v1/crops/{crop_id}/disease-observations
+* GET    /api/v1/fields/{field_id}/disease-observations
+* GET    /api/v1/disease-observations/{observation_id}
+* PATCH  /api/v1/disease-observations/{observation_id}
+* DELETE /api/v1/disease-observations/{observation_id}
+
+---
+
+### Next Planned Evolution
+
+Phase 11 – Satellite Observation Domain

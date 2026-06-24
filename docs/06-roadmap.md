@@ -446,6 +446,72 @@ AI Coverage Improvement (Post Phase 9):
 
 ---
 
+# Phase 10 – Disease Observation Domain
+
+Status: ✅ Complete
+
+Objectives:
+
+* `DiseaseSeverity` enum added to `app/core/enums.py` (LOW, MEDIUM, HIGH, CRITICAL)
+* `DiagnosisMethod` enum added to `app/core/enums.py` (VISUAL_INSPECTION, LAB_ANALYSIS, IMAGE_AI, AGRONOMIST, SENSOR_DETECTED)
+* DiseaseObservation ORM Model — second grandchild domain (Farm → Field → Crop → DiseaseObservation)
+* Alembic Migration `d3e7b2a9f1c4`: `disease_observations` table, `disease_severity` + `diagnosis_method` PostgreSQL enums, 6 indexes
+* DiseaseObservation Pydantic Schemas (`CreateDiseaseObservationRequest`, `UpdateDiseaseObservationRequest`, `DiseaseObservationResponse`)
+* `DiseaseObservationRepository` with `create`, `get_by_id`, `get_by_crop` (ordered `observed_at DESC`), `get_by_field`, `update`, `delete`
+* `DiseaseObservationService` with crop existence validation, server-side `field_id` resolution, future `observed_at` rejection
+* DiseaseObservation API Router (POST, GET list by crop, GET list by field, GET single, PATCH, DELETE)
+* `DiseaseObservationServiceDep` dependency injection registration
+* Swagger validation for `DiseaseSeverity` and `DiagnosisMethod` enum exposure
+
+Delivered APIs:
+
+* POST   /api/v1/crops/{crop_id}/disease-observations
+* GET    /api/v1/crops/{crop_id}/disease-observations
+* GET    /api/v1/fields/{field_id}/disease-observations
+* GET    /api/v1/disease-observations/{observation_id}
+* PATCH  /api/v1/disease-observations/{observation_id}
+* DELETE /api/v1/disease-observations/{observation_id}
+
+Architectural Decisions Established (ADR-010 series):
+
+* `DiseaseObservation` anchors to `crop_id` as primary FK — disease pressure is per crop cycle (ADR-010-01)
+* `field_id` is denormalized directly on `disease_observations` for direct field-scoped queries without JOIN through `crops` (ADR-010-02)
+* `observed_at TIMESTAMPTZ NOT NULL` is the primary time key and TimescaleDB partition key candidate (ADR-010-03)
+* `DiseaseObservation` is mutable — PATCH is permitted to allow operator correction (ADR-010-04)
+* `crop_id` is immutable after creation — excluded from `UpdateDiseaseObservationRequest` schema (ADR-010-05)
+* `DiseaseSeverity` and `DiagnosisMethod` placed in `app/core/enums.py` for Disease Risk Scoring Engine and GaaS reuse (ADR-010-06)
+
+Outcome:
+
+```text
+Farm
+└── Field
+     ├── Crop
+     │    ├── YieldRecord
+     │    └── DiseaseObservation
+     ├── SoilProfile
+     ├── WeatherRecord
+     ├── SensorReading     (append-only)
+     └── IrrigationEvent   (mutable operational events)
+```
+
+Business Value:
+
+* Disease monitoring and crop health intelligence per crop cycle
+* Field-scoped disease history via denormalized `field_id` direct query path
+* Yield loss analysis foundation — disease pressure correlated with yield records
+* Disease forecasting foundation — primary training labels for Phase 13 Disease Risk Scoring Engine
+* GaaS PlantHealthAdvisor tool foundation
+* TimescaleDB hypertable upgrade path established (zero code changes required)
+
+AI Coverage Improvement (Post Phase 10):
+
+| Use Case | After Phase 9 | After Phase 10 |
+|---|---|---|
+| Disease Prediction | 40% | 75% (observation labels + severity classification added) |
+
+---
+
 # Cross-Cutting Capabilities
 
 Implemented:
@@ -463,18 +529,19 @@ Implemented:
 * Soil Intelligence Domain
 * Weather Intelligence Domain
 * SensorReading Domain (Phase 7)
-* Shared Enum Module (`app/core/enums.py`) — Phase 7 (SensorType) + Phase 8 (IrrigationMethod, WaterSource) + Phase 9 (YieldMeasurementMethod)
-* Telemetry Immutability Pattern — Phase 7
-* Compound Index Strategy — Phase 7 + Phase 8 + Phase 9
-* Operational Event Mutable Pattern — Phase 8
-* IrrigationEvent Domain (Phase 8)
-* Grandchild Domain Pattern — Phase 9 (YieldRecord anchors on Crop, not Field)
-* Denormalized FK Pattern — Phase 9 (field_id on yield_records for direct field-scoped queries)
-* YieldRecord Domain (Phase 9)
+* Shared Enum Module (`app/core/enums.py`) — SensorType, IrrigationMethod, WaterSource, YieldMeasurementMethod, DiseaseSeverity, DiagnosisMethod
+* Telemetry Immutability Pattern
+* Compound Index Strategy (time-series domains)
+* Operational Event Mutable Pattern (IrrigationEvent, YieldRecord, DiseaseObservation)
+* IrrigationEvent Domain
+* Grandchild Domain Pattern (YieldRecord, DiseaseObservation anchor on Crop)
+* Denormalized FK Pattern (`field_id` on `yield_records` and `disease_observations` for direct field-scoped queries)
+* YieldRecord Domain
+* Disease Observation Domain
 
-Near-Term (Phases 8–11):
+Near-Term (Phases 11–15):
 
-* TimescaleDB (sensor_readings hypertable promotion)
+* TimescaleDB (sensor_readings, irrigation_events, yield_records, disease_observations hypertable promotion)
 * Redpanda (event streaming for SensorReadingCreated events)
 * Redis (Digital Twin field state cache)
 * PostGIS (field boundary polygon support)
@@ -493,31 +560,33 @@ Future:
 
 ---
 
-# Current Domain Hierarchy (Post Phase 9)
+# Current Domain Hierarchy (Post Phase 10)
 
 ```text
 Farm
 └── Field
      ├── Crop
-     │    └── YieldRecord  ← Phase 9 Complete (grandchild, mutable)
+     │    ├── YieldRecord
+     │    └── DiseaseObservation
      ├── SoilProfile
      ├── WeatherRecord
-     ├── SensorReading    ← Phase 7 Complete (append-only)
-     └── IrrigationEvent  ← Phase 8 Complete (mutable)
+     ├── SensorReading       (append-only)
+     └── IrrigationEvent     (mutable operational events)
 ```
 
 # Target Domain Hierarchy (Long-Term)
 
-```
+```text
 Farm
 └── Field
      ├── Crop
+     │    ├── YieldRecord           ✅ implemented
+     │    └── DiseaseObservation    ✅ implemented
      ├── SoilProfile
      ├── WeatherRecord
      ├── SensorReading
      ├── IrrigationEvent
-     ├── YieldRecord
-     └── SatelliteObservation
+     └── SatelliteObservation       🔜 Phase 11
 ```
 
 ---
@@ -538,8 +607,8 @@ AGRIFLOW-AI evolves from a farm management system into a comprehensive Agricultu
 ✅ Phase 7  – SensorReading Domain
 ✅ Phase 8  – Irrigation Management Domain
 ✅ Phase 9  – Yield Domain
+✅ Phase 10 – Disease Observation Domain
 
-🔜 Phase 10 – Disease Observation Domain
 🔜 Phase 11 – Satellite Observation Domain
 
 AI Layer (Post Phase 11)
@@ -554,7 +623,7 @@ AI Layer (Post Phase 11)
 
 ## TimescaleDB
 
-The `sensor_readings`, `irrigation_events`, and `yield_records` tables were designed for zero-friction TimescaleDB promotion. A single `create_hypertable(...)` call converts each to a time-partitioned hypertable. No application code changes are required.
+The `sensor_readings`, `irrigation_events`, `yield_records`, and `disease_observations` tables were designed for zero-friction TimescaleDB promotion. A single `create_hypertable(...)` call converts each to a time-partitioned hypertable. No application code changes are required.
 
 Capabilities unlocked:
 * Automatic weekly chunk partitioning on `recorded_at`
@@ -618,4 +687,4 @@ The AGRIFLOW-AI REST API is already GaaS-ready. A future GaaS agent uses the exi
 * "What is the disease risk for my wheat crop?"
 * "How will next week's weather affect my harvest schedule?"
 
-The agent combines: sensor telemetry (Phase 7), weather records (Phase 5), soil profiles (Phase 4), crop data (Phase 3), and AI inference outputs to generate contextual recommendations.
+The agent combines: sensor telemetry, weather records, soil profiles, crop data, yield records, disease observations, and AI inference outputs to generate contextual recommendations.
