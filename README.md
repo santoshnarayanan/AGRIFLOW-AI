@@ -2,9 +2,9 @@
 
 ## AI-Powered Agricultural Intelligence Platform
 
-AGRIFLOW-AI is an Agricultural Intelligence Platform designed to help farmers, agronomists, cooperatives, and agricultural enterprises manage farm operations, monitor crop lifecycles, analyze soil health, track irrigation events, record yield measurements, and build toward AI-driven agricultural decision intelligence.
+AGRIFLOW-AI is an Agricultural Intelligence Platform designed to help farmers, agronomists, cooperatives, and agricultural enterprises manage farm operations, monitor crop lifecycles, analyze soil health, track irrigation events, record yield measurements, log disease observations, and build toward AI-driven agricultural decision intelligence.
 
-The platform combines farm management, field management, crop management, soil intelligence, weather intelligence, sensor telemetry, irrigation management, yield tracking, and future AI-powered recommendations into a unified agricultural operating platform.
+The platform combines farm management, field management, crop management, soil intelligence, weather intelligence, sensor telemetry, irrigation management, yield tracking, disease observation, and future AI-powered recommendations into a unified agricultural operating platform.
 
 ---
 
@@ -49,6 +49,8 @@ docs/01-vision.md
 
 ✅ Phase 9 – Yield Domain
 
+✅ Phase 10 – Disease Observation Domain
+
 ---
 
 ### Current Domain Hierarchy
@@ -57,7 +59,8 @@ docs/01-vision.md
 Farm
  └── Field
       ├── Crop
-      │    └── YieldRecord    (Phase 9 — mutable, grandchild domain)
+      │    ├── YieldRecord           (Phase 9 — mutable, grandchild domain)
+      │    └── DiseaseObservation    (Phase 10 — mutable, grandchild domain)
       ├── SoilProfile
       ├── WeatherRecord
       ├── SensorReading       (Phase 7 — append-only telemetry)
@@ -78,9 +81,10 @@ weather_records
 sensor_readings
 irrigation_events
 yield_records
+disease_observations
 ```
 
-Current migration head: `b7e2a9f4c8d3_create_yield_records_table`
+Current migration head: `d3e7b2a9f1c4_create_disease_observations_table`
 
 ---
 
@@ -197,6 +201,20 @@ PostgreSQL
 * Primary training label source for Phase 12 Yield Prediction Engine
 * TimescaleDB hypertable upgrade path
 
+### Disease Observation (Phase 10)
+
+* Disease pressure observation records per crop cycle
+* 4 severity levels: LOW, MEDIUM, HIGH, CRITICAL
+* 5 diagnosis methods: VISUAL_INSPECTION, LAB_ANALYSIS, IMAGE_AI, AGRONOMIST, SENSOR_DETECTED
+* Affected area percentage tracking
+* Treatment and operator notes
+* Server-side `field_id` resolution from crop record
+* Mutable — operators can correct observations after logging
+* Crop-scoped and field-scoped list endpoints with pagination
+* Primary training label source for Phase 13 Disease Risk Scoring Engine
+* DiseaseObservation CRUD APIs
+* TimescaleDB hypertable upgrade path
+
 ---
 
 ## Business Rules Implemented
@@ -261,6 +279,16 @@ PostgreSQL
 * `quality_grade`, when supplied, max length 50 characters
 * YieldRecord is mutable — operators can correct measurements after logging
 
+### DiseaseObservation Domain (Phase 10)
+
+* Crop must exist before DiseaseObservation creation
+* `field_id` resolved server-side from the crop record — not supplied by the caller
+* `crop_id` is immutable after creation — excluded from update schema
+* `observed_at` must be timezone-aware and not in the future
+* `affected_area_percent`, when supplied, must be within [0, 100]
+* `disease_name` max length 255 characters
+* DiseaseObservation is mutable — operators can correct observations after logging
+
 ---
 
 ## Project Structure
@@ -281,6 +309,7 @@ backend/
 ├── app
 │   ├── api
 │   │   ├── crops/
+│   │   ├── disease_observations/ ← Phase 10
 │   │   ├── fields/
 │   │   ├── irrigation_events/
 │   │   ├── sensor_readings/
@@ -290,10 +319,10 @@ backend/
 │   │   ├── deps.py
 │   │   └── router.py
 │   ├── core
-│   │   └── enums.py             ← SensorType, IrrigationMethod, WaterSource, YieldMeasurementMethod
+│   │   └── enums.py             ← SensorType, IrrigationMethod, WaterSource, YieldMeasurementMethod, DiseaseSeverity, DiagnosisMethod
 │   ├── db
 │   │   ├── migrations/versions/
-│   │   ├── models/              ← ORM models (Farm, Field, Crop, SoilProfile, WeatherRecord, SensorReading, IrrigationEvent, YieldRecord)
+│   │   ├── models/              ← ORM models (Farm, Field, Crop, SoilProfile, WeatherRecord, SensorReading, IrrigationEvent, YieldRecord, DiseaseObservation)
 │   │   └── repositories/        ← Repository layer per domain
 │   ├── schemas/                 ← Pydantic schemas per domain
 │   ├── services/                ← Service layer per domain
@@ -310,11 +339,11 @@ backend/
 | Document | Description |
 | --- | --- |
 | `docs/01-vision.md` | Product Vision & Strategic Direction |
-| `docs/02-architecture.md` | Technical Architecture (Phase 1–9 complete) |
+| `docs/02-architecture.md` | Technical Architecture (Phase 1–10 complete) |
 | `docs/03-database.md` | Database Design & Schema Reference |
 | `docs/04-api-design.md` | API Design & Endpoint Catalog |
 | `docs/05-local-setup.md` | Local Development Setup |
-| `docs/06-roadmap.md` | Product Roadmap (Phase 1–9 complete) |
+| `docs/06-roadmap.md` | Product Roadmap (Phase 1–10 complete) |
 | `docs/07-phase-history.md` | Phase-by-Phase Implementation History |
 | `docs/08-phase-architecture-handbook.md` | Phase Architecture Handbook (authoritative ADR reference) |
 | `docs/09-architecture-diagrams.md` | Architecture Diagrams (current and target state, Mermaid) |
@@ -372,14 +401,13 @@ http://localhost:8000/docs
 ✅ Phase 7 – SensorReading Domain  
 ✅ Phase 8 – Irrigation Management Domain  
 ✅ Phase 9 – Yield Domain  
+✅ Phase 10 – Disease Observation Domain  
 
 ### Current Next Phase
 
-Phase 10 – Disease Observation Domain
+Phase 11 – Satellite Observation Domain
 
 ### Planned Phases
-
-Phase 11 – Satellite Observation Domain
 
 Phase 12 – Yield Prediction Engine (first AI model, uses Phase 9 YieldRecord labels)
 
@@ -393,13 +421,14 @@ For the detailed roadmap see `docs/06-roadmap.md`
 
 ---
 
-## Current Agricultural Intelligence Platform (Post Phase 9)
+## Current Agricultural Intelligence Platform (Post Phase 10)
 
 ```text
 Farm
  └── Field
       ├── Crop                ✅ Phase 3
-      │    └── YieldRecord    ✅ Phase 9 (Harvest Intelligence — mutable, grandchild)
+      │    ├── YieldRecord           ✅ Phase 9 (Harvest Intelligence — mutable, grandchild)
+      │    └── DiseaseObservation    ✅ Phase 10 (Plant Health — mutable, grandchild)
       ├── SoilProfile         ✅ Phase 4
       ├── WeatherRecord       ✅ Phase 5
       ├── SensorReading       ✅ Phase 7 (IoT Telemetry — append-only)
@@ -419,6 +448,7 @@ Farm
 | Sensor Telemetry | 7 | SensorReading | Append-only IoT data |
 | Irrigation Management | 8 | IrrigationEvent | Mutable operational events |
 | Yield | 9 | YieldRecord | Mutable, grandchild (Crop-anchored) |
+| Disease Observation | 10 | DiseaseObservation | Mutable, grandchild (Crop-anchored) |
 
 ## Target Agricultural Intelligence Platform
 
@@ -426,13 +456,13 @@ Farm
 Farm
  └── Field
       ├── Crop
-      │    └── YieldRecord         ✅ Phase 9 Complete
+      │    ├── YieldRecord           ✅ Phase 9 Complete
+      │    └── DiseaseObservation    ✅ Phase 10 Complete
       ├── SoilProfile
       ├── WeatherRecord
       ├── SensorReading
       ├── IrrigationEvent
-      ├── DiseaseObservation       🔜 Phase 10
-      └── SatelliteObservation     🔜 Phase 11
+      └── SatelliteObservation       🔜 Phase 11
 ```
 
 ---
@@ -448,9 +478,9 @@ Phase 1–3   Reactive Farming       Farm, Field, Crop records
       ↓
 Phase 4–6   Data-Driven Farming    Soil, Weather, AI-ready attributes
       ↓
-Phase 7–9   Predictive Foundation  Sensor telemetry, Irrigation, Yield records  ← Current
+Phase 7–9   Predictive Foundation  Sensor telemetry, Irrigation, Yield records
       ↓
-Phase 10–11 Environmental Coverage Disease observation, Satellite imagery
+Phase 10–11 Environmental Coverage Disease observation, Satellite imagery  ← Current
       ↓
 Phase 12–14 Intelligent Farming    AI yield prediction, disease risk, irrigation optimization
       ↓
@@ -460,13 +490,13 @@ Phase 15+   Autonomous Agriculture Full Digital Twin + GaaS Farm Copilot
 ### AI Layer Goals (Phase 12+)
 
 * **Yield Prediction Engine** — supervised model trained on YieldRecord time-series (Phase 9 foundation)
-* **Disease Risk Engine** — risk scoring using sensor telemetry and weather patterns
+* **Disease Risk Engine** — risk scoring using DiseaseObservation labels (Phase 10 foundation), sensor telemetry, and weather patterns
 * **Irrigation Recommendation Engine** — FAO-56 water balance optimization using IrrigationEvent history
 * **Farm Intelligence Platform** — Digital Twin + event-driven architecture + GaaS natural language interface
 
 ### Infrastructure Goals
 
-* **TimescaleDB** — hypertable promotion for `sensor_readings`, `irrigation_events`, `yield_records`
+* **TimescaleDB** — hypertable promotion for `sensor_readings`, `irrigation_events`, `yield_records`, `disease_observations`
 * **Redpanda** — event streaming for real-time Digital Twin state updates
 * **PostGIS** — field boundary polygon support for precision agriculture
 * **Temporal** — stateful agricultural workflow orchestration
