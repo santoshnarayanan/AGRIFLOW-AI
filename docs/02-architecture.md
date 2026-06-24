@@ -4,7 +4,7 @@
 
 AGRIFLOW-AI is an Agricultural Intelligence Platform built using a layered architecture that emphasizes maintainability, scalability, separation of concerns, and domain-driven development.
 
-The platform currently implements Farm, Field, Crop, Soil Intelligence, Weather Intelligence, Sensor Telemetry, Irrigation Management, and Yield domains across nine completed phases, following a Clean Architecture approach with clearly separated responsibilities across API, Service, Repository, and Database layers.
+The platform currently implements Farm, Field, Crop, Soil Intelligence, Weather Intelligence, Sensor Telemetry, Irrigation Management, and Yield Intelligence domains across nine completed phases, following a Clean Architecture approach with clearly separated responsibilities across API, Service, Repository, and Database layers.
 
 ---
 
@@ -37,7 +37,6 @@ AGRIFLOW-AI follows the following design principles:
 | Dependency Injection | FastAPI Depends |
 | Containerization     | Docker          |
 | Version Control      | Git + GitHub    |
-| IDE                  | Cursor          |
 
 ---
 
@@ -66,38 +65,41 @@ PostgreSQL
 
 # Current Domain Hierarchy
 
+The authoritative domain hierarchy reflects all implemented entities through Phase 9:
+
 ```text
 Farm
  └── Field
       ├── Crop
-      │    └── YieldRecord   ← Phase 9 (Grandchild Domain, Mutable)
+      │    └── YieldRecord          (mutable, grandchild — Yield Domain)
       ├── SoilProfile
       ├── WeatherRecord
-      ├── SensorReading      ← Phase 7 (Telemetry, append-only)
-      └── IrrigationEvent    ← Phase 8 (Operational Management Events)
+      ├── SensorReading             (append-only telemetry)
+      └── IrrigationEvent           (mutable operational events)
 ```
 
-Current business domains:
+### Implemented Domains
 
 * Farm Management
 * Field Management
 * Crop Management
 * Soil Intelligence
 * Weather Intelligence
-* Sensor Telemetry (Phase 7)
-* Irrigation Management (Phase 8)
+* Sensor Telemetry
+* Irrigation Management
+* Yield Intelligence
 
-Future domains:
-* Irrigation Intelligence (Phase 8 — ✅ Complete)
-* Yield Intelligence (Phase 9)
+### Planned Domains
+
 * Disease Observation (Phase 10)
 * Satellite Observation (Phase 11)
 
-Future AI Layer:
-* Yield Prediction Engine
-* Disease Prediction Engine
-* Irrigation Recommendation Engine
-* Farm Intelligence Platform
+### Planned AI Layer
+
+* Yield Prediction Engine (Phase 12)
+* Disease Risk Scoring Engine (Phase 13)
+* Irrigation Recommendation Engine (Phase 14)
+* Farm Intelligence Platform — Digital Twin + GaaS Farm Copilot (Phase 15)
 
 ---
 
@@ -107,30 +109,65 @@ Future AI Layer:
 backend/
 ├── app
 │   ├── api
-│   │   ├── farms
-│   │   ├── fields
-│   │   ├── crops
-│   │   ├── soil_profiles
-│   │   ├── weather_records
-│   │   ├── sensor_readings   ← Phase 7
-│   │   ├── irrigation_events ← Phase 8
-│   │   ├── health
-│   │   └── version
+│   │   ├── crops/
+│   │   ├── fields/
+│   │   ├── irrigation_events/
+│   │   ├── sensor_readings/
+│   │   ├── soil_profiles/
+│   │   ├── weather_records/
+│   │   ├── yield_records/
+│   │   ├── health/
+│   │   ├── version/
+│   │   ├── deps.py
+│   │   └── router.py
 │   │
 │   ├── core
-│   │   ├── config
-│   │   ├── enums.py          ← Phase 7 (SensorType) + Phase 8 (IrrigationMethod, WaterSource)
-│   │   ├── logging
-│   │   └── security
+│   │   ├── config/
+│   │   ├── enums.py
+│   │   ├── logging/
+│   │   └── security/
 │   │
 │   ├── db
-│   │   ├── migrations
-│   │   ├── models
-│   │   ├── repositories
-│   │   └── session
+│   │   ├── migrations/
+│   │   ├── models/
+│   │   │   ├── farm.py
+│   │   │   ├── field.py
+│   │   │   ├── crop.py
+│   │   │   ├── soil_profile.py
+│   │   │   ├── weather_record.py
+│   │   │   ├── sensor_reading.py
+│   │   │   ├── irrigation_event.py
+│   │   │   └── yield_record.py
+│   │   ├── repositories/
+│   │   │   ├── base.py
+│   │   │   ├── farm.py
+│   │   │   ├── field.py
+│   │   │   ├── crop.py
+│   │   │   ├── soil_profile.py
+│   │   │   ├── weather_record.py
+│   │   │   ├── sensor_reading.py
+│   │   │   ├── irrigation_event.py
+│   │   │   └── yield_record.py
+│   │   └── session/
 │   │
-│   ├── schemas
-│   ├── services
+│   ├── schemas/
+│   │   ├── crop.py
+│   │   ├── field.py
+│   │   ├── irrigation_event.py
+│   │   ├── sensor_reading.py
+│   │   ├── soil_profile.py
+│   │   ├── weather_record.py
+│   │   └── yield_record.py
+│   │
+│   ├── services/
+│   │   ├── crop.py
+│   │   ├── field.py
+│   │   ├── irrigation_event.py
+│   │   ├── sensor_reading.py
+│   │   ├── soil_profile.py
+│   │   ├── weather_record.py
+│   │   └── yield_record.py
+│   │
 │   └── main.py
 │
 ├── Dockerfile
@@ -163,6 +200,7 @@ app/api/soil_profiles
 app/api/weather_records
 app/api/sensor_readings
 app/api/irrigation_events
+app/api/yield_records
 ```
 
 The API layer should not contain business logic.
@@ -186,6 +224,7 @@ SoilProfileCreate / SoilProfileUpdate / SoilProfileResponse
 WeatherRecordCreate / WeatherRecordUpdate / WeatherRecordResponse
 SensorReadingCreate / SensorReadingResponse  (no Update — immutable)
 IrrigationEventCreate / IrrigationEventUpdate / IrrigationEventResponse
+YieldRecordCreate / YieldRecordUpdate / YieldRecordResponse
 ```
 
 The schema layer defines what data enters and exits the application.
@@ -210,11 +249,10 @@ SoilProfileService
 WeatherRecordService
 SensorReadingService
 IrrigationEventService
+YieldRecordService
 ```
 
-Business rules belong here.
-
-Examples:
+Business rules belong here. Representative examples:
 
 * Farm must exist before Field creation
 * Field must exist before Crop creation
@@ -224,6 +262,9 @@ Examples:
 * `recorded_at` must be timezone-aware and not in the future (SensorReading)
 * `started_at` must be timezone-aware and not in the future (IrrigationEvent)
 * `ended_at`, when supplied, must be ≥ `started_at` including sparse PATCH updates (IrrigationEvent)
+* Crop must exist before YieldRecord creation; `field_id` resolved server-side from crop (YieldRecord)
+* `recorded_at` must be timezone-aware and not in the future (YieldRecord)
+* `area_harvested_ha` and `test_weight_kg_hl`, when supplied, must be > 0 (YieldRecord)
 
 ---
 
@@ -246,6 +287,7 @@ SoilProfileRepository
 WeatherRecordRepository
 SensorReadingRepository
 IrrigationEventRepository
+YieldRecordRepository
 ```
 
 Repositories should not contain business rules.
@@ -270,6 +312,7 @@ SoilProfile
 WeatherRecord
 SensorReading
 IrrigationEvent
+YieldRecord
 ```
 
 Models represent PostgreSQL tables.
@@ -356,6 +399,15 @@ Benefits:
 * Improved testability
 * Cleaner service construction
 
+Service factories are defined in `app/api/deps.py`. Each factory constructs the required repositories from the request-scoped `AsyncSession` and injects them into the corresponding service. Example:
+
+```text
+get_yield_record_service(session)
+    → YieldRecordRepository(session)
+    → CropRepository(session)
+    → YieldRecordService(...)
+```
+
 ---
 
 # Repository Pattern
@@ -370,8 +422,9 @@ BaseRepository
       ├── CropRepository
       ├── SoilProfileRepository
       ├── WeatherRecordRepository
-      ├── SensorReadingRepository     ← Phase 7
-      └── IrrigationEventRepository   ← Phase 8
+      ├── SensorReadingRepository
+      ├── IrrigationEventRepository
+      └── YieldRecordRepository
 ```
 
 Benefits:
@@ -394,9 +447,12 @@ fields
 crops
 soil_profiles
 weather_records
-sensor_readings     ← Phase 7 (append-only telemetry)
-irrigation_events   ← Phase 8 (operational management events)
+sensor_readings
+irrigation_events
+yield_records
 ```
+
+Current migration head: `b7e2a9f4c8d3_create_yield_records_table`
 
 Relationships:
 
@@ -406,12 +462,16 @@ Farm (1)
    ▼
 Field (N)
    ├────────────► Crop (N)
+   │                   │
+   │                   └──► YieldRecord (N, mutable)
    ├────────────► WeatherRecord (N)
-   ├────────────► SensorReading (N, append-only)   ← Phase 7
-   ├────────────► IrrigationEvent (N)              ← Phase 8
+   ├────────────► SensorReading (N, append-only)
+   ├────────────► IrrigationEvent (N, mutable)
    │
    └────────────► SoilProfile (1)
 ```
+
+`YieldRecord` anchors on `Crop` because yield is a per-crop-cycle measurement. `field_id` is denormalized on `yield_records` for direct field-scoped queries without a JOIN through `crops` (ADR-009-02).
 
 ---
 
@@ -428,8 +488,9 @@ Migration sequence:
 004_create_weather_records_table
 13aabbe35d51_add_soil_profiles_table
 005_add_p1_ai_readiness_columns
-006_create_sensor_readings_table      ← Phase 7 (sensor_type enum + sensor_readings + 5 indexes)
-235a51cdf901_create_irrigation_events ← Phase 8 (irrigation_method + water_source enums + 3 indexes)
+006_create_sensor_readings_table
+235a51cdf901_create_irrigation_events_table
+b7e2a9f4c8d3_create_yield_records_table
 ```
 
 Migration flow:
@@ -457,7 +518,7 @@ Benefits:
 
 # Current API Architecture
 
-Implemented APIs:
+All paths are prefixed with `/api/v1`.
 
 ## Health
 
@@ -499,14 +560,14 @@ Implemented APIs:
 * PATCH  /api/v1/weather-records/{weather_record_id}
 * DELETE /api/v1/weather-records/{weather_record_id}
 
-## Sensor Readings (Phase 7)
+## Sensor Readings
 
 * POST   /api/v1/fields/{field_id}/sensor-readings
 * GET    /api/v1/fields/{field_id}/sensor-readings
 * GET    /api/v1/sensor-readings/{sensor_reading_id}
 * DELETE /api/v1/sensor-readings/{sensor_reading_id}
 
-## Irrigation Events (Phase 8)
+## Irrigation Events
 
 * POST   /api/v1/fields/{field_id}/irrigation-events
 * GET    /api/v1/fields/{field_id}/irrigation-events
@@ -514,65 +575,55 @@ Implemented APIs:
 * PATCH  /api/v1/irrigation-events/{event_id}
 * DELETE /api/v1/irrigation-events/{event_id}
 
+## Yield Records
+
+* POST   /api/v1/crops/{crop_id}/yield-records
+* GET    /api/v1/crops/{crop_id}/yield-records
+* GET    /api/v1/yield-records/{yield_record_id}
+* PATCH  /api/v1/yield-records/{yield_record_id}
+* DELETE /api/v1/yield-records/{yield_record_id}
+
+Domain exception mapping for Yield endpoints:
+
+| Domain Exception         | HTTP Status |
+| ------------------------ | ----------- |
+| `CropNotFoundError`      | 404         |
+| `YieldRecordNotFoundError` | 404       |
+| `InvalidYieldRecordError`  | 400       |
+
 ---
 
 # Current Platform Status
 
-Completed Domains:
+### Completed Domains
 
-* Farm Domain
-* Field Domain
-* Crop Domain
-* Soil Intelligence Domain
-* Weather Intelligence Domain
-* AI Readiness Foundation (Phase 6)
-* Sensor Telemetry Domain — SensorReading (Phase 7)
-* Irrigation Management Domain — IrrigationEvent (Phase 8)
+| Domain | Entity | Notes |
+| --- | --- | --- |
+| Farm | Farm | Root aggregate |
+| Field | Field | Farm ↔ Field hierarchy |
+| Crop | Crop | Lifecycle management |
+| Soil Intelligence | SoilProfile | One profile per Field |
+| Weather Intelligence | WeatherRecord | Time-series observations |
+| AI Readiness | (attributes) | Cross-domain AI features on existing tables |
+| Sensor Telemetry | SensorReading | Append-only IoT data |
+| Irrigation Management | IrrigationEvent | Mutable operational events |
+| Yield Intelligence | YieldRecord | Mutable, Crop-anchored grandchild |
 
-Implemented Architecture:
+### Implemented Architecture
 
 * Model Layer
 * Schema Layer
 * Repository Layer
 * Service Layer
 * API Layer
-* Dependency Injection
+* Dependency Injection (`app/api/deps.py`)
 * PostgreSQL Integration
 * Alembic Migration Framework
-* Shared Enum Module (`app/core/enums.py`) — Phase 7 (SensorType) + Phase 8 (IrrigationMethod, WaterSource)
-* Telemetry Immutability Pattern — Phase 7
-* Compound Index Strategy — Phase 7 + Phase 8
-* Operational Event Mutable Pattern — Phase 8
-
----
-
-# Future Architecture Evolution
-
-Planned domains:
-
-```text
-Farm
- └── Field
-      ├── Crop
-      ├── SoilProfile
-      ├── Weather Records
-      ├── Sensor Readings
-      ├── Irrigation Events
-      ├── Yield Records
-      └── Satellite Observations
-```
-
-Future architectural capabilities:
-
-* PostGIS Integration
-* Event-Driven Architecture
-* Message Queues
-* AI Recommendation Engine
-* Data Lake Integration
-* MLOps Platform
-* Digital Twin Architecture
-* Farm Copilot
-* Advanced Observability
+* Shared Enum Module (`app/core/enums.py`)
+* Telemetry Immutability Pattern (SensorReading)
+* Operational Event Mutable Pattern (IrrigationEvent, YieldRecord)
+* Compound Index Strategy (time-series domains)
+* Grandchild Domain Pattern (YieldRecord)
 
 ---
 
@@ -592,7 +643,7 @@ while maintaining clear separation of concerns, scalability, and maintainability
 
 ---
 
-# Telemetry Architecture (Phase 7)
+# Telemetry Architecture
 
 ## Immutability Contract
 
@@ -601,6 +652,7 @@ while maintaining clear separation of concerns, scalability, and maintainability
 Telemetry is a factual record of what a sensor reported at a specific moment. It must not be mutated — corrections are expressed as new readings.
 
 This contract is enforced at three layers:
+
 1. **Schema layer**: No `SensorReadingUpdate` schema exists.
 2. **Service layer**: No `update_sensor_reading()` method exists.
 3. **API layer**: No PATCH or PUT endpoint is registered (ADR-007-32).
@@ -645,8 +697,6 @@ Rationale: Sensor ADC outputs and physical measurements (mV, µS/cm, lux, kPa) o
 
 ## Compound Index Strategy
 
-Phase 7 introduced the first compound indexes in the project:
-
 | Index | Columns | Primary Use Case |
 |---|---|---|
 | `ix_sensor_readings_field_id_recorded_at` | `(field_id, recorded_at)` | Time-ordered telemetry for a field |
@@ -658,19 +708,147 @@ These compound indexes cover the two dominant telemetry access patterns without 
 
 # Shared Enum Module
 
-`app/core/enums.py` was established in Phase 7 as the canonical location for cross-domain enumerations.
+`app/core/enums.py` is the canonical location for cross-domain enumerations.
 
 Prior to Phase 7, enums (`CropStatus`, `SoilType`) were defined within their respective ORM model files. This pattern works for enums that belong exclusively to one domain.
 
-`SensorType` was placed in `app/core/enums.py` because it will be consumed by future domains beyond `SensorReading`:
-* `SensorDevice` — IoT device registry
-* `SensorAlert` — alert rule definitions
-* Digital Twin field state model
-* AI Recommendation Engine feature pipeline
+Cross-domain enums are placed in `app/core/enums.py` to prevent circular import chains as usage grows across services, AI pipelines, and Digital Twin models.
 
-Importing enums from ORM model files creates circular import chains as cross-domain usage grows. `app/core/enums.py` is the neutral import point that prevents this.
+Current shared enums:
+
+| Enum | Domain |
+|---|---|
+| `SensorType` | SensorReading |
+| `IrrigationMethod` | IrrigationEvent |
+| `WaterSource` | IrrigationEvent |
+| `YieldMeasurementMethod` | YieldRecord, Yield Prediction Engine |
 
 All future cross-domain enumerations should be placed here.
+
+---
+
+# Irrigation Management Architecture
+
+## Mutable Operational Event Pattern
+
+`IrrigationEvent` is explicitly designed as a **mutable operational event**. Unlike `SensorReading` (which is append-only), irrigation events represent human-logged management actions that may require post-hoc correction.
+
+Full CRUD surface (including PATCH) is provided by the API. This is a deliberate architectural contrast:
+
+| Domain | Pattern | PATCH? | Rationale |
+|---|---|---|---|
+| SensorReading | Append-only telemetry | ✗ | Sensor measurement is a fact — immutable |
+| IrrigationEvent | Mutable operational event | ✓ | Operator log — correctible after the fact |
+| YieldRecord | Mutable observation record | ✓ | Measurement log — correctible after the fact |
+
+## Timestamp Architecture
+
+`started_at` is the primary time key:
+
+* `TIMESTAMPTZ NOT NULL` — timezone-aware mandatory
+* Serves as the TimescaleDB hypertable partition key candidate
+* Indexed individually and in compound with `field_id`
+* Must not be in the future (service-layer validation → HTTP 400)
+
+`ended_at` is optional and nullable:
+
+* Supports cases where duration is known but exact end time is not
+* When present, must be timezone-aware and ≥ `started_at`
+* Sparse PATCH guard: when only one timestamp is present in the update payload, the service merges with the existing record before ordering validation
+
+## Enum Lifecycle Fix (ADR-008-01)
+
+Phase 8 introduced a critical PostgreSQL/SQLAlchemy compatibility fix. Prior migrations (`003` and `13aabbe35d51`) used `sa.Enum` to define PostgreSQL ENUM types. In SQLAlchemy 2.0.x, `sa.Enum._copy()` — invoked internally by `op.create_table()` — does not forward `create_type=False`, causing `DuplicateObjectError` on fresh databases.
+
+**Resolution**: Use `postgresql.ENUM` (from `sqlalchemy.dialects.postgresql`) with `create_type=False` and explicit `.create()` / `.drop()` calls. This separates enum type lifecycle management from table DDL entirely.
+
+This pattern is now the authoritative standard for all future migrations that introduce new PostgreSQL ENUM types.
+
+## Index Strategy
+
+| Index | Columns | Primary Use Case |
+|---|---|---|
+| `ix_irrigation_events_field_id` | `(field_id)` | All events for a given field |
+| `ix_irrigation_events_started_at` | `(started_at)` | Events within a time window (cross-field) |
+| `ix_irrigation_events_field_id_started_at` | `(field_id, started_at)` | Field-scoped irrigation history + AI feature pipelines |
+
+The compound index is the primary AI access pattern for FAO-56 water balance computations.
+
+## TimescaleDB Readiness
+
+`irrigation_events.started_at TIMESTAMPTZ NOT NULL` satisfies the hypertable partition key requirement. Future activation:
+
+```sql
+SELECT create_hypertable('irrigation_events', 'started_at', chunk_time_interval => INTERVAL '1 month');
+```
+
+## Architecture Decision Register — Phase 8
+
+| ADR | Decision |
+|---|---|
+| ADR-008-01 | Use `postgresql.ENUM` with `create_type=False` + explicit lifecycle for all new ENUM types |
+| ADR-008-02 | IrrigationEvent is mutable — PATCH is permitted to allow operator correction |
+| ADR-008-03 | `started_at` TIMESTAMPTZ is the TimescaleDB partition key candidate — indexed individually and in compound |
+| ADR-008-04 | Sparse PATCH ordering guard: service merges payload with persisted record before `ended_at >= started_at` check |
+| ADR-008-05 | `IrrigationMethod` and `WaterSource` placed in `app/core/enums.py` for future reuse by AI models and Digital Twin |
+
+---
+
+# Yield Domain Architecture
+
+Phase 9 introduced `YieldRecord` — the first grandchild entity in AGRIFLOW-AI — establishing a dedicated time-series observation log for crop yield measurements, separate from the scalar summary columns on the `Crop` model.
+
+## Grandchild Domain Pattern
+
+`YieldRecord` is anchored to `crop_id` as its primary FK because yield is a per-crop-cycle measurement, not a per-field point-in-time event (ADR-009-01):
+
+```text
+Farm → Field → Crop → YieldRecord
+```
+
+`field_id` is **denormalized** directly onto `yield_records` (ADR-009-02) to enable field-scoped queries (`list_by_field`) without a JOIN through `crops`. Both FKs carry `ON DELETE CASCADE`.
+
+## Mutable Domain
+
+`YieldRecord` is mutable (ADR-009-04). PATCH is permitted so operators can correct measurement values (recalibrated moisture content, corrected harvested area) after logging. `crop_id` is the one immutable field (ADR-009-05) — the schema's `Update` model excludes it.
+
+## Service-Side `field_id` Resolution
+
+`YieldRecordService.create_yield_record()` accepts `crop_id` (from the URL path) and resolves `field_id` from the crop ORM instance before building the insert data. The caller never supplies `field_id` — this guarantees the denormalized column is always consistent.
+
+## Dual-Parent Response Schema
+
+`YieldRecordResponse` is the first response schema in the project that exposes two parent FKs (`crop_id` and `field_id`). This reflects the dual-anchor design and makes the denormalized path transparent to API consumers.
+
+## Index Strategy
+
+| Index | Columns | Primary Use Case |
+|---|---|---|
+| `ix_yield_records_crop_id` | `(crop_id)` | All records for a crop cycle |
+| `ix_yield_records_field_id` | `(field_id)` | All records for a field (direct path) |
+| `ix_yield_records_recorded_at` | `(recorded_at)` | Time-range queries across all fields |
+| `ix_yield_records_crop_id_recorded_at` | `(crop_id, recorded_at)` | Compound — primary AI feature pipeline access |
+
+## TimescaleDB Readiness
+
+`yield_records.recorded_at TIMESTAMPTZ NOT NULL` satisfies the hypertable partition key requirement. Future activation:
+
+```sql
+SELECT create_hypertable('yield_records', 'recorded_at', chunk_time_interval => INTERVAL '1 season');
+```
+
+## Architecture Decision Register — Phase 9
+
+| ADR | Decision |
+|---|---|
+| ADR-009-01 | `YieldRecord` anchors to `crop_id` as primary FK — yield is per crop cycle |
+| ADR-009-02 | `field_id` denormalized on `yield_records` for direct field-scoped queries without JOIN |
+| ADR-009-03 | `recorded_at TIMESTAMPTZ NOT NULL` is the primary time key and TimescaleDB partition key candidate |
+| ADR-009-04 | `YieldRecord` is mutable — PATCH permitted for operator measurement corrections |
+| ADR-009-05 | `crop_id` is immutable after creation — excluded from `YieldRecordUpdate` schema |
+| ADR-009-06 | `area_harvested_ha > 0` (not `>= 0`) when supplied — Pydantic `ge=0` tightened at service layer |
+| ADR-009-07 | `YieldMeasurementMethod` placed in `app/core/enums.py` for Yield Prediction Engine reuse |
+| ADR-009-08 | `CropNotFoundError` imported from `app.services.crop` — shared domain exception, not re-declared |
 
 ---
 
@@ -690,7 +868,7 @@ Key decisions by phase:
 | ADR-002-03 | 2 | Domain exceptions are `ValueError` subclasses |
 | ADR-002-04 | 2 | Routers translate domain exceptions to HTTP |
 | ADR-003-01 | 3 | All enums inherit `str` for VARCHAR storage |
-| ADR-004-01 | 4 | One-to-one enforced at DB level (UNIQUE) and service level |
+| ADR-004-01 | 4 | One-to-one enforced at DB level (UNIQUE) and service layer |
 | ADR-005-01 | 5 | Time-series entities use `TIMESTAMPTZ NOT NULL` |
 | ADR-006-01 | 6 | P1 AI attributes are nullable ADD COLUMN — no backfill |
 | ADR-007-19 | 7 | SensorReading supports DELETE but not UPDATE |
@@ -698,176 +876,90 @@ Key decisions by phase:
 | ADR-007-26 | 7 | Service layer is the future event publishing boundary |
 | ADR-007-27 | 7 | Historical telemetry cannot be mutated |
 | ADR-007-32 | 7 | No PATCH or PUT endpoint for SensorReading |
+| ADR-008-01 | 8 | `postgresql.ENUM` with explicit lifecycle for new ENUM types |
+| ADR-008-02 | 8 | IrrigationEvent is mutable — PATCH permitted |
+| ADR-009-01 | 9 | `YieldRecord` anchors to `crop_id` — yield is per crop cycle |
+| ADR-009-02 | 9 | `field_id` denormalized on `yield_records` for direct field queries |
+| ADR-009-04 | 9 | `YieldRecord` is mutable — PATCH permitted |
+| ADR-009-05 | 9 | `crop_id` immutable after creation |
 
 ---
 
 # Future Architecture Evolution
 
-## TimescaleDB
+The following capabilities extend the current layered architecture without requiring changes to established domain contracts. Service-layer extension points are already documented in create/update methods for event publishing integration.
 
-The `sensor_readings` table is designed for zero-friction TimescaleDB promotion. `recorded_at TIMESTAMPTZ NOT NULL` satisfies the hypertable partition key requirement.
+### Target Domain Expansion
 
-Activation: `SELECT create_hypertable('sensor_readings', 'recorded_at', chunk_time_interval => INTERVAL '1 week');`
+```text
+Farm
+ └── Field
+      ├── Crop
+      │    ├── YieldRecord              ✅ implemented
+      │    └── DiseaseObservation       planned (Phase 10)
+      ├── SoilProfile
+      ├── WeatherRecord
+      ├── SensorReading
+      ├── IrrigationEvent
+      └── SatelliteObservation          planned (Phase 11)
+```
 
-No application code changes are required. Continuous aggregates (hourly averages per sensor type per field) will be implemented as materialised views queried by a future `SensorAggregationRepository`.
+### PostGIS
 
-## Apache Cassandra
+Field boundary polygon support for precision agriculture, spatial queries, and satellite imagery alignment. `Field` geometry columns will be added via Alembic migration with no changes to the service/repository contract pattern.
 
-High-scale deployments will migrate telemetry reads to Cassandra with `field_id` as the partition key and `recorded_at DESC` as the clustering key — matching the compound index already established. Migration occurs via a CQRS split with Redpanda projecting writes asynchronously.
+### Event-Driven Architecture
 
-## CQRS
+Domain events (`SensorReadingCreated`, `IrrigationEventCreated`, `YieldRecordCreated`, and future events) will be published from service-layer extension points to decouple write operations from downstream consumers.
 
-Write side (`create`, `delete`) and read side (`list_by_field`, `get_by_id`) will be separated into distinct repository implementations backed by different storage engines. The service layer is the correct split boundary — no service code changes required.
-
-## Redpanda
+### Redpanda / Message Queues
 
 `SensorReadingService.create_sensor_reading()` contains a documented extension point (ADR-007-26) for publishing `SensorReadingCreated` events to the Redpanda topic `sensor.readings.created`. Downstream consumers: Digital Twin updater, AI anomaly detector, alert evaluator, CQRS projector.
 
-## Temporal Workflows
+Similar extension points exist on `YieldRecordService` for the Yield Prediction Engine feature pipeline.
 
-Stateful agricultural alert workflows (sustained soil moisture deficit → irrigation recommendation → operator notification → escalation) will be triggered from the `create_sensor_reading` service extension point, launching Temporal workflows with durable timers and retry policies.
+### CQRS
 
-## Digital Twin
+Write side (`create`, `update`, `delete`) and read side (`list_by_field`, `get_by_id`) will be separated into distinct repository implementations backed by different storage engines. The service layer is the correct split boundary — no service code changes required.
 
-A continuously updated virtual model of every field will be maintained, sourced from `SensorReadingCreated` events (Redpanda), AI inference results, and crop lifecycle updates. The `SensorType` enum values map directly to Digital Twin field state properties.
+### TimescaleDB
 
-## Generative-As-A-Service (GaaS)
+Time-series tables are designed for zero-friction hypertable promotion:
 
-The AGRIFLOW-AI REST API surface (fully documented in OpenAPI via FastAPI auto-generation) is already GaaS-ready. A future LLM agent will use AGRIFLOW-AI endpoints as tools to answer natural language queries from farmers and agronomists. Phase 7 sensor telemetry is a key context source for irrigation and crop health queries.
-
----
-
-# Irrigation Management Architecture (Phase 8)
-
-## Mutable Operational Event Pattern
-
-`IrrigationEvent` is the first domain in AGRIFLOW-AI explicitly designed as a **mutable operational event**. Unlike `SensorReading` (which is append-only), irrigation events represent human-logged management actions that may require post-hoc correction.
-
-Full CRUD surface (including PATCH) is provided by the API. This is a deliberate architectural contrast:
-
-| Domain | Pattern | PATCH? | Rationale |
-|---|---|---|---|
-| SensorReading | Append-only telemetry | ✗ | Sensor measurement is a fact — immutable |
-| IrrigationEvent | Mutable operational event | ✓ | Operator log — correctible after the fact |
-
-## Timestamp Architecture
-
-`started_at` is the primary time key:
-- `TIMESTAMPTZ NOT NULL` — timezone-aware mandatory
-- Serves as the TimescaleDB hypertable partition key in future phases
-- Indexed individually and in compound with `field_id`
-- Must not be in the future (service-layer validation → HTTP 400)
-
-`ended_at` is optional and nullable:
-- Supports cases where duration is known but exact end time is not
-- When present, must be timezone-aware and ≥ `started_at`
-- Sparse PATCH guard: when only one timestamp is present in the update payload, the service merges with the existing record before ordering validation
-
-## Enum Lifecycle Fix (ADR-008-01)
-
-Phase 8 introduced a critical PostgreSQL/SQLAlchemy compatibility fix. Prior migrations (`003` and `13aabbe35d51`) used `sa.Enum` to define PostgreSQL ENUM types. In SQLAlchemy 2.0.x, `sa.Enum._copy()` — invoked internally by `op.create_table()` — does not forward `create_type=False`, causing `DuplicateObjectError` on fresh databases.
-
-**Resolution**: Use `postgresql.ENUM` (from `sqlalchemy.dialects.postgresql`) with `create_type=False` and explicit `.create()` / `.drop()` calls. This separates enum type lifecycle management from table DDL entirely.
-
-This pattern is now the authoritative standard for all future migrations that introduce new PostgreSQL ENUM types.
-
-## Index Strategy
-
-Three indexes support the `irrigation_events` table:
-
-| Index | Columns | Primary Use Case |
+| Table | Partition Key | Chunk Interval |
 |---|---|---|
-| `ix_irrigation_events_field_id` | `(field_id)` | All events for a given field |
-| `ix_irrigation_events_started_at` | `(started_at)` | Events within a time window (cross-field) |
-| `ix_irrigation_events_field_id_started_at` | `(field_id, started_at)` | Field-scoped irrigation history + AI feature pipelines |
+| `sensor_readings` | `recorded_at` | 1 week |
+| `irrigation_events` | `started_at` | 1 month |
+| `yield_records` | `recorded_at` | 1 season |
 
-The compound index is the primary AI access pattern for FAO-56 water balance computations.
+No application code changes are required for promotion. Continuous aggregates will be implemented as materialised views queried by future aggregation repositories.
 
-## TimescaleDB Readiness
+### Apache Cassandra
 
-`irrigation_events.started_at TIMESTAMPTZ NOT NULL` satisfies the hypertable partition key requirement. Future activation:
+High-scale deployments will migrate telemetry and observation reads to Cassandra with partition keys matching existing compound indexes (`field_id` / `crop_id` + time DESC). Migration occurs via a CQRS split with Redpanda projecting writes asynchronously.
 
-```sql
-SELECT create_hypertable('irrigation_events', 'started_at', chunk_time_interval => INTERVAL '1 month');
-```
+### Temporal Workflows
 
-## Architecture Decision Register — Phase 8 Additions
+Stateful agricultural alert workflows (sustained soil moisture deficit → irrigation recommendation → operator notification → escalation) will be triggered from service extension points, launching Temporal workflows with durable timers and retry policies.
 
-| ADR | Decision |
-|---|---|
-| ADR-008-01 | Use `postgresql.ENUM` with `create_type=False` + explicit lifecycle for all new ENUM types |
-| ADR-008-02 | IrrigationEvent is mutable — PATCH is permitted to allow operator correction |
-| ADR-008-03 | `started_at` TIMESTAMPTZ is the TimescaleDB partition key candidate — indexed individually and in compound |
-| ADR-008-04 | Sparse PATCH ordering guard: service merges payload with persisted record before `ended_at >= started_at` check |
-| ADR-008-05 | `IrrigationMethod` and `WaterSource` placed in `app/core/enums.py` for future reuse by AI models and Digital Twin |
+### Digital Twin
 
----
+A continuously updated virtual model of every field will be maintained, sourced from domain events (Redpanda), AI inference results, and crop lifecycle updates. `SensorType` enum values map directly to Digital Twin field state properties.
 
-# Yield Domain Architecture (Phase 9)
+### AI Recommendation Engine
 
-Phase 9 introduced `YieldRecord` — the first grandchild entity in AGRIFLOW-AI — establishing a dedicated time-series observation log for crop yield measurements, separate from the scalar summary columns on the `Crop` model.
+* **Yield Prediction Engine** (Phase 12) — supervised model trained on `YieldRecord` time-series
+* **Disease Risk Scoring Engine** (Phase 13) — risk scoring using sensor telemetry and weather patterns
+* **Irrigation Recommendation Engine** (Phase 14) — FAO-56 water balance optimization using `IrrigationEvent` history
 
-## Grandchild Domain Pattern
+### Generative AI as a Service (GaaS) — Farm Copilot
 
-`YieldRecord` is anchored to `crop_id` as its primary FK because yield is a per-crop-cycle measurement, not a per-field point-in-time event (ADR-009-01):
+The AGRIFLOW-AI REST API surface (fully documented in OpenAPI via FastAPI auto-generation) is GaaS-ready. A future LLM agent will use AGRIFLOW-AI endpoints as tools to answer natural language queries from farmers and agronomists. Sensor telemetry, irrigation history, and yield records are key context sources.
 
-```
-Farm → Field → Crop → YieldRecord
-```
+### Data Lake and MLOps
 
-`field_id` is **denormalized** directly onto `yield_records` (ADR-009-02) to enable field-scoped queries (`list_by_field`) without a JOIN through `crops`. Both FKs carry `ON DELETE CASCADE`.
+Batch feature extraction pipelines will source training data from PostgreSQL (and eventually TimescaleDB/Cassandra read replicas). Model training, versioning, and deployment will follow a standard MLOps workflow integrated with the AI recommendation engines above.
 
-## Mutable Domain
+### Observability
 
-`YieldRecord` is mutable (ADR-009-04). PATCH is permitted so operators can correct measurement values (recalibrated moisture content, corrected harvested area) after logging. `crop_id` is the one immutable field (ADR-009-05) — the schema's `Update` model excludes it.
-
-## Service-Side `field_id` Resolution
-
-`YieldRecordService.create_yield_record()` accepts `crop_id` (from the URL path) and resolves `field_id` from the crop ORM instance before building the insert data. The caller never supplies `field_id` — this guarantees the denormalized column is always consistent.
-
-## Dual-Parent Response Schema
-
-`YieldRecordResponse` is the first response schema in the project that exposes two parent FKs (`crop_id` and `field_id`). This reflects the dual-anchor design and makes the denormalized path transparent to API consumers.
-
-## Shared Enum Growth
-
-`app/core/enums.py` now holds four shared enum types:
-
-| Enum | Phase | Domain |
-|---|---|---|
-| `SensorType` | Phase 7 | SensorReading |
-| `IrrigationMethod` | Phase 8 | IrrigationEvent |
-| `WaterSource` | Phase 8 | IrrigationEvent |
-| `YieldMeasurementMethod` | Phase 9 | YieldRecord, Phase 12 Yield Prediction Engine |
-
-## Index Strategy
-
-Four indexes support the `yield_records` table:
-
-| Index | Columns | Primary Use Case |
-|---|---|---|
-| `ix_yield_records_crop_id` | `(crop_id)` | All records for a crop cycle |
-| `ix_yield_records_field_id` | `(field_id)` | All records for a field (direct path) |
-| `ix_yield_records_recorded_at` | `(recorded_at)` | Time-range queries across all fields |
-| `ix_yield_records_crop_id_recorded_at` | `(crop_id, recorded_at)` | Compound — primary AI feature pipeline access |
-
-## TimescaleDB Readiness
-
-`yield_records.recorded_at TIMESTAMPTZ NOT NULL` satisfies the hypertable partition key requirement. Future activation:
-
-```sql
-SELECT create_hypertable('yield_records', 'recorded_at', chunk_time_interval => INTERVAL '1 season');
-```
-
-## Architecture Decision Register — Phase 9 Additions
-
-| ADR | Decision |
-|---|---|
-| ADR-009-01 | `YieldRecord` anchors to `crop_id` as primary FK — yield is per crop cycle |
-| ADR-009-02 | `field_id` denormalized on `yield_records` for direct field-scoped queries without JOIN |
-| ADR-009-03 | `recorded_at TIMESTAMPTZ NOT NULL` is the primary time key and TimescaleDB partition key candidate |
-| ADR-009-04 | `YieldRecord` is mutable — PATCH permitted for operator measurement corrections |
-| ADR-009-05 | `crop_id` is immutable after creation — excluded from `YieldRecordUpdate` schema |
-| ADR-009-06 | `area_harvested_ha > 0` (not `>= 0`) when supplied — Pydantic `ge=0` tightened at service layer |
-| ADR-009-07 | `YieldMeasurementMethod` placed in `app/core/enums.py` for Phase 12 Yield Prediction Engine reuse |
-| ADR-009-08 | `CropNotFoundError` imported from `app.services.crop` — shared domain exception, not re-declared |
+Advanced observability (structured logging is already in place via `app/core/logging`) will extend to distributed tracing, metrics dashboards, and health-check aggregation for production Azure deployments.
