@@ -47,6 +47,17 @@
 
 ## Field Domain Endpoints
 
+Cumulative API inventory for all implemented domains through Phase 10.
+
+### Health
+
+* GET /api/v1/health/live
+* GET /api/v1/health/ready
+
+### Version
+
+* GET /api/v1/version
+
 ### Create Field
 
 * POST /api/v1/farms/{farm_id}/fields
@@ -135,6 +146,102 @@
 ### Delete Weather Record
 
 * DELETE /api/v1/weather-records/{weather_record_id}
+
+---
+
+## Sensor Reading Domain Endpoints
+
+### Create Sensor Reading
+
+* POST /api/v1/fields/{field_id}/sensor-readings
+
+### List Sensor Readings for Field
+
+* GET /api/v1/fields/{field_id}/sensor-readings
+
+### Get Sensor Reading
+
+* GET /api/v1/sensor-readings/{sensor_reading_id}
+
+### Delete Sensor Reading
+
+* DELETE /api/v1/sensor-readings/{sensor_reading_id}
+
+---
+
+## Irrigation Event Domain Endpoints
+
+### Create Irrigation Event
+
+* POST /api/v1/fields/{field_id}/irrigation-events
+
+### List Irrigation Events for Field
+
+* GET /api/v1/fields/{field_id}/irrigation-events
+
+### Get Irrigation Event
+
+* GET /api/v1/irrigation-events/{event_id}
+
+### Update Irrigation Event
+
+* PATCH /api/v1/irrigation-events/{event_id}
+
+### Delete Irrigation Event
+
+* DELETE /api/v1/irrigation-events/{event_id}
+
+---
+
+## Yield Record Domain Endpoints
+
+### Create Yield Record
+
+* POST /api/v1/crops/{crop_id}/yield-records
+
+### List Yield Records for Crop
+
+* GET /api/v1/crops/{crop_id}/yield-records
+
+### Get Yield Record
+
+* GET /api/v1/yield-records/{yield_record_id}
+
+### Update Yield Record
+
+* PATCH /api/v1/yield-records/{yield_record_id}
+
+### Delete Yield Record
+
+* DELETE /api/v1/yield-records/{yield_record_id}
+
+---
+
+## Disease Observation Domain Endpoints
+
+### Create Disease Observation
+
+* POST /api/v1/crops/{crop_id}/disease-observations
+
+### List Disease Observations for Crop
+
+* GET /api/v1/crops/{crop_id}/disease-observations
+
+### List Disease Observations for Field
+
+* GET /api/v1/fields/{field_id}/disease-observations
+
+### Get Disease Observation
+
+* GET /api/v1/disease-observations/{observation_id}
+
+### Update Disease Observation
+
+* PATCH /api/v1/disease-observations/{observation_id}
+
+### Delete Disease Observation
+
+* DELETE /api/v1/disease-observations/{observation_id}
 
 
 ## API Architecture
@@ -346,6 +453,40 @@ Crop
 * No update operation permitted — SensorReading is immutable (no PATCH, no PUT)
 * Telemetry list responses are ordered by `recorded_at DESC` (most recent first)
 * Administrative deletion is supported; modification is forbidden
+
+### Irrigation Event Domain
+
+* Field must exist before IrrigationEvent creation (→ 404 Not Found)
+* `started_at` must be timezone-aware and not in the future (→ 400 Bad Request)
+* `ended_at`, when supplied, must be timezone-aware and ≥ `started_at`
+* Cross-field ordering validated after sparse PATCH (effective values merged before check)
+* `duration_minutes` must be non-negative
+* `water_volume_liters` must be non-negative
+* PATCH is permitted — IrrigationEvent is a mutable operational event
+* List responses are ordered by `started_at DESC` (most recent first)
+
+### Yield Record Domain
+
+* Crop must exist before YieldRecord creation (→ 404 Not Found)
+* `crop_id` is supplied through the route path — not in the request body
+* `field_id` is resolved server-side from the crop record — not supplied by the caller
+* `recorded_at` must be timezone-aware and not in the future (→ 400 Bad Request)
+* `area_harvested_ha`, when supplied, must be > 0 (→ 400 Bad Request)
+* `test_weight_kg_hl`, when supplied, must be > 0 (→ 400 Bad Request)
+* `crop_id` is immutable after creation — excluded from update schema
+* PATCH is permitted — YieldRecord is a mutable observation record
+* List responses are ordered by `recorded_at DESC` (most recent first)
+
+### Disease Observation Domain
+
+* Crop must exist before DiseaseObservation creation (→ 404 Not Found)
+* `crop_id` is supplied through the route path — not in the request body
+* `field_id` is resolved server-side from the crop record — not supplied by the caller
+* `observed_at` must be timezone-aware and not in the future (→ 400 Bad Request)
+* `affected_area_percent`, when supplied, must be within [0, 100] (schema validation)
+* `crop_id` and `field_id` are immutable after creation — excluded from update schema
+* PATCH is permitted — DiseaseObservation is a mutable observation record
+* List responses are ordered by `observed_at DESC` (most recent first)
 
 ---
 

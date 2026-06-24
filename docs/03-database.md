@@ -43,6 +43,30 @@ Farm
 
 ## Current Schema
 
+The production database after Phase 10 comprises **nine domain tables** plus `alembic_version`. All domain entities map to the hierarchy below.
+
+```text
+Farm
+└── Field
+     ├── Crop
+     │    ├── YieldRecord
+     │    └── DiseaseObservation
+     ├── SoilProfile         (1:1)
+     ├── WeatherRecord
+     ├── SensorReading       (append-only)
+     └── IrrigationEvent     (mutable operational events)
+```
+
+**Tables:** `farms`, `fields`, `crops`, `soil_profiles`, `weather_records`, `sensor_readings`, `irrigation_events`, `yield_records`, `disease_observations`
+
+**Relationship summary:**
+
+* Farm (1) → (N) Fields
+* Field (1) → (N) Crops, WeatherRecords, SensorReadings, IrrigationEvents, YieldRecords, DiseaseObservations
+* Field (1) → (1) SoilProfile
+* Crop (1) → (N) YieldRecords, DiseaseObservations
+* `field_id` is denormalized on `yield_records` and `disease_observations` for direct field-scoped queries (ADR-009-02, ADR-010-02)
+
 ### farms
 Primary agricultural entity. Root aggregate for all domain hierarchies.
 
@@ -153,7 +177,7 @@ Represents historical weather observations for a field.
 | `updated_at` | `TIMESTAMPTZ` | No | Audit timestamp |
 
 
-## sensor_readings
+### sensor_readings
 
 Represents IoT sensor telemetry observations for a field. **Append-only — no updates permitted.**
 
@@ -212,7 +236,7 @@ Migration 006 uses explicit `CREATE TYPE sensor_type AS ENUM (...)` in the upgra
 
 ---
 
-## irrigation_events (Phase 8)
+### irrigation_events
 
 Represents human-logged irrigation management events for a field. **Mutable — PATCH is supported.**
 
@@ -281,6 +305,49 @@ Phase 8 discovered that `sa.Enum._copy()` in SQLAlchemy 2.0.x does not forward `
 
 **ON DELETE CASCADE:**
 `field_id` FK uses `ON DELETE CASCADE` — consistent with all other Field children.
+
+### yield_records
+
+Represents discrete yield observations for a crop cycle. **Mutable — PATCH is supported.**
+
+| Column | Type | Nullable | Notes |
+|---|---|---|---|
+| `id` | `UUID` | No | Primary key |
+| `crop_id` | `UUID` (FK → crops.id) | No | ON DELETE CASCADE; primary domain anchor |
+| `field_id` | `UUID` (FK → fields.id) | No | ON DELETE CASCADE; denormalized from crop |
+| `recorded_at` | `TIMESTAMPTZ` | No | Primary time key; TimescaleDB partition candidate |
+| `yield_value_tons_ha` | `NUMERIC(10,4)` | No | Yield measurement |
+| `measurement_method` | `ENUM(yield_measurement_method)` | No | Measurement provenance |
+| `area_harvested_ha` | `NUMERIC(10,4)` | Yes | Harvested sub-field area |
+| `moisture_content_percent` | `NUMERIC(5,2)` | Yes | Grain moisture content |
+| `test_weight_kg_hl` | `NUMERIC(6,3)` | Yes | Bulk density measurement |
+| `quality_grade` | `VARCHAR(50)` | Yes | Free-form quality grade |
+| `notes` | `TEXT` | Yes | Operator annotations |
+| `created_at` | `TIMESTAMPTZ` | No | Audit timestamp |
+| `updated_at` | `TIMESTAMPTZ` | No | Audit timestamp |
+
+See **Phase 9 — Yield Domain** below for enum definitions, indexes, and design decisions.
+
+### disease_observations
+
+Represents disease pressure observations for a crop cycle. **Mutable — PATCH is supported.**
+
+| Column | Type | Nullable | Notes |
+|---|---|---|---|
+| `id` | `UUID` | No | Primary key |
+| `crop_id` | `UUID` (FK → crops.id) | No | ON DELETE CASCADE; primary domain anchor |
+| `field_id` | `UUID` (FK → fields.id) | No | ON DELETE CASCADE; denormalized from crop |
+| `observed_at` | `TIMESTAMPTZ` | No | Primary time key; TimescaleDB partition candidate |
+| `disease_name` | `VARCHAR(255)` | No | Free-text disease identifier |
+| `severity` | `ENUM(disease_severity)` | No | LOW, MEDIUM, HIGH, CRITICAL |
+| `affected_area_percent` | `NUMERIC(5,2)` | Yes | Percentage of crop area affected [0, 100] |
+| `diagnosis_method` | `ENUM(diagnosis_method)` | No | Identification method |
+| `treatment_applied` | `TEXT` | Yes | Treatment response notes |
+| `notes` | `TEXT` | Yes | Operator annotations |
+| `created_at` | `TIMESTAMPTZ` | No | Audit timestamp |
+| `updated_at` | `TIMESTAMPTZ` | No | Audit timestamp |
+
+See **Phase 10 — Disease Observation Domain** below for enum definitions, indexes, and design decisions.
 
 ---
 
