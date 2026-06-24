@@ -3,7 +3,7 @@
 **Document:** Architecture Reference & Implementation History  
 **Version:** 1.1  
 **Date:** June 2026  
-**Scope:** Phase 1 through Phase 9 — complete implementation record and future architecture guide  
+**Scope:** Phase 1 through Phase 10 — complete implementation record and future architecture guide  
 **Status:** Living Document
 
 ---
@@ -22,16 +22,17 @@
 10. [Phase 7 — Sensor Telemetry Domain](#10-phase-7--sensor-telemetry-domain)
 11. [Phase 8 — Irrigation Management Domain](#11-phase-8--irrigation-management-domain)
 12. [Phase 9 — Yield Domain](#12-phase-9--yield-domain)
-13. [Current Domain Architecture (Post Phase 9)](#13-current-domain-architecture-post-phase-9)
-14. [Future Architecture: TimescaleDB](#14-future-architecture-timescaledb)
-15. [Future Architecture: Apache Cassandra](#15-future-architecture-apache-cassandra)
-16. [Future Architecture: CQRS](#16-future-architecture-cqrs)
-17. [Future Architecture: Redpanda / Kafka](#17-future-architecture-redpanda--kafka)
-18. [Future Architecture: Temporal Workflows](#18-future-architecture-temporal-workflows)
-19. [Future Architecture: Digital Twin](#19-future-architecture-digital-twin)
-20. [Future Architecture: Generative-As-A-Service (GaaS)](#20-future-architecture-generative-as-a-service-gaas)
-21. [Architecture Decision Register](#21-architecture-decision-register)
-22. [Technology Evolution Roadmap](#22-technology-evolution-roadmap)
+13. [Phase 10 – Disease Observation Domain Architecture](#phase-10--disease-observation-domain-architecture)
+14. [Current Domain Architecture (Post Phase 10)](#13-current-domain-architecture-post-phase-10)
+15. [Future Architecture: TimescaleDB](#14-future-architecture-timescaledb)
+16. [Future Architecture: Apache Cassandra](#15-future-architecture-apache-cassandra)
+17. [Future Architecture: CQRS](#16-future-architecture-cqrs)
+18. [Future Architecture: Redpanda / Kafka](#17-future-architecture-redpanda--kafka)
+19. [Future Architecture: Temporal Workflows](#18-future-architecture-temporal-workflows)
+20. [Future Architecture: Digital Twin](#19-future-architecture-digital-twin)
+21. [Future Architecture: Generative-As-A-Service (GaaS)](#20-future-architecture-generative-as-a-service-gaas)
+22. [Architecture Decision Register](#21-architecture-decision-register)
+23. [Technology Evolution Roadmap](#22-technology-evolution-roadmap)
 
 ---
 
@@ -1207,9 +1208,209 @@ DELETE /api/v1/yield-records/{id}             — 204 No Content
 
 ---
 
-## 13. Current Domain Architecture (Post Phase 9)
+## Phase 10 – Disease Observation Domain Architecture
 
-### Complete Entity Relationship (Post Phase 9)
+**Status:** ✅ Complete
+
+### Business Context
+
+Crop disease pressure is a primary driver of yield loss and input cost escalation in commercial agriculture. Operators record disease sightings during field inspections, lab confirmations, and (increasingly) AI-assisted image analysis. Without a structured disease observation log, the platform cannot:
+
+- Correlate disease severity with yield outcomes (`YieldRecord` × `DiseaseObservation`)
+- Train a Disease Risk Scoring Engine (Phase 13) on labelled severity time-series
+- Power GaaS PlantHealthAdvisor natural language queries ("What is the disease risk for my wheat crop?")
+- Feed Digital Twin crop health state with time-keyed severity labels
+
+Phase 10 introduces `DiseaseObservation` as the second grandchild domain, reusing the crop-cycle anchoring and denormalized `field_id` pattern established by `YieldRecord` in Phase 9.
+
+### Domain Model
+
+`DiseaseObservation` represents a disease event observed during a specific crop lifecycle:
+
+```
+Farm → Field → Crop → DiseaseObservation
+```
+
+Disease pressure is a per-crop-cycle measurement — the same agronomic reasoning that anchors `YieldRecord` on `crop_id` applies here. A field may host multiple crop cycles over time; disease observations belong to the crop cycle in which they were observed.
+
+### Entity Design
+
+| Field | Type | Cardinality / Notes |
+|---|---|---|
+| `id` | `UUID` PK | Server-generated |
+| `crop_id` | `UUID` FK → `crops.id` | Primary domain anchor; immutable after creation |
+| `field_id` | `UUID` FK → `fields.id` | Denormalized; resolved server-side from crop at creation; immutable after creation |
+| `observed_at` | `TIMESTAMPTZ NOT NULL` | Primary time key; timezone-aware; not in the future |
+| `disease_name` | `VARCHAR(255)` | Free-text disease identifier (e.g. "Rust", "Late Blight") |
+| `severity` | `disease_severity` ENUM | `DiseaseSeverity`: LOW, MEDIUM, HIGH, CRITICAL |
+| `affected_area_percent` | `NUMERIC(5,2)` nullable | Percentage of crop area affected; [0, 100] when supplied |
+| `diagnosis_method` | `diagnosis_method` ENUM | `DiagnosisMethod`: VISUAL_INSPECTION, LAB_ANALYSIS, IMAGE_AI, AGRONOMIST, SENSOR_DETECTED |
+| `treatment_applied` | `TEXT` nullable | Treatment notes (e.g. fungicide application) |
+| `notes` | `TEXT` nullable | Operator annotations |
+| `created_at` / `updated_at` | `TIMESTAMPTZ` | Via `AuditableModel` |
+
+**Relationships:**
+
+- `Crop` 1:N `DiseaseObservation` — primary ownership chain
+- `Field` 1:N `DiseaseObservation` — via denormalized `field_id` for direct field-scoped queries
+- Both FKs use `ON DELETE CASCADE`
+
+### Enum Strategy
+
+**`DiseaseSeverity`** (LOW, MEDIUM, HIGH, CRITICAL) — placed in `app/core/enums.py` because severity labels are training targets for the Phase 13 Disease Risk Scoring Engine, GaaS PlantHealthAdvisor risk queries, and future Digital Twin crop health state. A closed enum (not free-text) ensures consistent ML label vocabulary.
+
+**`DiagnosisMethod`** (VISUAL_INSPECTION, LAB_ANALYSIS, IMAGE_AI, AGRONOMIST, SENSOR_DETECTED) — placed in `app/core/enums.py` because diagnosis provenance enables data quality weighting in AI models (lab-confirmed observations carry higher confidence than visual inspection). `IMAGE_AI` and `SENSOR_DETECTED` reserve extension points for computer vision and IoT-triggered disease detection without schema changes.
+
+### Database Architecture
+
+**Migration:** `d3e7b2a9f1c4_create_disease_observations_table`  
+**Revises:** `b7e2a9f4c8d3`
+
+```sql
+-- ENUM types (postgresql.ENUM with create_type=False — ADR-008-01 pattern)
+CREATE TYPE disease_severity AS ENUM ('LOW', 'MEDIUM', 'HIGH', 'CRITICAL');
+CREATE TYPE diagnosis_method AS ENUM (
+    'VISUAL_INSPECTION', 'LAB_ANALYSIS', 'IMAGE_AI', 'AGRONOMIST', 'SENSOR_DETECTED'
+);
+
+CREATE TABLE disease_observations (
+    id                    UUID PRIMARY KEY,
+    crop_id               UUID NOT NULL REFERENCES crops(id) ON DELETE CASCADE,
+    field_id              UUID NOT NULL REFERENCES fields(id) ON DELETE CASCADE,
+    observed_at           TIMESTAMPTZ NOT NULL,
+    disease_name          VARCHAR(255) NOT NULL,
+    severity              disease_severity NOT NULL,
+    affected_area_percent NUMERIC(5,2),
+    diagnosis_method      diagnosis_method NOT NULL,
+    treatment_applied     TEXT,
+    notes                 TEXT,
+    created_at            TIMESTAMPTZ NOT NULL DEFAULT now(),
+    updated_at            TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+```
+
+**Indexes (6):**
+
+| Index | Columns | Purpose |
+|---|---|---|
+| `ix_disease_observations_crop_id` | `crop_id` | All observations for a crop cycle |
+| `ix_disease_observations_field_id` | `field_id` | Direct field-scoped queries (no JOIN through crops) |
+| `ix_disease_observations_observed_at` | `observed_at` | Time-range queries |
+| `ix_disease_observations_disease_name` | `disease_name` | Filter by disease name |
+| `ix_disease_observations_severity` | `severity` | Filter by severity |
+| `ix_disease_observations_crop_id_observed_at` | `(crop_id, observed_at)` | Primary AI feature pipeline path |
+
+**Cascade behaviour:** Deleting a `Crop` or `Field` atomically removes all associated disease observations at the database level, consistent with `cascade="all, delete-orphan"` on ORM relationships.
+
+### Repository Architecture
+
+`DiseaseObservationRepository` extends `BaseRepository[DiseaseObservation]`:
+
+| Method | Responsibility |
+|---|---|
+| `create` | Insert new observation (inherited) |
+| `get_by_id` | Fetch by primary key (inherited) |
+| `update` | Sparse patch by primary key (inherited) |
+| `delete` | Remove by primary key (inherited) |
+| `get_by_crop` | Paginated list for crop cycle, `ORDER BY observed_at DESC` — uses `(crop_id, observed_at)` compound index |
+| `get_by_field` | Paginated list for field across all crop cycles, `ORDER BY observed_at DESC` — uses `field_id` index |
+
+Query ordering is always `observed_at DESC` — the canonical access pattern for disease history review and AI feature vector assembly.
+
+### Service Architecture
+
+`DiseaseObservationService` enforces:
+
+1. Crop must exist before observation creation (`CropNotFoundError` → 404)
+2. `field_id` resolved server-side from crop record — not supplied by caller
+3. `observed_at` must not be in the future (`InvalidDiseaseObservationError` → 400)
+4. Observation must exist before update or delete (`DiseaseObservationNotFoundError` → 404)
+5. `crop_id` and `field_id` immutable after creation — excluded from `UpdateDiseaseObservationRequest`
+
+**Validation delegation:** Pydantic schemas enforce timezone-awareness of `observed_at`, `affected_area_percent` in [0, 100], and `disease_name` max length. The service layer adds only the future-timestamp guard (UTC clock comparison).
+
+`CropNotFoundError` is imported from `app.services.crop` — not re-declared — following the ADR-009-08 pattern.
+
+### API Architecture
+
+```http
+POST   /api/v1/crops/{crop_id}/disease-observations              201 Created
+GET    /api/v1/crops/{crop_id}/disease-observations              200 OK  (observed_at DESC, paginated)
+GET    /api/v1/fields/{field_id}/disease-observations            200 OK  (observed_at DESC, paginated)
+GET    /api/v1/disease-observations/{observation_id}             200 OK
+PATCH  /api/v1/disease-observations/{observation_id}             200 OK
+DELETE /api/v1/disease-observations/{observation_id}            204 No Content
+```
+
+`crop_id` is supplied through the route path on create — not in the request body. Field-scoped list endpoint validates the denormalized FK design (ADR-010-02).
+
+### Validation Strategy
+
+| Invariant | Layer | Mechanism |
+|---|---|---|
+| `severity` is a valid enum value | Pydantic | `DiseaseSeverity` enum on Create/Update schemas; Swagger exposure |
+| `diagnosis_method` is a valid enum value | Pydantic | `DiagnosisMethod` enum on Create/Update schemas; Swagger exposure |
+| `affected_area_percent` in [0, 100] | Pydantic | `ge=0, le=100` on both Create and Update schemas |
+| `observed_at` timezone-aware | Pydantic | `@field_validator` on Create and Update schemas |
+| `observed_at` not in the future | Service | `_validate_observed_at()` UTC comparison |
+| Crop exists | Service | `CropRepository.get_by_id()` before create |
+| `crop_id` / `field_id` immutable | Schema | Excluded from `UpdateDiseaseObservationRequest` |
+
+### Architectural Decisions
+
+| ADR | Decision |
+|---|---|
+| ADR-010-01 | `DiseaseObservation` anchors to `crop_id` — disease pressure is per crop cycle |
+| ADR-010-02 | `field_id` denormalized on `disease_observations` for direct field-scoped queries without JOIN |
+| ADR-010-03 | `observed_at TIMESTAMPTZ NOT NULL` is the primary time key and TimescaleDB partition key candidate |
+| ADR-010-04 | `DiseaseObservation` is mutable — PATCH permitted for operator corrections |
+| ADR-010-05 | `crop_id` immutable after creation — excluded from `UpdateDiseaseObservationRequest` |
+| ADR-010-06 | `DiseaseSeverity` and `DiagnosisMethod` placed in `app/core/enums.py` for cross-domain reuse |
+
+### Trade-Off Analysis
+
+| Decision | Chosen | Alternative Rejected | Rationale |
+|---|---|---|---|
+| Crop anchoring | `crop_id` primary FK | Field-only anchoring | Disease pressure is per crop cycle; field-only would lose crop variety and growth stage context |
+| Field access path | Denormalized `field_id` | JOIN through `crops` on every field query | Consistent with `YieldRecord`; enables `GET /fields/{id}/disease-observations` without JOIN |
+| Severity representation | Closed enum | Free-text severity field | ML models require consistent label vocabulary; free-text prevents reliable training |
+| Mutability | Mutable (PATCH) | Immutable like SensorReading | Operators legitimately correct disease assessments after lab confirmation |
+| Diagnosis method | Enum with IMAGE_AI reserved | Method as free-text | Enables confidence weighting in Phase 13 models; reserves CV integration path |
+
+### Future Extension Points
+
+- **Disease Risk Scoring Engine (Phase 13):** `get_by_crop` compound index `(crop_id, observed_at)` is the primary feature pipeline access pattern; `severity` is the training label
+- **Satellite correlation (Phase 11):** NDVI trend vectors from `SatelliteObservation` combined with `DiseaseObservation` severity time-series for spatial disease spread models
+- **Computer vision integration:** `DiagnosisMethod.IMAGE_AI` reserved; future ingestion service can create observations from CV model output without schema migration
+- **Digital Twin integration:** `DiseaseObservationService.create_observation()` contains a documented extension point for `DiseaseObservationCreated` domain events and twin crop health state updates
+- **Redpanda:** Event publishing boundary at service layer — same pattern as `SensorReadingService` (ADR-007-26)
+- **TimescaleDB:** `create_hypertable('disease_observations', 'observed_at')` requires no application code changes
+
+### Lessons Learned
+
+- The grandchild domain pattern from Phase 9 transferred to Phase 10 without architectural invention — crop anchoring, denormalized `field_id`, mutable PATCH semantics, and shared `CropNotFoundError` reuse all applied directly.
+- Field-scoped list endpoints validate the denormalized FK design — direct queries without JOIN through `crops` are the intended access pattern for GaaS and dashboard consumers.
+- Six indexes (five individual + one compound) cover disease name filtering, severity filtering, and the primary AI pipeline path — more indexes than `YieldRecord` because disease analytics requires name and severity predicates.
+- `postgresql.ENUM` with `create_type=False` is now routine — Phase 10 applied the ADR-008-01 pattern for two new enum types without incident.
+
+### Implementation Summary
+
+| Layer | Artifact | Notes |
+|---|---|---|
+| Enums | `DiseaseSeverity`, `DiagnosisMethod` in `app/core/enums.py` | 4 + 5 values respectively |
+| ORM | `backend/app/db/models/disease_observation.py` | Inherits `AuditableModel, Base`; compound index `(crop_id, observed_at)` |
+| Migration | `d3e7b2a9f1c4_create_disease_observations_table` | Two PostgreSQL enums + table + 6 indexes |
+| Schemas | `backend/app/schemas/disease_observation.py` | Create, Update, Response, ListResponse |
+| Repository | `backend/app/db/repositories/disease_observation.py` | `get_by_crop`, `get_by_field` with pagination |
+| Service | `backend/app/services/disease_observation.py` | `DiseaseObservationNotFoundError`, `InvalidDiseaseObservationError` |
+| DI | `backend/app/api/deps.py` | `get_disease_observation_service` + `DiseaseObservationServiceDep` |
+| Router | `backend/app/api/disease_observations/router.py` | 6 endpoints |
+
+---
+
+## 13. Current Domain Architecture (Post Phase 10)
+
+### Complete Entity Relationship (Post Phase 10)
 
 ```mermaid
 erDiagram
@@ -1326,6 +1527,21 @@ erDiagram
         timestamptz updated_at
     }
 
+    DiseaseObservation {
+        UUID id PK
+        UUID crop_id FK
+        UUID field_id FK
+        timestamptz observed_at
+        string disease_name
+        enum severity
+        enum diagnosis_method
+        numeric affected_area_percent
+        text treatment_applied
+        text notes
+        timestamptz created_at
+        timestamptz updated_at
+    }
+
     Farm ||--o{ Field : "has"
     Field ||--o{ Crop : "grows"
     Field ||--o| SoilProfile : "has"
@@ -1333,10 +1549,29 @@ erDiagram
     Field ||--o{ SensorReading : "generates"
     Field ||--o{ IrrigationEvent : "receives"
     Field ||--o{ YieldRecord : "yields (denormalized)"
+    Field ||--o{ DiseaseObservation : "disease history (denormalized)"
     Crop ||--o{ YieldRecord : "measures"
+    Crop ||--o{ DiseaseObservation : "observes"
 ```
 
-### Current API Surface (Post Phase 9)
+### Current Migration Head
+
+`d3e7b2a9f1c4_create_disease_observations_table`
+
+### Current Database Tables
+
+* alembic_version
+* farms
+* fields
+* crops
+* soil_profiles
+* weather_records
+* sensor_readings
+* irrigation_events
+* yield_records
+* disease_observations
+
+### Current API Surface (Post Phase 10)
 
 ```
 Health
@@ -1392,11 +1627,19 @@ Yield Records (Phase 9 — mutable, grandchild)
   GET    /api/v1/yield-records/{yield_record_id}
   PATCH  /api/v1/yield-records/{yield_record_id}
   DELETE /api/v1/yield-records/{yield_record_id}
+
+Disease Observations (Phase 10 — mutable, grandchild)
+  POST   /api/v1/crops/{crop_id}/disease-observations
+  GET    /api/v1/crops/{crop_id}/disease-observations
+  GET    /api/v1/fields/{field_id}/disease-observations
+  GET    /api/v1/disease-observations/{observation_id}
+  PATCH  /api/v1/disease-observations/{observation_id}
+  DELETE /api/v1/disease-observations/{observation_id}
 ```
 
-### Shared Enum Module (Post Phase 9)
+### Shared Enum Module (Post Phase 10)
 
-`app/core/enums.py` now contains four shared cross-domain enumerations:
+`app/core/enums.py` now contains six shared cross-domain enumerations:
 
 | Enum | Phase | Used By |
 |---|---|---|
@@ -1404,6 +1647,27 @@ Yield Records (Phase 9 — mutable, grandchild)
 | `IrrigationMethod` | 8 | IrrigationEvent, future Digital Twin water balance, AI Irrigation Optimizer |
 | `WaterSource` | 8 | IrrigationEvent, future water management analytics |
 | `YieldMeasurementMethod` | 9 | YieldRecord, Phase 12 Yield Prediction Engine, GaaS YieldAdvisor |
+| `DiseaseSeverity` | 10 | DiseaseObservation, Phase 13 Disease Risk Scoring Engine, GaaS PlantHealthAdvisor |
+| `DiagnosisMethod` | 10 | DiseaseObservation, Phase 13 data quality weighting, future CV integration |
+
+### Current Capability Matrix (Post Phase 10)
+
+| Capability | Status | Phase |
+|---|---|---|
+| Farm & Field management | ✅ | 1–2 |
+| Crop lifecycle tracking | ✅ | 3 |
+| Soil intelligence | ✅ | 4 |
+| Weather time-series | ✅ | 5 |
+| AI readiness attributes (P1) | ✅ | 6 |
+| IoT sensor telemetry (append-only) | ✅ | 7 |
+| Irrigation event tracking (mutable) | ✅ | 8 |
+| Yield observation log (grandchild) | ✅ | 9 |
+| Disease observation log (grandchild) | ✅ | 10 |
+| Satellite remote sensing | 🔜 | 11 |
+| Yield Prediction Engine | 🔮 | 12 |
+| Disease Risk Scoring Engine | 🔮 | 13 |
+| Irrigation Recommendation Engine | 🔮 | 14 |
+| Digital Twin + GaaS | 🔮 | 15 |
 
 ---
 
@@ -1935,6 +2199,21 @@ The only missing piece is the GaaS orchestration layer — the underlying data A
 | ADR-008-04 | 8 | Sparse PATCH ordering guard: service merges payload with persisted record before `ended_at >= started_at` check |
 | ADR-008-05 | 8 | `IrrigationMethod` and `WaterSource` placed in `app/core/enums.py` for Digital Twin and AI model reuse |
 | ADR-008-06 | 8 | `InvalidIrrigationTimestampError` maps to HTTP 400 Bad Request (client-correctable logic error) |
+| ADR-009-01 | 9 | `YieldRecord` anchors to `crop_id` as primary FK — yield is per crop cycle |
+| ADR-009-02 | 9 | `field_id` denormalized on `yield_records` — direct field-scoped query path without JOIN |
+| ADR-009-03 | 9 | `recorded_at TIMESTAMPTZ NOT NULL` — primary time key and TimescaleDB partition key candidate |
+| ADR-009-04 | 9 | `YieldRecord` is mutable — PATCH permitted for operator measurement corrections |
+| ADR-009-05 | 9 | `crop_id` immutable after creation — excluded from `YieldRecordUpdate` |
+| ADR-009-06 | 9 | `area_harvested_ha > 0` when supplied — service tightens Pydantic `ge=0` |
+| ADR-009-07 | 9 | `YieldMeasurementMethod` in `app/core/enums.py` — Phase 12 + GaaS reuse |
+| ADR-009-08 | 9 | `CropNotFoundError` imported from `app.services.crop` — shared exception |
+| ADR-009-11 | 9 | `postgresql.ENUM` with `create_type=False` — mandatory ADR-008-01 pattern |
+| ADR-010-01 | 10 | `DiseaseObservation` anchors to `crop_id` — disease pressure is per crop cycle |
+| ADR-010-02 | 10 | `field_id` denormalized on `disease_observations` — direct field-scoped queries without JOIN |
+| ADR-010-03 | 10 | `observed_at TIMESTAMPTZ NOT NULL` — primary time key and TimescaleDB partition key candidate |
+| ADR-010-04 | 10 | `DiseaseObservation` is mutable — PATCH permitted for operator corrections |
+| ADR-010-05 | 10 | `crop_id` immutable after creation — excluded from `UpdateDiseaseObservationRequest` |
+| ADR-010-06 | 10 | `DiseaseSeverity` and `DiagnosisMethod` placed in `app/core/enums.py` for cross-domain reuse |
 
 ---
 
@@ -1954,11 +2233,11 @@ The only missing piece is the GaaS orchestration layer — the underlying data A
 | Logging | structlog | 24.4.0 |
 | Containerisation | Docker | — |
 
-### Near-Term Additions (Phases 8–11)
+### Near-Term Additions (Phases 11–15)
 
 | Component | Technology | Purpose |
 |---|---|---|
-| Time-Series DB | TimescaleDB | Sensor reading hypertables |
+| Time-Series DB | TimescaleDB | Sensor, irrigation, yield, and disease observation hypertables |
 | Message Broker | Redpanda | Event streaming |
 | Cache | Redis | Digital Twin state store |
 | GIS | PostGIS | Field boundary polygons |
@@ -1979,19 +2258,19 @@ The only missing piece is the GaaS orchestration layer — the underlying data A
 
 ```mermaid
 graph TB
-    subgraph "Phase 7 (Current)"
-        P[PostgreSQL] --> App7["FastAPI\nSync REST"]
+    subgraph "Phase 7–10 (Current)"
+        P[PostgreSQL] --> App710["FastAPI\nSync REST\n9 domain tables"]
     end
 
-    subgraph "Phase 8–9 (Near Term)"
-        P2[PostgreSQL] --> App89["FastAPI"]
-        TS[TimescaleDB] --> App89
-        RP[Redpanda] --> App89
+    subgraph "Phase 11 (Near Term)"
+        P2[PostgreSQL] --> App11["FastAPI"]
+        TS[TimescaleDB] --> App11
+        RP[Redpanda] --> App11
     end
 
-    subgraph "Phase 10–11 (AI Layer)"
-        All["PostgreSQL\nTimescaleDB\nCassandra\nRedis"] --> App1011["FastAPI\n+ AI Inference\n+ Digital Twin\n+ Temporal"]
-        RP2[Redpanda] --> App1011
+    subgraph "Phase 12–14 (AI Layer)"
+        All["PostgreSQL\nTimescaleDB\nCassandra\nRedis"] --> App1214["FastAPI\n+ AI Inference\n+ Digital Twin\n+ Temporal"]
+        RP2[Redpanda] --> App1214
     end
 
     subgraph "Phase 15+ (GaaS)"
@@ -2012,7 +2291,7 @@ graph TB
 | ✅ 7 | Sensor | IoT telemetry |
 | ✅ 8 | Irrigation | Water management |
 | ✅ 9 | Yield | Harvest intelligence |
-| 🔜 10 | Disease Observation | Plant health |
+| ✅ 10 | Disease Observation | Plant health monitoring |
 | 🔜 11 | Satellite | Remote sensing |
 | 🔮 12 | Yield Prediction Engine | First AI model |
 | 🔮 13 | Disease Prediction Engine | Risk scoring |
@@ -2023,4 +2302,4 @@ graph TB
 
 *This document is the authoritative implementation history and architecture reference for AGRIFLOW-AI. It should be updated at the completion of each phase.*
 
-*Last updated: Phase 9 completion — June 2026*
+*Last updated: Phase 10 completion — June 2026*

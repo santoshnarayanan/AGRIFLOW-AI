@@ -3,7 +3,7 @@
 **Document:** Architecture Diagrams Reference  
 **Version:** 1.1  
 **Date:** June 2026  
-**Scope:** Current State (Phase 8) and Target State (Phase 15) — visual architecture reference  
+**Scope:** Current State (Phase 10) and Target State (Phase 15) — visual architecture reference  
 **Status:** Living Document  
 **Author:** AGRIFLOW-AI Principal Enterprise Architecture
 
@@ -33,17 +33,17 @@
 ## 1. AGRIFLOW Platform Evolution
 
 ### Title
-AGRIFLOW-AI Platform Evolution — Phase 1 through Phase 8
+AGRIFLOW-AI Platform Evolution — Phase 1 through Phase 10
 
 ### Purpose
 Illustrate how each completed phase expanded the AGRIFLOW-AI platform from an empty backend foundation into a multi-domain, AI-ready agricultural intelligence system. This diagram captures the strategic trajectory: each phase added a new domain, new infrastructure, or a critical capability layer that unlocked the next phase.
 
 ### Explanation
-The platform began with zero capability in Phase 1. By Phase 8, it operates a fully layered Clean Architecture with seven domain models, eight database migrations, an AI readiness attribute set, the first append-only IoT telemetry domain, and the first mutable operational management event domain. Each vertical column in the diagram represents a phase boundary. Capabilities are cumulative — nothing is removed; each phase builds on all prior phases.
+The platform began with zero capability in Phase 1. By Phase 10, it operates a fully layered Clean Architecture with nine domain models, ten database migrations, an AI readiness attribute set, append-only IoT telemetry, mutable operational event domains, and two grandchild crop-cycle observation domains (`YieldRecord`, `DiseaseObservation`). Each vertical column in the diagram represents a phase boundary. Capabilities are cumulative — nothing is removed; each phase builds on all prior phases.
 
 ```mermaid
 timeline
-    title AGRIFLOW-AI Platform Evolution — Phase 1 to Phase 8
+    title AGRIFLOW-AI Platform Evolution — Phase 1 to Phase 10
     Phase 1 : FastAPI Foundation
             : PostgreSQL Integration
             : Alembic Migration Framework
@@ -82,6 +82,17 @@ timeline
             : WaterSource Enum (5 sources)
             : TimescaleDB Partition Key (started_at)
             : ENUM Lifecycle Fix (postgresql.ENUM)
+    Phase 9 : Yield Record Domain
+            : YieldMeasurementMethod Enum
+            : Field-Level Yield Analytics
+            : Time-Series Yield Tracking
+            : First Grandchild Domain (Crop → YieldRecord)
+    Phase 10 : Disease Observation Domain
+            : DiseaseSeverity Enum
+            : DiagnosisMethod Enum
+            : Crop Health Intelligence
+            : Disease Monitoring Foundation
+            : Second Grandchild Domain (Crop → DiseaseObservation)
 ```
 
 ### Key Architectural Observations
@@ -91,19 +102,21 @@ timeline
 - **Phase 6** was the only phase that did not add a new domain — instead it performed a systematic AI data gap analysis and backfilled the minimum P1 attribute set. This was the most strategically important phase for future AI model training.
 - **Phase 7** introduced the first qualitatively different domain: append-only telemetry. The decision to make `SensorReading` immutable and to mark the service layer as the future Redpanda/Digital Twin/Temporal boundary was the platform's first explicit forward-architecture design.
 - **Phase 8** introduced the first mutable operational event domain (`IrrigationEvent`) and the authoritative PostgreSQL ENUM lifecycle pattern (`postgresql.ENUM` with `create_type=False`). Both `sensor_readings` and `irrigation_events` are now TimescaleDB-ready.
+- **Phase 9** introduced the first grandchild domain (`YieldRecord`), establishing crop-cycle anchoring with denormalized `field_id` for direct field-scoped analytics and time-series yield tracking.
+- **Phase 10** extended the grandchild pattern to crop health (`DiseaseObservation`), adding structured disease severity labels and diagnosis method provenance — the primary training label source for the future Disease Risk Scoring Engine.
 
 ---
 
 ## 2. Current Domain Architecture
 
 ### Title
-AGRIFLOW-AI Current Domain Architecture — Post Phase 9
+AGRIFLOW-AI Current Domain Architecture — Post Phase 10
 
 ### Purpose
-Show the complete domain model as it exists after Phase 9, including all entities, their relationships, cardinalities, and key attributes. This is the authoritative domain map for current state.
+Show the complete domain model as it exists after Phase 10, including all entities, their relationships, cardinalities, and key attributes. This is the authoritative domain map for current state.
 
 ### Explanation
-`Farm` is the root aggregate. All domain entities trace their ancestry to a `Farm` via the `Field` pivot. `SoilProfile` has a strict 1:1 cardinality with `Field`. `Crop`, `WeatherRecord`, `SensorReading`, and `IrrigationEvent` are 1:N collections per `Field`. `YieldRecord` is the first grandchild domain — it anchors to `Crop` (primary FK) and carries a denormalized `field_id` for direct field-scoped queries. `SensorReading` is the only domain with an explicit immutability contract. `IrrigationEvent` and `YieldRecord` are mutable operational event domains.
+`Farm` is the root aggregate. All domain entities trace their ancestry to a `Farm` via the `Field` pivot. `SoilProfile` has a strict 1:1 cardinality with `Field`. `Crop`, `WeatherRecord`, `SensorReading`, and `IrrigationEvent` are 1:N collections per `Field`. `YieldRecord` and `DiseaseObservation` are grandchild domains — they anchor to `Crop` (primary FK) and carry a denormalized `field_id` for direct field-scoped queries. `SensorReading` is the only domain with an explicit immutability contract. `IrrigationEvent`, `YieldRecord`, and `DiseaseObservation` are mutable operational observation domains.
 
 ```mermaid
 graph TD
@@ -123,6 +136,8 @@ graph TD
 
     YieldRecord["🌾 YieldRecord\n──────────────\nid: UUID PK\ncrop_id: UUID FK ← primary anchor\nfield_id: UUID FK (denormalized)\nrecorded_at: TIMESTAMPTZ\nyield_value_tons_ha: NUMERIC\nmeasurement_method: ENUM\narea_harvested_ha: NUMERIC (opt)\nmoisture_content_percent: NUMERIC (opt)\ntest_weight_kg_hl: NUMERIC (opt)\nquality_grade: VARCHAR (opt)\nnotes: TEXT\ncreated_at / updated_at\n✓ MUTABLE — PATCH supported"]
 
+    DiseaseObservation["🦠 DiseaseObservation\n──────────────\nid: UUID PK\ncrop_id: UUID FK ← primary anchor\nfield_id: UUID FK (denormalized)\nobserved_at: TIMESTAMPTZ\ndisease_name: VARCHAR\nseverity: DiseaseSeverity ENUM\ndiagnosis_method: DiagnosisMethod ENUM\naffected_area_percent: NUMERIC (opt)\ntreatment_applied: TEXT (opt)\nnotes: TEXT\ncreated_at / updated_at\n✓ MUTABLE — PATCH supported"]
+
     Farm -->|"1 : N\nhas fields"| Field
     Field -->|"1 : N\ngrows crops"| Crop
     Field -->|"1 : 1\nhas profile"| SoilProfile
@@ -130,17 +145,19 @@ graph TD
     Field -->|"1 : N\ngenerates telemetry"| SensorReading
     Field -->|"1 : N\nreceives irrigation"| IrrigationEvent
     Field -.->|"1 : N\ndenormalized FK"| YieldRecord
+    Field -.->|"1 : N\ndenormalized FK"| DiseaseObservation
     Crop -->|"1 : N\nmeasures yield"| YieldRecord
+    Crop -->|"1 : N\nobserves disease"| DiseaseObservation
 ```
 
 ### Key Architectural Observations
 
-- `Farm → Field → {Crop, SoilProfile, WeatherRecord, SensorReading, IrrigationEvent}` is the stable aggregate hierarchy. `YieldRecord` introduces the first grandchild path: `Farm → Field → Crop → YieldRecord`.
+- `Farm → Field → {Crop, SoilProfile, WeatherRecord, SensorReading, IrrigationEvent}` is the stable aggregate hierarchy. `YieldRecord` and `DiseaseObservation` introduce grandchild paths: `Farm → Field → Crop → {YieldRecord, DiseaseObservation}`.
 - `SoilProfile` is the only 1:1 entity. Its uniqueness is enforced at two levels: `UNIQUE` constraint in PostgreSQL and `DuplicateSoilProfileError` at the service layer.
-- `WeatherRecord`, `SensorReading`, `IrrigationEvent`, and `YieldRecord` are all time-keyed domains with `TIMESTAMPTZ`. All four are TimescaleDB hypertable candidates.
-- `SensorReading` is immutable (no PATCH, no UPDATE); `IrrigationEvent` and `YieldRecord` are mutable (full CRUD). This contrast reflects the fundamental difference between sensor telemetry (immutable physical fact) and operational management records (correctible human actions).
-- `YieldRecord` is the first entity to carry two parent FKs (`crop_id` primary anchor, `field_id` denormalized). `field_id` is resolved server-side at creation and immutably stored.
-- All eight tables carry `created_at` and `updated_at` via `AuditableModel`.
+- `WeatherRecord`, `SensorReading`, `IrrigationEvent`, `YieldRecord`, and `DiseaseObservation` are all time-keyed domains with `TIMESTAMPTZ`. All five are TimescaleDB hypertable candidates.
+- `SensorReading` is immutable (no PATCH, no UPDATE); `IrrigationEvent`, `YieldRecord`, and `DiseaseObservation` are mutable (full CRUD). This contrast reflects the fundamental difference between sensor telemetry (immutable physical fact) and operational management records (correctible human actions).
+- `YieldRecord` and `DiseaseObservation` are the first entities to carry two parent FKs (`crop_id` primary anchor, `field_id` denormalized). `field_id` is resolved server-side at creation and immutably stored.
+- All nine domain tables carry `created_at` and `updated_at` via `AuditableModel`.
 
 ---
 
@@ -179,12 +196,12 @@ graph TB
     subgraph "Model Layer  [app/db/models/]"
         ORM["SQLAlchemy ORM Model\nmodels/{domain}.py\n• Table definition\n• Column types + constraints\n• Relationships\n• Inherits AuditableModel"]
         AuditMixin["AuditableModel Mixin\n• id: UUID PK\n• created_at: TIMESTAMPTZ\n• updated_at: TIMESTAMPTZ"]
-        CoreEnums["app/core/enums.py\n• SensorType (Phase 7)\n• IrrigationMethod (Phase 8)\n• WaterSource (Phase 8)\n• YieldMeasurementMethod (Phase 9)"]
+        CoreEnums["app/core/enums.py\n• SensorType (Phase 7)\n• IrrigationMethod (Phase 8)\n• WaterSource (Phase 8)\n• YieldMeasurementMethod (Phase 9)\n• DiseaseSeverity (Phase 10)\n• DiagnosisMethod (Phase 10)"]
     end
 
     subgraph "Database Layer"
-        PG[("PostgreSQL 17\n• farms\n• fields\n• crops\n• soil_profiles\n• weather_records\n• sensor_readings\n• irrigation_events\n• yield_records\n• alembic_version")]
-        Alembic["Alembic\nMigration Engine\n001 → b7e2a9f4c8d3\n(current head)"]
+        PG[("PostgreSQL 17\n• farms\n• fields\n• crops\n• soil_profiles\n• weather_records\n• sensor_readings\n• irrigation_events\n• yield_records\n• disease_observations\n• alembic_version")]
+        Alembic["Alembic\nMigration Engine\n001 → d3e7b2a9f1c4\n(current head)"]
     end
 
     Client -->|"HTTP Request"| Router
@@ -207,7 +224,8 @@ graph TB
 - **`deps.py` is the composition root.** All object construction and wiring happens there. Routes and services are unaware of each other's construction details.
 - **`BaseRepository` provides the CRUD contract.** Concrete repositories re-declare inherited methods with typed signatures for IDE and mypy support, but add no new CRUD logic.
 - **`AuditableModel` is the universal base.** Adding any new table without inheriting `AuditableModel` is an architectural violation.
-- **`app/core/enums.py` is the shared vocabulary layer.** `SensorType` (Phase 7), `IrrigationMethod` / `WaterSource` (Phase 8), and `YieldMeasurementMethod` (Phase 9) are placed there to enable reuse by Digital Twin, AI Engine, and GaaS components in future phases.
+- **`app/core/enums.py` is the shared vocabulary layer.** `SensorType` (Phase 7), `IrrigationMethod` / `WaterSource` (Phase 8), `YieldMeasurementMethod` (Phase 9), and `DiseaseSeverity` / `DiagnosisMethod` (Phase 10) are placed there to enable reuse by Digital Twin, AI Engine, and GaaS components in future phases.
+- **Phase 10 added `DiseaseObservation` across all five layers:** `models/disease_observation.py` (ORM), `repositories/disease_observation.py` (`DiseaseObservationRepository`), `services/disease_observation.py` (`DiseaseObservationService`), `schemas/disease_observation.py`, and `api/disease_observations/router.py` — following the identical template established in Phase 2.
 
 ---
 
@@ -294,10 +312,10 @@ sequenceDiagram
 AGRIFLOW-AI Current Database Architecture — Tables, Relationships, and Migration Strategy
 
 ### Purpose
-Show the complete current database schema including all seven tables, their foreign key relationships, primary index strategy, and the Alembic migration chain that produced them. This diagram is the DBA reference view of the platform.
+Show the complete current database schema including all nine domain tables, their foreign key relationships, primary index strategy, and the Alembic migration chain that produced them. This diagram is the DBA reference view of the platform.
 
 ### Explanation
-All tables use UUID v4 primary keys generated server-side. Foreign keys establish the `Farm → Field → {Crop, SoilProfile, WeatherRecord, SensorReading, IrrigationEvent}` hierarchy. PostgreSQL ENUM types are created in separate calls before their owning tables to enable independent lifecycle management. Starting from Phase 8, `postgresql.ENUM` with `create_type=False` is the authoritative enum lifecycle pattern. Alembic migrations are linear and sequential.
+All tables use UUID v4 primary keys generated server-side. Foreign keys establish the `Farm → Field → {Crop, SoilProfile, WeatherRecord, SensorReading, IrrigationEvent}` hierarchy, with grandchild domains `YieldRecord` and `DiseaseObservation` anchoring on `Crop` and carrying denormalized `field_id`. PostgreSQL ENUM types are created in separate calls before their owning tables to enable independent lifecycle management. Starting from Phase 8, `postgresql.ENUM` with `create_type=False` is the authoritative enum lifecycle pattern. Alembic migrations are linear and sequential.
 
 ```mermaid
 erDiagram
@@ -405,12 +423,47 @@ erDiagram
         TIMESTAMPTZ updated_at
     }
 
+    yield_records {
+        UUID id PK
+        UUID crop_id FK
+        UUID field_id FK
+        TIMESTAMPTZ recorded_at
+        NUMERIC yield_value_tons_ha
+        yield_measurement_method measurement_method
+        NUMERIC area_harvested_ha
+        NUMERIC moisture_content_percent
+        NUMERIC test_weight_kg_hl
+        VARCHAR quality_grade
+        TEXT notes
+        TIMESTAMPTZ created_at
+        TIMESTAMPTZ updated_at
+    }
+
+    disease_observations {
+        UUID id PK
+        UUID crop_id FK
+        UUID field_id FK
+        TIMESTAMPTZ observed_at
+        VARCHAR disease_name
+        disease_severity severity
+        diagnosis_method diagnosis_method
+        NUMERIC affected_area_percent
+        TEXT treatment_applied
+        TEXT notes
+        TIMESTAMPTZ created_at
+        TIMESTAMPTZ updated_at
+    }
+
     farms ||--o{ fields : "has"
     fields ||--o{ crops : "grows"
     fields ||--o| soil_profiles : "has profile"
     fields ||--o{ weather_records : "records"
     fields ||--o{ sensor_readings : "generates"
     fields ||--o{ irrigation_events : "receives"
+    fields ||--o{ yield_records : "yields (denormalized)"
+    fields ||--o{ disease_observations : "disease history (denormalized)"
+    crops ||--o{ yield_records : "measures"
+    crops ||--o{ disease_observations : "observes"
 ```
 
 ### Migration Chain
@@ -425,14 +478,16 @@ graph LR
     M6["005\nadd_p1_ai_readiness_columns\nADD COLUMN x10\n4 tables extended"]
     M7["006\ncreate_sensor_readings_table\nsensor_type ENUM\n5 indexes incl. compound"]
     M8["235a51cdf901\ncreate_irrigation_events_table\nirrigation_method ENUM\nwater_source ENUM\n3 indexes incl. compound"]
+    M9["b7e2a9f4c8d3\ncreate_yield_records_table\nyield_measurement_method ENUM\n4 indexes incl. compound"]
+    M10["d3e7b2a9f1c4\ncreate_disease_observations_table\ndisease_severity ENUM\ndiagnosis_method ENUM\n6 indexes incl. compound"]
 
-    M1 --> M2 --> M3 --> M4 --> M5 --> M6 --> M7 --> M8
-    M8 --> HEAD["HEAD\n(current)"]
+    M1 --> M2 --> M3 --> M4 --> M5 --> M6 --> M7 --> M8 --> M9 --> M10
+    M10 --> HEAD["HEAD\n(current)"]
 ```
 
 ### Key Architectural Observations
 
-- **All time-series tables index their primary time key.** `weather_records`, `sensor_readings`, and `irrigation_events` each have individual time indexes. `sensor_readings` and `irrigation_events` add compound `(field_id, time_key)` indexes — the primary AI feature pipeline access pattern.
+- **All time-series tables index their primary time key.** `weather_records`, `sensor_readings`, `irrigation_events`, `yield_records`, and `disease_observations` each have individual time indexes. `sensor_readings`, `irrigation_events`, `yield_records`, and `disease_observations` add compound `(parent_id, time_key)` indexes — the primary AI feature pipeline access pattern.
 - **`soil_profiles.field_id` carries a `UNIQUE` constraint**, not a `UNIQUE INDEX`. The `UNIQUE` constraint is supplemented by a `UNIQUE INDEX` for explicit index naming.
 - **Migration 005 used `ADD COLUMN` with no server defaults.** Adding nullable columns to existing tables with large row counts is instantaneous on PostgreSQL 11+ (metadata-only operation). This is the only safe strategy for live production schema evolution.
 - **All Field children use `ON DELETE CASCADE`.** Deleting a `Field` atomically removes all its children at the database level.
@@ -512,10 +567,10 @@ graph TB
 AGRIFLOW-AI AI Readiness Architecture — Data Feeds and Model Coverage
 
 ### Purpose
-Show how the six current data domains (Farm, Field, Crop, SoilProfile, WeatherRecord, SensorReading) combine to feed four target AI use cases, and visualize the current AI data coverage achieved after Phase 6.
+Show how the current data domains combine to feed four target AI use cases, and visualize the AI data coverage achieved after Phase 10 completion.
 
 ### Explanation
-Phase 6 conducted a systematic gap analysis across every planned AI use case. The result was a prioritized attribute roadmap. 10 P1 attributes were added across 4 domains, raising yield prediction coverage from 18% to 82%. The diagram shows the data-to-AI mapping and the current coverage state. Future phases (8–11) will fill the remaining gaps by adding Irrigation, Yield, Disease Observation, and Satellite domains.
+Phase 6 conducted a systematic gap analysis across every planned AI use case. The result was a prioritized attribute roadmap. 10 P1 attributes were added across 4 domains, raising yield prediction coverage from 18% to 82%. Phases 8–10 subsequently added `IrrigationEvent`, `YieldRecord`, and `DiseaseObservation` domains, closing the major structural gaps for irrigation optimisation, yield prediction, and disease monitoring. The diagram shows the data-to-AI mapping and the current coverage state. Phase 11 (`SatelliteObservation`) remains the primary remaining gap for NDVI-based disease and yield features.
 
 ```mermaid
 graph TB
@@ -526,31 +581,30 @@ graph TB
         SOIL["🪨 SoilProfile\n• NPK levels\n• pH / organic_matter\n• soil_depth_cm ✦\n• CEC meq ✦"]
         WEATHER["🌦 WeatherRecord\n• temperature_c / min / max ✦\n• humidity_percent\n• rainfall_mm\n• solar_radiation_wm2 ✦\n• wind_speed_kmh"]
         SENSOR["📡 SensorReading\n• SOIL_MOISTURE\n• SOIL_TEMPERATURE\n• AIR_TEMPERATURE\n• LEAF_WETNESS\n• ELECTRICAL_CONDUCTIVITY\n• LIGHT_INTENSITY\n• BATTERY_STATUS"]
+        IRR["💧 IrrigationEvent ✅\n• started_at / ended_at\n• water_volume_liters\n• irrigation_method\n• water_source"]
+        YIELD_D["🌾 YieldRecord ✅\n• yield_value_tons_ha\n• measurement_method\n• moisture_content_percent\n• quality_grade"]
+        DISEASE_D["🦠 DiseaseObservation ✅\n• disease_name\n• severity (DiseaseSeverity)\n• diagnosis_method\n• affected_area_percent\n• observed_at"]
     end
 
     subgraph "AI Use Cases — Current Coverage"
-        YIELD["🌾 Yield Prediction\nCoverage: 82% ✅\n(was 18% pre-Phase 6)\nKey features: yield history,\nGDD inputs, seeding rate,\nsoil profile, weather"]
-        DISEASE["🦠 Disease Prediction\nCoverage: 40% 🟡\nKey gaps: disease observations,\nleaf wetness time-series,\nsatellite NDVI"]
-        IRRIGATION["💧 Irrigation Optimization\nCoverage: 55% 🟡\nKey gaps: soil moisture\ntime-series, ET₀ calc,\nfield capacity"]
+        YIELD["🌾 Yield Prediction\nCoverage: 100% ✅\n(was 18% pre-Phase 6)\nKey features: yield history,\nGDD inputs, seeding rate,\nsoil profile, weather,\ngranular YieldRecord labels"]
+        DISEASE["🦠 Disease Prediction\nCoverage: 75% 🟡\nKey gaps: satellite NDVI,\nmulti-point LEAF_WETNESS\ntime-series depth"]
+        IRRIGATION["💧 Irrigation Optimization\nCoverage: 85% 🟡\nKey gaps: ET₀ calc,\nfield capacity model"]
         WEATHER_AI["⛅ Weather Intelligence\nCoverage: 65% 🟡\nKey gaps: vapor pressure\ndeficit, atmospheric pressure,\nforecast integration"]
     end
 
-    subgraph "Future Data Domains (Phases 8–11)"
-        IRR["Phase 8\nIrrigationEvent\n• irrigation_date\n• water_volume_liters\n• method"]
-        YIELD_D["Phase 9\nYieldRecord\n• harvested_tons_ha\n• quality_grade\n• moisture_percent"]
-        DISEASE_D["Phase 10\nDiseaseObservation\n• disease_name\n• severity_score\n• affected_area_pct"]
+    subgraph "Future Data Domains (Phase 11)"
         SAT["Phase 11\nSatelliteObservation\n• ndvi / evi\n• cloud_cover\n• acquisition_date"]
     end
 
     FARM & FIELD & CROP --> YIELD
     SOIL & WEATHER & SENSOR --> YIELD
+    YIELD_D --> YIELD
     CROP & WEATHER & SENSOR --> DISEASE
-    SOIL & SENSOR --> IRRIGATION
+    DISEASE_D --> DISEASE
+    SOIL & SENSOR & IRR --> IRRIGATION
     WEATHER & SENSOR --> WEATHER_AI
 
-    IRR -.->|"Unlocks 100%"| IRRIGATION
-    YIELD_D -.->|"Strengthens"| YIELD
-    DISEASE_D -.->|"Unlocks 90%"| DISEASE
     SAT -.->|"Unlocks NDVI features"| DISEASE
     SAT -.->|"Strengthens"| YIELD
 ```
@@ -559,9 +613,11 @@ graph TB
 
 ### Key Architectural Observations
 
-- **Yield Prediction is the most data-ready AI use case** at 82% after Phase 6. The remaining 18% gap is primarily `IrrigationEvent` (irrigation schedule as a confounding variable) and multi-year yield history depth.
-- **Disease Prediction requires the most future investment.** The 40% coverage reflects structural gaps: no `DiseaseObservation` domain, no satellite NDVI, and no multi-point `LEAF_WETNESS` time-series. These will be closed by Phases 10 and 11.
-- **`SensorReading.SOIL_MOISTURE` is the single most valuable new attribute** for Irrigation Optimization. It provides the missing state variable (current soil water content) that no other domain supplies.
+- **Yield Prediction reached 100% structural coverage** after Phase 9. `YieldRecord` provides granular time-series yield labels with measurement method provenance — the primary training label source for the Phase 12 Yield Prediction Engine.
+- **Disease Prediction improved from 40% to 75%** after Phase 10. `DiseaseObservation` supplies structured severity labels (`DiseaseSeverity`), diagnosis method provenance (`DiagnosisMethod`), and time-keyed observation history. The remaining 25% gap is primarily satellite NDVI (Phase 11) and multi-point `LEAF_WETNESS` time-series depth.
+- **Irrigation Optimization reached 85%** after Phases 7–9. `IrrigationEvent` water volume combined with `SensorReading.SOIL_MOISTURE` and `YieldRecord` enables water-use efficiency calculations. Remaining gaps are ET₀ calculation inputs and field capacity modelling.
+- **`SensorReading.SOIL_MOISTURE` remains the single most valuable telemetry attribute** for Irrigation Optimization — it provides the missing state variable (current soil water content) that no other domain supplies.
+- **SatelliteObservation (Phase 11) is the next major structural gap** for both Disease Prediction (NDVI trend vectors) and Yield Prediction (remote sensing yield maps).
 - **The AI layer does not write back to these domains directly** (ADR-006-03). Future inference services will write to designated `_score` and `_prediction` columns, not to the core domain attributes.
 
 ---
@@ -589,7 +645,7 @@ graph TB
 
     subgraph "AGRIFLOW-AI Data Platform"
         INGEST["Data Ingestion Gateway\n• REST APIs (FastAPI)\n• Batch import endpoints\n• Satellite imagery processor\n• IoT gateway adapter"]
-        DOMAINS["Domain Storage (PostgreSQL)\n• SensorReading (IoT)\n• WeatherRecord\n• SoilProfile\n• Crop\n• SatelliteObservation (Ph.11)\n• IrrigationEvent (Ph.8)\n• DiseaseObservation (Ph.10)"]
+        DOMAINS["Domain Storage (PostgreSQL)\n• SensorReading (IoT)\n• WeatherRecord\n• SoilProfile\n• Crop\n• IrrigationEvent (Ph.8) ✅\n• YieldRecord (Ph.9) ✅\n• DiseaseObservation (Ph.10) ✅\n• SatelliteObservation (Ph.11)"]
         TIMESERIES["Time-Series Store\n(TimescaleDB)\n• Sensor hypertables\n• Hourly aggregates\n• 90-day rolling windows"]
     end
 
@@ -961,7 +1017,7 @@ graph TB
     end
 
     subgraph "AGRIFLOW-AI Services"
-        AGRIFLOW["AGRIFLOW-AI Domain APIs\n• SensorReadingService\n• WeatherRecordService\n• CropService\n• IrrigationService (Phase 8)\n• SatelliteObservationService (Ph.11)"]
+        AGRIFLOW["AGRIFLOW-AI Domain APIs\n• SensorReadingService\n• WeatherRecordService\n• CropService\n• IrrigationEventService (Phase 8)\n• YieldRecordService (Phase 9)\n• DiseaseObservationService (Phase 10)\n• SatelliteObservationService (Ph.11)"]
     end
 
     SENSOR_EVENT -->|"SOIL_MOISTURE below threshold"| Q1
@@ -1308,7 +1364,7 @@ graph LR
         P1["Phase 1–2\nReactive Farming\n• Farm & Field records\n• Manual data entry\n• Basic CRUD APIs"]
         P2["Phase 3–5\nData-Driven Farming\n• Crop lifecycle tracking\n• Soil intelligence\n• Weather observation"]
         P3["Phase 6–7\nPredictive Foundation\n• AI-ready attributes\n• IoT telemetry\n• Immutable sensor data"]
-        P4["Phase 8–11\nPredictive Farming\n• Irrigation tracking ✅\n• Yield records ✅\n• Disease observation\n• Satellite imagery"]
+        P4["Phase 8–11\nPredictive Farming\n• Irrigation tracking ✅\n• Yield records ✅\n• Disease observation ✅\n• Satellite imagery"]
         P5["Phase 12–14\nIntelligent Farming\n• AI yield prediction\n• Disease risk scoring\n• Irrigation optimization\n• Digital Twin v1"]
         P6["Phase 15+\nAutonomous Agriculture\n• Full Digital Twin\n• GaaS Farm Copilot\n• Event-driven platform\n• Autonomous actions"]
     end
@@ -1318,9 +1374,9 @@ graph LR
 
 ### Key Architectural Observations
 
-- **Every component traces to a Phase 1–9 architectural decision.** The UUID primary key strategy enables Digital Twin state keys. The `AuditableModel` timestamps enable time-series analytics. The `app/core/enums.py` shared enum module enables Digital Twin sensor state mapping. No foundational refactoring is required at Phase 15.
+- **Every component traces to a Phase 1–10 architectural decision.** The UUID primary key strategy enables Digital Twin state keys. The `AuditableModel` timestamps enable time-series analytics. The `app/core/enums.py` shared enum module enables Digital Twin sensor state mapping and disease severity classification. No foundational refactoring is required at Phase 15.
 - **Redpanda is the central integration fabric.** Every major platform capability — Digital Twin, AI Feature Store, CQRS, Temporal, Alert Engine — connects to the platform via Redpanda topics. This ensures the core domain APIs remain stable as new consumers are added.
-- **The five-layer Clean Architecture scales to Phase 15 without modification.** Completed domains (Irrigation ✅, Yield ✅) and future domains (Disease, Satellite) follow the same `Model → Schema → Repository → Service → Router` pattern established in Phase 2. The only additions are Redpanda publishing in the service layer and Temporal workflow triggering at the extension point.
+- **The five-layer Clean Architecture scales to Phase 15 without modification.** Completed domains (Irrigation ✅, Yield ✅, Disease Observation ✅) and the next domain (Satellite 🔜) follow the same `Model → Schema → Repository → Service → Router` pattern established in Phase 2. The only additions are Redpanda publishing in the service layer and Temporal workflow triggering at the extension point.
 - **Azure is the preferred infrastructure platform** for enterprise and cooperative deployments due to Azure OpenAI Service data sovereignty, Azure Kubernetes Service (AKS) orchestration, Azure API Management gateway, and Azure AI Search vector capabilities — all available within a single Azure tenancy.
 - **GaaS is the ultimate user interface.** The Phase 15 Farm Copilot makes the entire platform accessible to farm operators who have no interest in dashboards, APIs, or ML model outputs — they simply ask what they need to know and receive a grounded, cited, actionable recommendation.
 
@@ -1337,7 +1393,7 @@ graph LR
 
 **Living Document:** This document should be updated at the completion of each phase to reflect new domain additions, architectural decisions, and technology adoptions.
 
-**Last Updated:** Phase 9 completion — June 2026
+**Last Updated:** Phase 10 completion — June 2026
 
 ---
 
