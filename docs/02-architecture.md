@@ -4,7 +4,7 @@
 
 AGRIFLOW-AI is an Agricultural Intelligence Platform built using a layered architecture that emphasizes maintainability, scalability, separation of concerns, and domain-driven development.
 
-The platform currently implements Farm, Field, Crop, Soil Intelligence, Weather Intelligence, Sensor Telemetry, Irrigation Management, and Yield Intelligence domains across nine completed phases, following a Clean Architecture approach with clearly separated responsibilities across API, Service, Repository, and Database layers.
+The platform currently implements Farm, Field, Crop, Soil Intelligence, Weather Intelligence, Sensor Telemetry, Irrigation Management, Yield Intelligence, and Disease Observation domains across ten completed phases, following a Clean Architecture approach with clearly separated responsibilities across API, Service, Repository, and Database layers.
 
 ---
 
@@ -65,13 +65,14 @@ PostgreSQL
 
 # Current Domain Hierarchy
 
-The authoritative domain hierarchy reflects all implemented entities through Phase 9:
+The authoritative domain hierarchy reflects all implemented entities through Phase 10:
 
 ```text
 Farm
  └── Field
       ├── Crop
-      │    └── YieldRecord          (mutable, grandchild — Yield Domain)
+      │    ├── YieldRecord          (mutable, grandchild — Yield Domain)
+      │    └── DiseaseObservation   (mutable, grandchild — Disease Observation Domain)
       ├── SoilProfile
       ├── WeatherRecord
       ├── SensorReading             (append-only telemetry)
@@ -88,10 +89,10 @@ Farm
 * Sensor Telemetry
 * Irrigation Management
 * Yield Intelligence
+* Disease Observation
 
 ### Planned Domains
 
-* Disease Observation (Phase 10)
 * Satellite Observation (Phase 11)
 
 ### Planned AI Layer
@@ -110,6 +111,7 @@ backend/
 ├── app
 │   ├── api
 │   │   ├── crops/
+│   │   ├── disease_observations/
 │   │   ├── fields/
 │   │   ├── irrigation_events/
 │   │   ├── sensor_readings/
@@ -137,6 +139,7 @@ backend/
 │   │   │   ├── weather_record.py
 │   │   │   ├── sensor_reading.py
 │   │   │   ├── irrigation_event.py
+│   │   │   ├── disease_observation.py
 │   │   │   └── yield_record.py
 │   │   ├── repositories/
 │   │   │   ├── base.py
@@ -147,11 +150,13 @@ backend/
 │   │   │   ├── weather_record.py
 │   │   │   ├── sensor_reading.py
 │   │   │   ├── irrigation_event.py
+│   │   │   ├── disease_observation.py
 │   │   │   └── yield_record.py
 │   │   └── session/
 │   │
 │   ├── schemas/
 │   │   ├── crop.py
+│   │   ├── disease_observation.py
 │   │   ├── field.py
 │   │   ├── irrigation_event.py
 │   │   ├── sensor_reading.py
@@ -161,6 +166,7 @@ backend/
 │   │
 │   ├── services/
 │   │   ├── crop.py
+│   │   ├── disease_observation.py
 │   │   ├── field.py
 │   │   ├── irrigation_event.py
 │   │   ├── sensor_reading.py
@@ -201,6 +207,7 @@ app/api/weather_records
 app/api/sensor_readings
 app/api/irrigation_events
 app/api/yield_records
+app/api/disease_observations
 ```
 
 The API layer should not contain business logic.
@@ -225,6 +232,7 @@ WeatherRecordCreate / WeatherRecordUpdate / WeatherRecordResponse
 SensorReadingCreate / SensorReadingResponse  (no Update — immutable)
 IrrigationEventCreate / IrrigationEventUpdate / IrrigationEventResponse
 YieldRecordCreate / YieldRecordUpdate / YieldRecordResponse
+CreateDiseaseObservationRequest / UpdateDiseaseObservationRequest / DiseaseObservationResponse
 ```
 
 The schema layer defines what data enters and exits the application.
@@ -250,6 +258,7 @@ WeatherRecordService
 SensorReadingService
 IrrigationEventService
 YieldRecordService
+DiseaseObservationService
 ```
 
 Business rules belong here. Representative examples:
@@ -265,6 +274,8 @@ Business rules belong here. Representative examples:
 * Crop must exist before YieldRecord creation; `field_id` resolved server-side from crop (YieldRecord)
 * `recorded_at` must be timezone-aware and not in the future (YieldRecord)
 * `area_harvested_ha` and `test_weight_kg_hl`, when supplied, must be > 0 (YieldRecord)
+* Crop must exist before DiseaseObservation creation; `field_id` resolved server-side from crop (DiseaseObservation)
+* `observed_at` must be timezone-aware and not in the future (DiseaseObservation)
 
 ---
 
@@ -288,6 +299,7 @@ WeatherRecordRepository
 SensorReadingRepository
 IrrigationEventRepository
 YieldRecordRepository
+DiseaseObservationRepository
 ```
 
 Repositories should not contain business rules.
@@ -313,6 +325,7 @@ WeatherRecord
 SensorReading
 IrrigationEvent
 YieldRecord
+DiseaseObservation
 ```
 
 Models represent PostgreSQL tables.
@@ -424,7 +437,8 @@ BaseRepository
       ├── WeatherRecordRepository
       ├── SensorReadingRepository
       ├── IrrigationEventRepository
-      └── YieldRecordRepository
+      ├── YieldRecordRepository
+      └── DiseaseObservationRepository
 ```
 
 Benefits:
@@ -450,9 +464,10 @@ weather_records
 sensor_readings
 irrigation_events
 yield_records
+disease_observations
 ```
 
-Current migration head: `b7e2a9f4c8d3_create_yield_records_table`
+Current migration head: `d3e7b2a9f1c4_create_disease_observations_table`
 
 Relationships:
 
@@ -463,7 +478,8 @@ Farm (1)
 Field (N)
    ├────────────► Crop (N)
    │                   │
-   │                   └──► YieldRecord (N, mutable)
+   │                   ├──► YieldRecord (N, mutable)
+   │                   └──► DiseaseObservation (N, mutable)
    ├────────────► WeatherRecord (N)
    ├────────────► SensorReading (N, append-only)
    ├────────────► IrrigationEvent (N, mutable)
@@ -472,6 +488,8 @@ Field (N)
 ```
 
 `YieldRecord` anchors on `Crop` because yield is a per-crop-cycle measurement. `field_id` is denormalized on `yield_records` for direct field-scoped queries without a JOIN through `crops` (ADR-009-02).
+
+`DiseaseObservation` anchors on `Crop` because disease pressure belongs to a specific crop cycle. `field_id` is denormalized on `disease_observations` for direct field-scoped queries without a JOIN through `crops` (ADR-010-02).
 
 ---
 
@@ -491,6 +509,7 @@ Migration sequence:
 006_create_sensor_readings_table
 235a51cdf901_create_irrigation_events_table
 b7e2a9f4c8d3_create_yield_records_table
+d3e7b2a9f1c4_create_disease_observations_table
 ```
 
 Migration flow:
@@ -591,6 +610,23 @@ Domain exception mapping for Yield endpoints:
 | `YieldRecordNotFoundError` | 404       |
 | `InvalidYieldRecordError`  | 400       |
 
+## Disease Observations
+
+* POST   /api/v1/crops/{crop_id}/disease-observations
+* GET    /api/v1/crops/{crop_id}/disease-observations
+* GET    /api/v1/fields/{field_id}/disease-observations
+* GET    /api/v1/disease-observations/{observation_id}
+* PATCH  /api/v1/disease-observations/{observation_id}
+* DELETE /api/v1/disease-observations/{observation_id}
+
+Domain exception mapping for Disease Observation endpoints:
+
+| Domain Exception | HTTP Status |
+| ---------------- | ----------- |
+| `CropNotFoundError` | 404 |
+| `DiseaseObservationNotFoundError` | 404 |
+| `InvalidDiseaseObservationError` | 400 |
+
 ---
 
 # Current Platform Status
@@ -608,6 +644,7 @@ Domain exception mapping for Yield endpoints:
 | Sensor Telemetry | SensorReading | Append-only IoT data |
 | Irrigation Management | IrrigationEvent | Mutable operational events |
 | Yield Intelligence | YieldRecord | Mutable, Crop-anchored grandchild |
+| Disease Observation | DiseaseObservation | Mutable, Crop-anchored grandchild |
 
 ### Implemented Architecture
 
@@ -621,9 +658,9 @@ Domain exception mapping for Yield endpoints:
 * Alembic Migration Framework
 * Shared Enum Module (`app/core/enums.py`)
 * Telemetry Immutability Pattern (SensorReading)
-* Operational Event Mutable Pattern (IrrigationEvent, YieldRecord)
+* Operational Event Mutable Pattern (IrrigationEvent, YieldRecord, DiseaseObservation)
 * Compound Index Strategy (time-series domains)
-* Grandchild Domain Pattern (YieldRecord)
+* Crop-Anchored Grandchild Pattern (YieldRecord, DiseaseObservation)
 
 ---
 
@@ -722,6 +759,8 @@ Current shared enums:
 | `IrrigationMethod` | IrrigationEvent |
 | `WaterSource` | IrrigationEvent |
 | `YieldMeasurementMethod` | YieldRecord, Yield Prediction Engine |
+| `DiseaseSeverity` | DiseaseObservation, Disease Risk Scoring Engine |
+| `DiagnosisMethod` | DiseaseObservation, Disease Risk Scoring Engine |
 
 All future cross-domain enumerations should be placed here.
 
@@ -740,6 +779,7 @@ Full CRUD surface (including PATCH) is provided by the API. This is a deliberate
 | SensorReading | Append-only telemetry | ✗ | Sensor measurement is a fact — immutable |
 | IrrigationEvent | Mutable operational event | ✓ | Operator log — correctible after the fact |
 | YieldRecord | Mutable observation record | ✓ | Measurement log — correctible after the fact |
+| DiseaseObservation | Mutable observation record | ✓ | Disease log — correctible after the fact |
 
 ## Timestamp Architecture
 
@@ -882,6 +922,12 @@ Key decisions by phase:
 | ADR-009-02 | 9 | `field_id` denormalized on `yield_records` for direct field queries |
 | ADR-009-04 | 9 | `YieldRecord` is mutable — PATCH permitted |
 | ADR-009-05 | 9 | `crop_id` immutable after creation |
+| ADR-010-01 | 10 | `DiseaseObservation` anchors to `crop_id` — disease pressure is per crop cycle |
+| ADR-010-02 | 10 | `field_id` denormalized on `disease_observations` for direct field queries |
+| ADR-010-03 | 10 | `observed_at TIMESTAMPTZ NOT NULL` is the primary time key and TimescaleDB partition key candidate |
+| ADR-010-04 | 10 | `DiseaseObservation` is mutable — PATCH permitted |
+| ADR-010-05 | 10 | `crop_id` immutable after creation |
+| ADR-010-06 | 10 | `DiseaseSeverity` and `DiagnosisMethod` placed in `app/core/enums.py` for cross-domain reuse |
 
 ---
 
@@ -896,7 +942,7 @@ Farm
  └── Field
       ├── Crop
       │    ├── YieldRecord              ✅ implemented
-      │    └── DiseaseObservation       planned (Phase 10)
+      │    └── DiseaseObservation       ✅ implemented (Phase 10)
       ├── SoilProfile
       ├── WeatherRecord
       ├── SensorReading
@@ -910,13 +956,13 @@ Field boundary polygon support for precision agriculture, spatial queries, and s
 
 ### Event-Driven Architecture
 
-Domain events (`SensorReadingCreated`, `IrrigationEventCreated`, `YieldRecordCreated`, and future events) will be published from service-layer extension points to decouple write operations from downstream consumers.
+Domain events (`SensorReadingCreated`, `IrrigationEventCreated`, `YieldRecordCreated`, `DiseaseObservationCreated`, and future events) will be published from service-layer extension points to decouple write operations from downstream consumers.
 
 ### Redpanda / Message Queues
 
 `SensorReadingService.create_sensor_reading()` contains a documented extension point (ADR-007-26) for publishing `SensorReadingCreated` events to the Redpanda topic `sensor.readings.created`. Downstream consumers: Digital Twin updater, AI anomaly detector, alert evaluator, CQRS projector.
 
-Similar extension points exist on `YieldRecordService` for the Yield Prediction Engine feature pipeline.
+Similar extension points exist on `YieldRecordService` and `DiseaseObservationService` for the Yield Prediction Engine and Disease Risk Scoring Engine feature pipelines.
 
 ### CQRS
 
@@ -931,6 +977,7 @@ Time-series tables are designed for zero-friction hypertable promotion:
 | `sensor_readings` | `recorded_at` | 1 week |
 | `irrigation_events` | `started_at` | 1 month |
 | `yield_records` | `recorded_at` | 1 season |
+| `disease_observations` | `observed_at` | 1 season |
 
 No application code changes are required for promotion. Continuous aggregates will be implemented as materialised views queried by future aggregation repositories.
 
@@ -949,12 +996,12 @@ A continuously updated virtual model of every field will be maintained, sourced 
 ### AI Recommendation Engine
 
 * **Yield Prediction Engine** (Phase 12) — supervised model trained on `YieldRecord` time-series
-* **Disease Risk Scoring Engine** (Phase 13) — risk scoring using sensor telemetry and weather patterns
+* **Disease Risk Scoring Engine** (Phase 13) — risk scoring using `DiseaseObservation` labels, sensor telemetry, and weather patterns
 * **Irrigation Recommendation Engine** (Phase 14) — FAO-56 water balance optimization using `IrrigationEvent` history
 
 ### Generative AI as a Service (GaaS) — Farm Copilot
 
-The AGRIFLOW-AI REST API surface (fully documented in OpenAPI via FastAPI auto-generation) is GaaS-ready. A future LLM agent will use AGRIFLOW-AI endpoints as tools to answer natural language queries from farmers and agronomists. Sensor telemetry, irrigation history, and yield records are key context sources.
+The AGRIFLOW-AI REST API surface (fully documented in OpenAPI via FastAPI auto-generation) is GaaS-ready. A future LLM agent will use AGRIFLOW-AI endpoints as tools to answer natural language queries from farmers and agronomists. Sensor telemetry, irrigation history, yield records, and disease observations are key context sources.
 
 ### Data Lake and MLOps
 
