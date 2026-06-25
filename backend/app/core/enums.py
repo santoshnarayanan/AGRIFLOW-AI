@@ -166,3 +166,108 @@ class DiagnosisMethod(str, enum.Enum):
     IMAGE_AI = "IMAGE_AI"
     AGRONOMIST = "AGRONOMIST"
     SENSOR_DETECTED = "SENSOR_DETECTED"
+
+
+class SatelliteProvider(str, enum.Enum):
+    """
+    Satellite platform or data provider that sourced the imagery for an
+    observation.
+
+    Placed in this shared module for cross-domain reuse across:
+    - SatelliteObservation  (Phase 11)
+    - AI Prediction Engines  (Phase 12–13 — training data provenance and
+      spatial-resolution weighting)
+    - Digital Twin field state  (future — imagery ingestion pipeline)
+    - GaaS SatelliteAdvisor    (future — natural language crop health queries)
+
+    Provider-specific characteristics relevant to AI data quality weighting:
+    - SENTINEL_2   ESA Copernicus; 10 m multispectral; 5-day revisit; free
+    - LANDSAT_8    USGS/NASA;      30 m multispectral; 16-day revisit; free
+    - LANDSAT_9    USGS/NASA;      30 m multispectral; 16-day revisit; free
+    - PLANET       Planet Labs;    3–5 m multispectral; daily revisit; commercial
+    - MODIS        NASA;           250 m–1 km; daily revisit; free; broad coverage
+    - SPOT         Airbus;         1.5–6 m; commercial
+    - WORLDVIEW    Maxar;          0.3–1.2 m very high resolution; commercial
+    - UNKNOWN      Provider not recorded or data ingested without provenance
+    """
+
+    SENTINEL_2 = "SENTINEL_2"
+    LANDSAT_8 = "LANDSAT_8"
+    LANDSAT_9 = "LANDSAT_9"
+    PLANET = "PLANET"
+    MODIS = "MODIS"
+    SPOT = "SPOT"
+    WORLDVIEW = "WORLDVIEW"
+    UNKNOWN = "UNKNOWN"
+
+
+class SpectralIndex(str, enum.Enum):
+    """
+    Derived spectral or vegetation index computed from satellite band
+    reflectance values.
+
+    Placed in this shared module for cross-domain reuse across:
+    - SatelliteObservation  (Phase 11 — primary measurement discriminator)
+    - Yield Prediction Engine  (Phase 12 — NDVI/EVI as growing-season feature)
+    - Disease Risk Engine       (Phase 13 — NDRE/NDVI as early-stress signal)
+    - Irrigation Recommendation Engine  (Phase 14 — NDWI for water-stress detection)
+    - Digital Twin crop state   (future — vegetation health time-series)
+    - GaaS SatelliteAdvisor     (future — index-specific natural language queries)
+
+    Index-specific agricultural interpretation:
+    - NDVI   Normalized Difference Vegetation Index; general canopy greenness
+             and biomass; range [-1, 1]; most widely used vegetation index
+    - EVI    Enhanced Vegetation Index; corrects for atmospheric and canopy
+             background effects; better performance in high-biomass areas
+    - NDWI   Normalized Difference Water Index; crop water content and stress;
+             sensitive to leaf water content changes before visible wilting
+    - SAVI   Soil-Adjusted Vegetation Index; NDVI variant for sparse vegetation
+             where soil background reflectance distorts the signal
+    - NDRE   Normalized Difference Red Edge; early detection of crop stress and
+             nitrogen deficiency before visible chlorophyll degradation
+    - LAI    Leaf Area Index; total one-sided leaf area per unit ground area;
+             structural canopy measure used in crop growth models
+    - MSAVI  Modified Soil-Adjusted Vegetation Index; improved SAVI reducing
+             soil noise without requiring an empirical soil factor
+    - GNDVI  Green Normalized Difference Vegetation Index; green band variant;
+             more sensitive to chlorophyll concentration than NDVI
+    """
+
+    NDVI = "NDVI"
+    EVI = "EVI"
+    NDWI = "NDWI"
+    SAVI = "SAVI"
+    NDRE = "NDRE"
+    LAI = "LAI"
+    MSAVI = "MSAVI"
+    GNDVI = "GNDVI"
+
+
+class ProcessingLevel(str, enum.Enum):
+    """
+    Processing tier applied to the raw satellite data before the spectral
+    index was computed.
+
+    Placed in this shared module for cross-domain reuse across:
+    - SatelliteObservation  (Phase 11 — data quality provenance)
+    - AI Prediction Engines  (Phase 12–14 — training data quality weighting;
+      ARD and L2A observations are preferred inputs)
+    - Satellite ingestion pipeline  (future — ETL validation gate)
+    - Digital Twin field state      (future — imagery quality filter)
+
+    Level-specific data quality and reproducibility notes:
+    - L1C      Top-of-atmosphere (TOA) reflectance; not atmospherically corrected;
+               lowest comparability across dates and sensors
+    - L2A      Bottom-of-atmosphere (BOA) surface reflectance; atmospherically
+               corrected; the standard input for most index computation pipelines
+    - ARD      Analysis-Ready Data; L2A with additional cloud masking, geometric
+               correction, and normalisation applied; highest reproducibility
+    - DERIVED  Post-processed composite or mosaic product (e.g. seasonal mean,
+               gap-filled time-series); suitable for trend analysis but not
+               single-date phenology extraction
+    """
+
+    L1C = "L1C"
+    L2A = "L2A"
+    ARD = "ARD"
+    DERIVED = "DERIVED"
