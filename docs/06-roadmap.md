@@ -546,6 +546,69 @@ Business Value:
 
 ---
 
+# Phase 12 – TimescaleDB Time-Series Foundation
+
+Status: 🔜 Planned (Current Phase)
+
+Phase 12 is an **infrastructure and data-platform phase** — not a business domain phase. It upgrades the existing PostgreSQL time-series tables to TimescaleDB hypertables before AI services begin. There are **no business domain changes** and **no API breaking changes**.
+
+## Objectives
+
+* Install TimescaleDB
+* Enable TimescaleDB extension
+* Convert eligible PostgreSQL tables into hypertables
+* Configure automatic chunking
+* Configure compression policies
+* Configure retention policies
+* Implement continuous aggregates
+* Introduce `time_bucket()` based analytics
+* Build repository support for optimized time-series queries
+* Prepare the platform for AI feature engineering
+
+## Tables Prepared for Hypertable Conversion
+
+The following tables were designed with time-based primary query patterns and compound indexes. Phase 12 converts them for high-performance analytics:
+
+* `weather_records`
+* `sensor_readings`
+* `irrigation_events`
+* `yield_records`
+* `disease_observations`
+* `satellite_observations`
+
+Each table already carries a `NOT NULL TIMESTAMPTZ` partition key column (`recorded_at`, `started_at`, or `observed_at`) and compound `(parent_id, time_key)` indexes established in Phases 5–11.
+
+## Business Value
+
+* Enterprise-scale time-series storage
+* High-performance historical analytics
+* Efficient telemetry storage
+* AI-ready feature engineering foundation
+* Long-term scalability
+* Foundation for predictive agriculture (Phase 14+)
+
+## Platform Evolution Context
+
+```text
+Reactive Farming
+      ↓
+Data-Driven Farming
+(Phase 1–6)
+      ↓
+Time-Series Intelligence
+(Phase 7–12)
+      ↓
+Intelligent Farming
+(Phase 13–15)
+      ↓
+Autonomous Agriculture
+(Phase 15+)
+```
+
+TimescaleDB implementation in Phase 12 completes the Time-Series Intelligence era before AI Recommendation services begin in Phase 13.
+
+---
+
 # Cross-Cutting Capabilities
 
 Implemented:
@@ -576,7 +639,10 @@ Implemented:
 
 Near-Term (Phases 12–15):
 
-* TimescaleDB (sensor_readings, irrigation_events, yield_records, disease_observations, satellite_observations hypertable promotion)
+* TimescaleDB Phase 12 Implementation — hypertables, compression, continuous aggregates, retention policies, chunk management, and `time_bucket()` analytics for `weather_records`, `sensor_readings`, `irrigation_events`, `yield_records`, `disease_observations`, and `satellite_observations`
+* AI Recommendation Foundation (Phase 13) — Yield, Irrigation, Disease, and Fertilizer Recommendation Engines; AI Feature Store; Recommendation Services
+* Predictive Agriculture (Phase 14)
+* Digital Twin & Farm Copilot (Phase 15)
 * Redpanda (event streaming for SensorReadingCreated events)
 * Redis (Digital Twin field state cache)
 * PostGIS (field boundary polygon support)
@@ -665,9 +731,9 @@ AGRIFLOW-AI evolves from a farm management system into a comprehensive Agricultu
 
 ## Upcoming Phases
 
-🔜 Phase 12 – AI Recommendation Foundation
+🔜 Phase 12 – TimescaleDB Time-Series Foundation
 
-🔜 Phase 13 – Advanced AI Intelligence
+🔜 Phase 13 – AI Recommendation Foundation
 
 🔜 Phase 14 – Predictive Agriculture
 
@@ -677,22 +743,48 @@ AGRIFLOW-AI evolves from a farm management system into a comprehensive Agricultu
 
 ⏳ Phase 16 – Platform Stabilization & Quality Engineering
 
-AI Layer (Post Phase 11)
-- Yield Prediction Engine
-- Disease Prediction Engine
-- Irrigation Recommendation Engine
-- Farm Intelligence Platform
+## AI Layer (Post Phase 13 — First AI Implementation Phase)
+
+* Yield Recommendation Engine
+* Irrigation Recommendation Engine
+* Disease Recommendation Engine
+* Fertilizer Recommendation Engine
+* AI Feature Store
+* Recommendation Services
+* Farm Intelligence Platform (Phase 15 — Digital Twin + GaaS)
 
 ---
 
 # Future Architecture Roadmap
 
-## TimescaleDB
+## TimescaleDB — Phase 12 Implementation
 
-The `sensor_readings`, `irrigation_events`, `yield_records`, `disease_observations`, and `satellite_observations` tables were designed for zero-friction TimescaleDB promotion. A single `create_hypertable(...)` call converts each to a time-partitioned hypertable. No application code changes are required.
+Phase 12 implements TimescaleDB as the platform's time-series analytics engine. This work is completed **before AI services begin** in Phase 13.
+
+The following tables were designed for zero-friction TimescaleDB promotion during Phases 5–11. Phase 12 converts each to a time-partitioned hypertable via `create_hypertable(...)`. No application code changes or API breaking changes are required.
+
+**Tables converted in Phase 12:**
+
+* `weather_records`
+* `sensor_readings`
+* `irrigation_events`
+* `yield_records`
+* `disease_observations`
+* `satellite_observations`
+
+**Phase 12 deliverables:**
+
+* **Hypertables** — automatic time-based chunk partitioning on each table's primary time key
+* **Compression** — columnar compression for cold data (20–100× storage reduction)
+* **Continuous Aggregates** — hourly/daily rollups per sensor type, field, and spectral index
+* **Retention Policies** — automatic data lifecycle management for telemetry and observation history
+* **Chunk Management** — configurable chunk intervals and chunk exclusion for time-range queries
+* **Time-Series Analytics** — `time_bucket()` based queries for trend analysis and anomaly detection
+* **Performance Optimization** — repository-layer support for optimized time-series query patterns
+* **AI Feature Engineering Foundation** — pre-computed aggregate tables feeding the Phase 13 AI Feature Store
 
 Capabilities unlocked:
-* Automatic weekly chunk partitioning on `recorded_at`
+* Automatic weekly chunk partitioning on primary time keys (`recorded_at`, `started_at`, `observed_at`)
 * Chunk exclusion for time-range queries (skip irrelevant chunks entirely)
 * Continuous aggregates: hourly/daily average per sensor type per field
 * Columnar compression for cold data (20–100× storage reduction)

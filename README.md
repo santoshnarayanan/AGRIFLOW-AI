@@ -55,7 +55,7 @@ docs/01-vision.md
 
 ### Current Phase
 
-🔜 Phase 12 – AI Recommendation Foundation (Planned)
+🔜 Phase 12 – TimescaleDB Time-Series Foundation (Planned)
 
 ### Phase 11 Implementation Status
 
@@ -400,7 +400,7 @@ Verify these patterns are present in `.gitignore` before committing any new file
 * 11 sensor types: SOIL_MOISTURE, SOIL_TEMPERATURE, AIR_TEMPERATURE, AIR_HUMIDITY, LIGHT_INTENSITY, LEAF_WETNESS, ELECTRICAL_CONDUCTIVITY, SOIL_SALINITY, WATER_LEVEL, BATTERY_STATUS, DEVICE_HEALTH
 * Append-only — immutable telemetry record
 * Timezone-aware timestamp validation
-* TimescaleDB hypertable upgrade path
+* TimescaleDB Phase 12 hypertable candidate — designed for high-performance time-series analytics
 
 ### Irrigation Management (Phase 8)
 
@@ -410,7 +410,7 @@ Verify these patterns are present in `.gitignore` before committing any new file
 * Duration and water volume tracking
 * Timezone-aware timestamp validation with cross-field ordering guard
 * Mutable — operators can correct records after logging
-* TimescaleDB hypertable upgrade path
+* TimescaleDB Phase 12 hypertable candidate — designed for high-performance time-series analytics
 
 ### Yield Intelligence (Phase 9)
 
@@ -420,8 +420,8 @@ Verify these patterns are present in `.gitignore` before committing any new file
 * Harvested area tracking
 * Server-side `field_id` resolution from crop record
 * Mutable — operators can correct measurements after logging
-* Primary training label source for Phase 12 Yield Prediction Engine
-* TimescaleDB hypertable upgrade path
+* Primary training label source for Phase 13 Yield Prediction Engine
+* TimescaleDB Phase 12 hypertable candidate — designed for high-performance time-series analytics
 
 ### Disease Observation (Phase 10)
 
@@ -435,7 +435,7 @@ Verify these patterns are present in `.gitignore` before committing any new file
 * Crop-scoped and field-scoped list endpoints with pagination
 * Primary training label source for Phase 13 Disease Risk Scoring Engine
 * DiseaseObservation CRUD APIs
-* TimescaleDB hypertable upgrade path
+* TimescaleDB Phase 12 hypertable candidate — designed for high-performance time-series analytics
 
 ### Satellite Observation (Phase 11)
 
@@ -445,8 +445,8 @@ Verify these patterns are present in `.gitignore` before committing any new file
 * Field-anchored — satellite imagery persists across crop cycles
 * AI-oriented query endpoints: date range, latest by spectral index, filter by provider/processing level
 * Mutable — operators and data engineers can correct records after reprocessing
-* Primary feature source for Phase 12 Yield Prediction and Phase 13 Disease Risk engines
-* TimescaleDB hypertable upgrade path
+* Primary feature source for Phase 13 Yield Prediction and Disease Risk engines
+* TimescaleDB Phase 12 hypertable candidate — designed for high-performance time-series analytics
 
 ---
 
@@ -637,17 +637,54 @@ backend/
 
 ### Current Phase
 
-🔜 Phase 12 – AI Recommendation Foundation (Planned)
+🔜 Phase 12 – TimescaleDB Time-Series Foundation (Planned)
 
 ### Planned Phases
 
-Phase 13 – Advanced AI Intelligence
+🔜 Phase 13 – AI Recommendation Foundation
 
-Phase 14 – Predictive Agriculture
+🔜 Phase 14 – Predictive Agriculture
 
-Phase 15 – Digital Twin & Farm Copilot
+🔜 Phase 15 – Digital Twin & Farm Copilot
 
-Phase 16 – Platform Stabilization & Quality Engineering
+⏳ Phase 16 – Platform Stabilization & Quality Engineering
+
+### Phase 12 – TimescaleDB Time-Series Foundation (Planned)
+
+Phase 12 is an **infrastructure and data-platform phase** — not a business domain phase. It upgrades the existing PostgreSQL time-series tables to TimescaleDB hypertables before AI services begin. There are **no business domain changes** and **no API breaking changes**.
+
+**Objectives:**
+
+* Install TimescaleDB
+* Enable TimescaleDB extension
+* Convert eligible PostgreSQL tables into hypertables
+* Configure automatic chunking
+* Configure compression policies
+* Configure retention policies
+* Implement continuous aggregates
+* Introduce `time_bucket()` based analytics
+* Build repository support for optimized time-series queries
+* Prepare the platform for AI feature engineering
+
+**Tables prepared for hypertable conversion:**
+
+These tables were designed with time-based primary query patterns and are now being upgraded for high-performance analytics:
+
+* `weather_records`
+* `sensor_readings`
+* `irrigation_events`
+* `yield_records`
+* `disease_observations`
+* `satellite_observations`
+
+**Business value:**
+
+* Enterprise-scale time-series storage
+* High-performance historical analytics
+* Efficient telemetry storage
+* AI-ready feature engineering foundation
+* Long-term scalability
+* Foundation for predictive agriculture (Phase 14+)
 
 For the detailed roadmap see `docs/06-roadmap.md`
 
@@ -708,31 +745,39 @@ AGRIFLOW-AI seeks to become the operating system for modern agriculture by combi
 ### Platform Evolution
 
 ```text
-Phase 1–3   Reactive Farming       Farm, Field, Crop records
+Reactive Farming
       ↓
-Phase 4–6   Data-Driven Farming    Soil, Weather, AI-ready attributes
+Data-Driven Farming
+(Phase 1–6)
       ↓
-Phase 7–9   Predictive Foundation  Sensor telemetry, Irrigation, Yield records
+Time-Series Intelligence
+(Phase 7–12)
       ↓
-Phase 10–11 Environmental Coverage Disease observation, Satellite imagery  ← Complete
+Intelligent Farming
+(Phase 13–15)
       ↓
-Phase 12–14 Intelligent Farming    AI yield prediction, disease risk, irrigation optimization
-      ↓
-Phase 15+   Autonomous Agriculture Full Digital Twin + GaaS Farm Copilot
+Autonomous Agriculture
+(Phase 15+)
       ↓
 Phase 16    Platform Stabilization  Complete test suite, CI/CD quality gates, production readiness
 ```
 
-### AI Layer Goals (Phase 12+)
+### AI Layer Goals (Phase 13+)
 
-* **Yield Prediction Engine** — supervised model trained on YieldRecord time-series (Phase 9 foundation)
-* **Disease Risk Engine** — risk scoring using DiseaseObservation labels (Phase 10 foundation), sensor telemetry, and weather patterns
+Phase 13 is the first AI implementation phase. AI capabilities deferred from the previous Phase 12 scope:
+
+* **Yield Recommendation Engine** — supervised model trained on YieldRecord time-series (Phase 9 foundation)
 * **Irrigation Recommendation Engine** — FAO-56 water balance optimization using IrrigationEvent history
-* **Farm Intelligence Platform** — Digital Twin + event-driven architecture + GaaS natural language interface
+* **Disease Recommendation Engine** — risk scoring using DiseaseObservation labels (Phase 10 foundation), sensor telemetry, and weather patterns
+* **Fertilizer Recommendation Engine** — nutrient management recommendations from soil profiles and crop growth stage
+* **AI Feature Store** — pre-computed feature vectors from TimescaleDB continuous aggregates (Phase 12 foundation)
+* **Recommendation Services** — unified API layer exposing AI inference endpoints to the platform and GaaS
+
+Phase 15 extends AI into the **Farm Intelligence Platform** — Digital Twin + event-driven architecture + GaaS natural language interface.
 
 ### Infrastructure Goals
 
-* **TimescaleDB** — hypertable promotion for `sensor_readings`, `irrigation_events`, `yield_records`, `disease_observations`, `satellite_observations`
+* **TimescaleDB (Phase 12)** — hypertable conversion, compression, continuous aggregates, retention policies, and `time_bucket()` analytics for `weather_records`, `sensor_readings`, `irrigation_events`, `yield_records`, `disease_observations`, and `satellite_observations`
 * **Redpanda** — event streaming for real-time Digital Twin state updates
 * **PostGIS** — field boundary polygon support for precision agriculture
 * **Temporal** — stateful agricultural workflow orchestration
