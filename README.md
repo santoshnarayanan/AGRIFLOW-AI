@@ -102,6 +102,19 @@ satellite_observations
 
 Current migration head: `a1b2c3d4e5f6_create_satellite_observations_table`
 
+#### Phase 12 Hypertable Candidates
+
+The following tables were intentionally designed using time-oriented schemas, `TIMESTAMPTZ` primary time keys, and compound `(parent_id, time_key)` indexes to support future TimescaleDB hypertable conversion in Phase 12:
+
+* `weather_records`
+* `sensor_readings`
+* `irrigation_events`
+* `yield_records`
+* `disease_observations`
+* `satellite_observations`
+
+No schema redesign is required — Phase 12 activates TimescaleDB as a PostgreSQL extension and promotes these tables to hypertables for enterprise-scale time-series analytics.
+
 ---
 
 ## Current Architecture
@@ -115,9 +128,25 @@ Service Layer
     ↓
 Repository Layer
     ↓
-Model Layer
+SQLAlchemy ORM
     ↓
-PostgreSQL
+PostgreSQL 17
+```
+
+**Persistence evolution (Phase 12 — planned):** Phase 12 introduces **TimescaleDB as a PostgreSQL extension**. PostgreSQL 17 remains the primary relational database for all domain entities, migrations, and transactional workloads. TimescaleDB enhances time-series capabilities — hypertables, compression, continuous aggregates, retention policies, and `time_bucket()` analytics — rather than replacing PostgreSQL. TimescaleDB is **not yet implemented**; the current stack uses standard PostgreSQL 17 for all persistence.
+
+```text
+API Layer
+    ↓
+Service Layer
+    ↓
+Repository Layer
+    ↓
+SQLAlchemy ORM
+    ↓
+PostgreSQL 17  ←  primary relational database (current)
+    +
+TimescaleDB extension  ←  time-series analytics layer (Phase 12 — planned)
 ```
 
 ### Architectural Principles
@@ -134,16 +163,17 @@ PostgreSQL
 
 ## Technology Stack
 
-| Layer               | Technology     |
-| ------------------- | -------------- |
-| Backend API         | FastAPI        |
-| Language            | Python 3.12    |
-| Database            | PostgreSQL 17  |
-| ORM                 | SQLAlchemy 2.x |
-| Migration Framework | Alembic        |
-| Validation          | Pydantic       |
-| Containerization    | Docker         |
-| Version Control     | Git + GitHub   |
+| Layer               | Technology                          |
+| ------------------- | ----------------------------------- |
+| Backend API         | FastAPI                             |
+| Language            | Python 3.12                         |
+| Database            | PostgreSQL 17                       |
+| Time-Series Engine  | TimescaleDB (Planned — Phase 12)    |
+| ORM                 | SQLAlchemy 2.x                      |
+| Migration Framework | Alembic                             |
+| Validation          | Pydantic                            |
+| Containerization    | Docker                              |
+| Version Control     | Git + GitHub                        |
 
 ---
 
@@ -393,6 +423,7 @@ Verify these patterns are present in `.gitignore` before committing any new file
 * Wind speed tracking
 * WeatherRecord CRUD APIs
 * Time-series weather data foundation
+* Designed for TimescaleDB hypertable conversion in Phase 12 to support scalable time-series analytics, compression, continuous aggregates, retention policies, and AI feature engineering
 
 ### Sensor Telemetry (Phase 7)
 
@@ -400,7 +431,7 @@ Verify these patterns are present in `.gitignore` before committing any new file
 * 11 sensor types: SOIL_MOISTURE, SOIL_TEMPERATURE, AIR_TEMPERATURE, AIR_HUMIDITY, LIGHT_INTENSITY, LEAF_WETNESS, ELECTRICAL_CONDUCTIVITY, SOIL_SALINITY, WATER_LEVEL, BATTERY_STATUS, DEVICE_HEALTH
 * Append-only — immutable telemetry record
 * Timezone-aware timestamp validation
-* TimescaleDB Phase 12 hypertable candidate — designed for high-performance time-series analytics
+* Designed for TimescaleDB hypertable conversion in Phase 12 to support scalable time-series analytics, compression, continuous aggregates, retention policies, and AI feature engineering
 
 ### Irrigation Management (Phase 8)
 
@@ -410,7 +441,7 @@ Verify these patterns are present in `.gitignore` before committing any new file
 * Duration and water volume tracking
 * Timezone-aware timestamp validation with cross-field ordering guard
 * Mutable — operators can correct records after logging
-* TimescaleDB Phase 12 hypertable candidate — designed for high-performance time-series analytics
+* Designed for TimescaleDB hypertable conversion in Phase 12 to support scalable time-series analytics, compression, continuous aggregates, retention policies, and AI feature engineering
 
 ### Yield Intelligence (Phase 9)
 
@@ -421,7 +452,7 @@ Verify these patterns are present in `.gitignore` before committing any new file
 * Server-side `field_id` resolution from crop record
 * Mutable — operators can correct measurements after logging
 * Primary training label source for Phase 13 Yield Prediction Engine
-* TimescaleDB Phase 12 hypertable candidate — designed for high-performance time-series analytics
+* Designed for TimescaleDB hypertable conversion in Phase 12 to support scalable time-series analytics, compression, continuous aggregates, retention policies, and AI feature engineering
 
 ### Disease Observation (Phase 10)
 
@@ -435,7 +466,7 @@ Verify these patterns are present in `.gitignore` before committing any new file
 * Crop-scoped and field-scoped list endpoints with pagination
 * Primary training label source for Phase 13 Disease Risk Scoring Engine
 * DiseaseObservation CRUD APIs
-* TimescaleDB Phase 12 hypertable candidate — designed for high-performance time-series analytics
+* Designed for TimescaleDB hypertable conversion in Phase 12 to support scalable time-series analytics, compression, continuous aggregates, retention policies, and AI feature engineering
 
 ### Satellite Observation (Phase 11)
 
@@ -446,28 +477,34 @@ Verify these patterns are present in `.gitignore` before committing any new file
 * AI-oriented query endpoints: date range, latest by spectral index, filter by provider/processing level
 * Mutable — operators and data engineers can correct records after reprocessing
 * Primary feature source for Phase 13 Yield Prediction and Disease Risk engines
-* TimescaleDB Phase 12 hypertable candidate — designed for high-performance time-series analytics
+* Designed for TimescaleDB hypertable conversion in Phase 12 to support scalable time-series analytics, compression, continuous aggregates, retention policies, and AI feature engineering
 
 ---
 
 ## Testing Strategy
 
-Comprehensive automated testing is intentionally deferred until **Phase 16 – Platform Stabilization & Quality Engineering**. Business rules continue to evolve across phases; writing large test suites before the domain model stabilises would require repeated rewrites.
+Comprehensive automated testing is intentionally deferred until **Phase 16 – Platform Stabilization & Quality Engineering**. Business rules continue to evolve across phases; writing large test suites before the domain model and infrastructure layers stabilise would require repeated rewrites.
 
-Phase 16 will deliver:
+**Phases 12–15 — incremental verification:**
 
-* Complete API validation
-* Manual API verification
-* End-to-end workflow validation
-* Integration testing
-* Repository testing
-* Service layer testing
-* Unit testing
+* Manual validation of new infrastructure and AI capabilities
+* Smoke testing of critical API paths
+* Swagger/OpenAPI contract verification
+* Incremental functional verification as each phase delivers new capabilities
+
+**Phase 16 — comprehensive quality engineering:**
+
+* Complete API validation across all domains
+* Unit testing (Repository, Service, Schema layers)
+* Repository testing and Service layer testing
+* Integration testing and end-to-end workflow validation
 * Regression testing
-* Performance testing
-* Production readiness validation
+* Performance benchmarking
+* Security validation
+* CI/CD quality gates and code coverage reporting
+* Production readiness assessment
 
-Until Phase 16, domain implementation proceeds phase-by-phase with Swagger/OpenAPI documentation as the primary contract verification mechanism.
+This staged approach reduces rework while the domain model, TimescaleDB layer, and AI services continue to evolve. Until Phase 16, domain and infrastructure implementation proceeds phase-by-phase with Swagger/OpenAPI documentation as the primary contract verification mechanism during Phases 12–15.
 
 ---
 
@@ -614,7 +651,7 @@ backend/
 | `docs/08-phase-architecture-handbook.md` | Phase Architecture Handbook (authoritative ADR reference) |
 | `docs/09-architecture-diagrams.md` | Architecture Diagrams (current and target state, Mermaid) |
 | `docs/plan/AI_DATA_READINESS_ASSESSMENT.md` | AI Data Readiness Assessment (Phase 6) |
-| `docs/AGRIFLOW_PALANTIR_ALIGNMENT.md` | Palantir Foundry Alignment Assessment (Phases 1–8) |
+| `docs/AGRIFLOW_PALANTIR_ALIGNMENT.md` | Palantir Foundry Alignment Assessment (Phases 1–11) |
 | `docs/plan/phase_9_yield_domain_93352ec2.plan.md` | Phase 9 Yield Domain — Implementation Plan |
 
 ---
@@ -641,13 +678,33 @@ backend/
 
 ### Planned Phases
 
-🔜 Phase 13 – AI Recommendation Foundation
+🔜 **Phase 13 – AI Feature Store & Recommendation Services**
 
-🔜 Phase 14 – Predictive Agriculture
+* Yield Recommendation Engine
+* Irrigation Recommendation Engine
+* Disease Recommendation Engine
+* Fertilizer Recommendation Engine
+* AI Feature Store
+* Unified Recommendation Services API layer
 
-🔜 Phase 15 – Digital Twin & Farm Copilot
+🔜 **Phase 14 – Predictive Agriculture**
 
-⏳ Phase 16 – Platform Stabilization & Quality Engineering
+* Yield Prediction
+* Disease Risk Prediction
+* Irrigation Optimization
+* Fertilizer Recommendation
+
+🔜 **Phase 15 – Digital Twin & Farm Copilot**
+
+* Digital Twin (continuously updated virtual field model)
+* Farm Copilot (natural language decision support)
+* Generative AI as a Service (GaaS)
+
+⏳ **Phase 16 – Platform Stabilization & Quality Engineering**
+
+* Complete test suite, CI/CD quality gates, production readiness
+
+For the detailed roadmap see `docs/06-roadmap.md`
 
 ### Phase 12 – TimescaleDB Time-Series Foundation (Planned)
 
@@ -685,8 +742,6 @@ These tables were designed with time-based primary query patterns and are now be
 * AI-ready feature engineering foundation
 * Long-term scalability
 * Foundation for predictive agriculture (Phase 14+)
-
-For the detailed roadmap see `docs/06-roadmap.md`
 
 ---
 
@@ -745,43 +800,71 @@ AGRIFLOW-AI seeks to become the operating system for modern agriculture by combi
 ### Platform Evolution
 
 ```text
-Reactive Farming
+Operational Data Platform
+(Phase 1–5)
       ↓
-Data-Driven Farming
-(Phase 1–6)
+AI Data Foundation
+(Phase 6)
       ↓
-Time-Series Intelligence
-(Phase 7–12)
+Telemetry & Observation Platform
+(Phase 7–11)
       ↓
-Intelligent Farming
+Time-Series Data Platform
+(Phase 12 — TimescaleDB)
+      ↓
+AI Intelligence Platform
 (Phase 13–15)
       ↓
-Autonomous Agriculture
-(Phase 15+)
+Digital Twin & Farm Copilot
+(Phase 15)
       ↓
-Phase 16    Platform Stabilization  Complete test suite, CI/CD quality gates, production readiness
+Platform Stabilization & Production Readiness
+(Phase 16)
 ```
+
+Phase 12 exists because the observational domain model (Phases 7–11) generates high-volume time-series data that standard PostgreSQL indexing cannot scale indefinitely. TimescaleDB activation converts six pre-designed tables into hypertables, enabling compression, continuous aggregates, and `time_bucket()` analytics — the data platform required before AI Feature Store and Recommendation Services begin in Phase 13.
 
 ### AI Layer Goals (Phase 13+)
 
-Phase 13 is the first AI implementation phase. AI capabilities deferred from the previous Phase 12 scope:
+Phase 13 is the first AI implementation phase. AI capabilities depend on the TimescaleDB foundation delivered in Phase 12:
 
-* **Yield Recommendation Engine** — supervised model trained on YieldRecord time-series (Phase 9 foundation)
-* **Irrigation Recommendation Engine** — FAO-56 water balance optimization using IrrigationEvent history
-* **Disease Recommendation Engine** — risk scoring using DiseaseObservation labels (Phase 10 foundation), sensor telemetry, and weather patterns
+```text
+TimescaleDB (Phase 12)
+      ↓
+Continuous Aggregates
+      ↓
+Feature Engineering
+      ↓
+AI Feature Store (Phase 13)
+      ↓
+Recommendation Services (Phase 13)
+      ↓
+Prediction Models (Phase 14)
+      ↓
+Farm Copilot / GaaS (Phase 15)
+```
+
+**Phase 13 deliverables:**
+
+* **Yield Recommendation Engine** — supervised model trained on YieldRecord time-series (Phase 9 foundation) and SatelliteObservation NDVI features
+* **Irrigation Recommendation Engine** — FAO-56 water balance optimization using IrrigationEvent history and soil moisture telemetry
+* **Disease Recommendation Engine** — risk scoring using DiseaseObservation labels (Phase 10 foundation), sensor telemetry, weather patterns, and satellite NDVI trends
 * **Fertilizer Recommendation Engine** — nutrient management recommendations from soil profiles and crop growth stage
 * **AI Feature Store** — pre-computed feature vectors from TimescaleDB continuous aggregates (Phase 12 foundation)
 * **Recommendation Services** — unified API layer exposing AI inference endpoints to the platform and GaaS
 
-Phase 15 extends AI into the **Farm Intelligence Platform** — Digital Twin + event-driven architecture + GaaS natural language interface.
+Phase 14 extends recommendation engines into full **Predictive Agriculture** (yield prediction, disease risk prediction, irrigation optimization, fertilizer recommendation). Phase 15 delivers the **Digital Twin**, **Farm Copilot**, and **Generative AI as a Service (GaaS)**.
 
 ### Infrastructure Goals
 
-* **TimescaleDB (Phase 12)** — hypertable conversion, compression, continuous aggregates, retention policies, and `time_bucket()` analytics for `weather_records`, `sensor_readings`, `irrigation_events`, `yield_records`, `disease_observations`, and `satellite_observations`
-* **Redpanda** — event streaming for real-time Digital Twin state updates
-* **PostGIS** — field boundary polygon support for precision agriculture
-* **Temporal** — stateful agricultural workflow orchestration
-* **Azure** — enterprise and cooperative deployment target (AKS, Azure OpenAI, Azure AI Search)
+Infrastructure components are ordered by planned implementation sequence:
+
+1. **PostgreSQL 17** — primary relational database for all domain entities, transactional workloads, Alembic migrations, and referential integrity (current — Phases 1–11)
+2. **TimescaleDB (Phase 12)** — PostgreSQL extension for hypertable conversion, compression, continuous aggregates, retention policies, and `time_bucket()` analytics across six time-series tables; establishes the enterprise time-series platform before AI services
+3. **PostGIS (Phase 14–15)** — field boundary polygon support for precision agriculture, satellite imagery spatial overlay, and variable-rate prescription zones
+4. **Redpanda (Phase 13–14)** — event streaming for real-time Digital Twin state updates, AI pipeline triggers, and decoupled downstream consumers (`SensorReadingCreated`, `DiseaseObservationCreated`, etc.)
+5. **Temporal (Phase 14–15)** — stateful agricultural workflow orchestration (soil moisture alerts, irrigation scheduling, harvest planning, alert escalation)
+6. **Azure (Phase 15+)** — enterprise and cooperative deployment target (AKS container orchestration, Azure OpenAI for GaaS, Azure AI Search for agronomic knowledge retrieval)
 
 ---
 
