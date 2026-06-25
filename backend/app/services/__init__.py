@@ -20,6 +20,11 @@ from .irrigation_event import (
     IrrigationEventNotFoundError,
     IrrigationEventService,
 )
+from .satellite_observation import (
+    InvalidSatelliteObservationError,
+    SatelliteObservationNotFoundError,
+    SatelliteObservationService,
+)
 from .sensor_reading import (
     InvalidSensorTimestampError,
     SensorReadingNotFoundError,
@@ -56,6 +61,7 @@ __all__ = [
     "InvalidDiseaseObservationError",
     "InvalidHarvestDateError",
     "InvalidIrrigationTimestampError",
+    "InvalidSatelliteObservationError",
     "InvalidSensorTimestampError",
     "InvalidTemperatureRangeError",
     "InvalidWeatherMeasurementError",
@@ -63,6 +69,8 @@ __all__ = [
     "InvalidYieldDataError",
     "IrrigationEventNotFoundError",
     "IrrigationEventService",
+    "SatelliteObservationNotFoundError",
+    "SatelliteObservationService",
     "SensorReadingNotFoundError",
     "SensorReadingService",
     "SoilProfileNotFoundError",
