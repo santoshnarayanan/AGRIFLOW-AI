@@ -1324,4 +1324,96 @@ Disease Observations (Phase 10):
 
 ### Next Planned Evolution
 
-Phase 11 – Satellite Observation Domain
+Phase 12 – AI Recommendation Foundation
+
+---
+
+## Phase 11 – Satellite Observation Domain
+
+Status: ✅ Implementation Complete | ⏳ Validation Deferred | ⏳ Testing Deferred
+
+### Completed
+
+* `SatelliteProvider`, `SpectralIndex`, `ProcessingLevel` enums added to `app/core/enums.py`
+* SatelliteObservation ORM Model (`backend/app/db/models/satellite_observation.py`) — field-anchored
+* Alembic migration `a1b2c3d4e5f6_create_satellite_observations_table`
+* SatelliteObservation Pydantic Schemas (`SatelliteObservationCreate`, `SatelliteObservationUpdate`, `SatelliteObservationResponse`, `SatelliteObservationListResponse`)
+* `SatelliteObservationRepository` with CRUD + AI-oriented query methods
+* `SatelliteObservationService` with field existence validation, contextual `index_value` bounds, future `observed_at` rejection
+* `SatelliteObservationNotFoundError` and `InvalidSatelliteObservationError` domain exception types
+* SatelliteObservation API router with 9 endpoints
+* `get_satellite_observation_service()` factory and `SatelliteObservationServiceDep` alias in `app/api/deps.py`
+* Router registered in `app/api/router.py`
+
+### Database Changes
+
+* Added `satellite_provider` PostgreSQL ENUM type (8 values)
+* Added `spectral_index` PostgreSQL ENUM type (8 values)
+* Added `processing_level` PostgreSQL ENUM type (4 values)
+* Added `satellite_observations` table with field-anchored FK and 7 indexes
+
+### Domain Hierarchy Established
+
+```text
+Farm
+└── Field
+     ├── Crop
+     │    ├── YieldRecord
+     │    └── DiseaseObservation
+     ├── SoilProfile
+     ├── WeatherRecord
+     ├── SensorReading       (append-only)
+     ├── IrrigationEvent     (mutable operational events)
+     └── SatelliteObservation (mutable Earth observation)
+```
+
+### API Endpoints Added
+
+```http
+POST   /api/v1/fields/{field_id}/satellite-observations              201 Created
+GET    /api/v1/fields/{field_id}/satellite-observations              200 OK  (observed_at DESC, paginated)
+GET    /api/v1/fields/{field_id}/satellite-observations/range        200 OK  (start/end query params)
+GET    /api/v1/fields/{field_id}/satellite-observations/latest       200 OK  (spectral_index query param)
+GET    /api/v1/satellite-observations/by-provider/{provider}         200 OK
+GET    /api/v1/satellite-observations/by-processing-level/{level}    200 OK
+GET    /api/v1/satellite-observations/{observation_id}             200 OK
+PATCH  /api/v1/satellite-observations/{observation_id}             200 OK
+DELETE /api/v1/satellite-observations/{observation_id}            204 No Content
+```
+
+### Business Rules Implemented
+
+* Field must exist before SatelliteObservation creation (raises `FieldNotFoundError` → 404)
+* `field_id` supplied through route path — not in request body
+* `observed_at` must be timezone-aware and not in the future (raises `InvalidSatelliteObservationError` → 400)
+* `index_value` validated against contextual range for `spectral_index` (ratio indices in [-1.0, 1.0]; LAI > 0)
+* `resolution_m`, when supplied, must be > 0
+* `cloud_cover_percent`, when supplied, must be within [0, 100]
+* `field_id` immutable after creation — excluded from update schema
+* PATCH is permitted — SatelliteObservation is a mutable Earth observation record
+* List responses ordered by `observed_at DESC` (most recent observation first)
+
+### Architecture Decisions
+
+| ADR | Decision |
+|---|---|
+| ADR-011-01 | `SatelliteObservation` anchors to `field_id` — satellite imagery is field-level, not crop-cycle-level |
+| ADR-011-02 | `observed_at TIMESTAMPTZ NOT NULL` is the primary time key and TimescaleDB partition key candidate |
+| ADR-011-03 | `SatelliteObservation` is mutable — PATCH permitted for reprocessing corrections |
+| ADR-011-04 | `field_id` immutable after creation — excluded from update schema |
+| ADR-011-05 | `SatelliteProvider`, `SpectralIndex`, `ProcessingLevel` placed in `app/core/enums.py` for cross-domain reuse |
+
+### Current Platform Status (Post Phase 11)
+
+#### Current Database Tables
+
+* alembic_version
+* farms, fields, crops, soil_profiles, weather_records
+* sensor_readings, irrigation_events, yield_records
+* disease_observations, satellite_observations
+
+#### Current Migration Head
+
+`a1b2c3d4e5f6_create_satellite_observations_table`
+
+---

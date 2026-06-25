@@ -4,7 +4,7 @@
 
 AGRIFLOW-AI is an Agricultural Intelligence Platform designed to help farmers, agronomists, cooperatives, and agricultural enterprises manage farm operations, monitor crop lifecycles, analyze soil health, track irrigation events, record yield measurements, log disease observations, and build toward AI-driven agricultural decision intelligence.
 
-The platform combines farm management, field management, crop management, soil intelligence, weather intelligence, sensor telemetry, irrigation management, yield tracking, disease observation, and future AI-powered recommendations into a unified agricultural operating platform.
+The platform combines farm management, field management, crop management, soil intelligence, weather intelligence, sensor telemetry, irrigation management, yield tracking, disease observation, satellite observation, and future AI-powered recommendations into a unified agricultural operating platform.
 
 ---
 
@@ -51,9 +51,19 @@ docs/01-vision.md
 
 ✅ Phase 10 – Disease Observation Domain
 
+✅ Phase 11 – Satellite Observation Domain
+
 ### Current Phase
 
-🔄 Phase 11 – Satellite Observation Domain (In Progress)
+🔜 Phase 12 – AI Recommendation Foundation (Planned)
+
+### Phase 11 Implementation Status
+
+| Status | Detail |
+|---|---|
+| Implementation | ✅ Domain implemented (Model, Schema, Repository, Service, Router) |
+| Validation | ⏳ Deferred — comprehensive API validation planned for Phase 16 |
+| Testing | ⏳ Deferred — automated test suite planned for Phase 16 |
 
 ---
 
@@ -68,7 +78,8 @@ Farm
       ├── SoilProfile
       ├── WeatherRecord
       ├── SensorReading       (Phase 7 — append-only telemetry)
-      └── IrrigationEvent     (Phase 8 — mutable operational events)
+      ├── IrrigationEvent     (Phase 8 — mutable operational events)
+      └── SatelliteObservation (Phase 11 — mutable Earth observation)
 ```
 
 ---
@@ -86,9 +97,10 @@ sensor_readings
 irrigation_events
 yield_records
 disease_observations
+satellite_observations
 ```
 
-Current migration head: `d3e7b2a9f1c4_create_disease_observations_table`
+Current migration head: `a1b2c3d4e5f6_create_satellite_observations_table`
 
 ---
 
@@ -425,6 +437,38 @@ Verify these patterns are present in `.gitignore` before committing any new file
 * DiseaseObservation CRUD APIs
 * TimescaleDB hypertable upgrade path
 
+### Satellite Observation (Phase 11)
+
+* Derived spectral index observations per field (NDVI, EVI, NDWI, SAVI, NDRE, LAI, MSAVI, GNDVI)
+* 8 satellite providers: SENTINEL_2, LANDSAT_8, LANDSAT_9, PLANET, MODIS, SPOT, WORLDVIEW, UNKNOWN
+* 4 processing levels: L1C, L2A, ARD, DERIVED
+* Field-anchored — satellite imagery persists across crop cycles
+* AI-oriented query endpoints: date range, latest by spectral index, filter by provider/processing level
+* Mutable — operators and data engineers can correct records after reprocessing
+* Primary feature source for Phase 12 Yield Prediction and Phase 13 Disease Risk engines
+* TimescaleDB hypertable upgrade path
+
+---
+
+## Testing Strategy
+
+Comprehensive automated testing is intentionally deferred until **Phase 16 – Platform Stabilization & Quality Engineering**. Business rules continue to evolve across phases; writing large test suites before the domain model stabilises would require repeated rewrites.
+
+Phase 16 will deliver:
+
+* Complete API validation
+* Manual API verification
+* End-to-end workflow validation
+* Integration testing
+* Repository testing
+* Service layer testing
+* Unit testing
+* Regression testing
+* Performance testing
+* Production readiness validation
+
+Until Phase 16, domain implementation proceeds phase-by-phase with Swagger/OpenAPI documentation as the primary contract verification mechanism.
+
 ---
 
 ## Business Rules Implemented
@@ -499,6 +543,17 @@ Verify these patterns are present in `.gitignore` before committing any new file
 * `disease_name` max length 255 characters
 * DiseaseObservation is mutable — operators can correct observations after logging
 
+### SatelliteObservation Domain (Phase 11)
+
+* Field must exist before SatelliteObservation creation
+* `field_id` supplied through route path on create — not in request body
+* `observed_at` must be timezone-aware and not in the future
+* `index_value` validated against contextual range for `spectral_index` (ratio indices in [-1.0, 1.0]; LAI > 0)
+* `resolution_m`, when supplied, must be > 0
+* `cloud_cover_percent`, when supplied, must be within [0, 100]
+* `field_id` immutable after creation — excluded from update schema
+* SatelliteObservation is mutable — operators can correct records after reprocessing
+
 ---
 
 ## Project Structure
@@ -520,6 +575,7 @@ backend/
 │   ├── api
 │   │   ├── crops/
 │   │   ├── disease_observations/ ← Phase 10
+│   │   ├── satellite_observations/ ← Phase 11
 │   │   ├── fields/
 │   │   ├── irrigation_events/
 │   │   ├── sensor_readings/
@@ -529,10 +585,10 @@ backend/
 │   │   ├── deps.py
 │   │   └── router.py
 │   ├── core
-│   │   └── enums.py             ← SensorType, IrrigationMethod, WaterSource, YieldMeasurementMethod, DiseaseSeverity, DiagnosisMethod
+│   │   └── enums.py             ← SensorType, IrrigationMethod, WaterSource, YieldMeasurementMethod, DiseaseSeverity, DiagnosisMethod, SatelliteProvider, SpectralIndex, ProcessingLevel
 │   ├── db
 │   │   ├── migrations/versions/
-│   │   ├── models/              ← ORM models (Farm, Field, Crop, SoilProfile, WeatherRecord, SensorReading, IrrigationEvent, YieldRecord, DiseaseObservation)
+│   │   ├── models/              ← ORM models (Farm, Field, Crop, SoilProfile, WeatherRecord, SensorReading, IrrigationEvent, YieldRecord, DiseaseObservation, SatelliteObservation)
 │   │   └── repositories/        ← Repository layer per domain
 │   ├── schemas/                 ← Pydantic schemas per domain
 │   ├── services/                ← Service layer per domain
@@ -549,11 +605,11 @@ backend/
 | Document | Description |
 | --- | --- |
 | `docs/01-vision.md` | Product Vision & Strategic Direction |
-| `docs/02-architecture.md` | Technical Architecture (Phase 1–10 complete) |
+| `docs/02-architecture.md` | Technical Architecture (Phase 1–11 complete) |
 | `docs/03-database.md` | Database Design & Schema Reference |
 | `docs/04-api-design.md` | API Design & Endpoint Catalog |
 | `docs/05-local-setup.md` | Local Development Setup |
-| `docs/06-roadmap.md` | Product Roadmap (Phase 1–10 complete) |
+| `docs/06-roadmap.md` | Product Roadmap (Phase 1–11 complete) |
 | `docs/07-phase-history.md` | Phase-by-Phase Implementation History |
 | `docs/08-phase-architecture-handbook.md` | Phase Architecture Handbook (authoritative ADR reference) |
 | `docs/09-architecture-diagrams.md` | Architecture Diagrams (current and target state, Mermaid) |
@@ -577,26 +633,27 @@ backend/
 ✅ Phase 8 – Irrigation Management Domain  
 ✅ Phase 9 – Yield Domain  
 ✅ Phase 10 – Disease Observation Domain  
+✅ Phase 11 – Satellite Observation Domain  
 
 ### Current Phase
 
-🔄 Phase 11 – Satellite Observation Domain (In Progress)
+🔜 Phase 12 – AI Recommendation Foundation (Planned)
 
 ### Planned Phases
 
-Phase 12 – Yield Prediction Engine (first AI model, uses Phase 9 YieldRecord labels)
+Phase 13 – Advanced AI Intelligence
 
-Phase 13 – Disease Prediction Engine
+Phase 14 – Predictive Agriculture
 
-Phase 14 – Irrigation Recommendation Engine
+Phase 15 – Digital Twin & Farm Copilot
 
-Phase 15 – Farm Intelligence Platform (Full Digital Twin + GaaS Farm Copilot)
+Phase 16 – Platform Stabilization & Quality Engineering
 
 For the detailed roadmap see `docs/06-roadmap.md`
 
 ---
 
-## Current Agricultural Intelligence Platform (Post Phase 10)
+## Current Agricultural Intelligence Platform (Post Phase 11)
 
 ```text
 Farm
@@ -607,7 +664,8 @@ Farm
       ├── SoilProfile         ✅ Phase 4
       ├── WeatherRecord       ✅ Phase 5
       ├── SensorReading       ✅ Phase 7 (IoT Telemetry — append-only)
-      └── IrrigationEvent     ✅ Phase 8 (Operational Management Events — mutable)
+      ├── IrrigationEvent     ✅ Phase 8 (Operational Management Events — mutable)
+      └── SatelliteObservation ✅ Phase 11 (Earth Observation — mutable, field-anchored)
 ```
 
 ### Implemented Domains
@@ -624,6 +682,7 @@ Farm
 | Irrigation Management | 8 | IrrigationEvent | Mutable operational events |
 | Yield | 9 | YieldRecord | Mutable, grandchild (Crop-anchored) |
 | Disease Observation | 10 | DiseaseObservation | Mutable, grandchild (Crop-anchored) |
+| Satellite Observation | 11 | SatelliteObservation | Mutable, field-anchored |
 
 ## Target Agricultural Intelligence Platform
 
@@ -637,7 +696,7 @@ Farm
       ├── WeatherRecord
       ├── SensorReading
       ├── IrrigationEvent
-      └── SatelliteObservation       🔄 Phase 11 (In Progress)
+      └── SatelliteObservation       ✅ Phase 11 Complete
 ```
 
 ---
@@ -655,11 +714,13 @@ Phase 4–6   Data-Driven Farming    Soil, Weather, AI-ready attributes
       ↓
 Phase 7–9   Predictive Foundation  Sensor telemetry, Irrigation, Yield records
       ↓
-Phase 10–11 Environmental Coverage Disease observation, Satellite imagery  ← Current
+Phase 10–11 Environmental Coverage Disease observation, Satellite imagery  ← Complete
       ↓
 Phase 12–14 Intelligent Farming    AI yield prediction, disease risk, irrigation optimization
       ↓
 Phase 15+   Autonomous Agriculture Full Digital Twin + GaaS Farm Copilot
+      ↓
+Phase 16    Platform Stabilization  Complete test suite, CI/CD quality gates, production readiness
 ```
 
 ### AI Layer Goals (Phase 12+)
@@ -671,7 +732,7 @@ Phase 15+   Autonomous Agriculture Full Digital Twin + GaaS Farm Copilot
 
 ### Infrastructure Goals
 
-* **TimescaleDB** — hypertable promotion for `sensor_readings`, `irrigation_events`, `yield_records`, `disease_observations`
+* **TimescaleDB** — hypertable promotion for `sensor_readings`, `irrigation_events`, `yield_records`, `disease_observations`, `satellite_observations`
 * **Redpanda** — event streaming for real-time Digital Twin state updates
 * **PostGIS** — field boundary polygon support for precision agriculture
 * **Temporal** — stateful agricultural workflow orchestration

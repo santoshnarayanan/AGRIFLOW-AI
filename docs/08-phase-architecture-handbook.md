@@ -3,7 +3,7 @@
 **Document:** Architecture Reference & Implementation History  
 **Version:** 1.1  
 **Date:** June 2026  
-**Scope:** Phase 1 through Phase 10 — complete implementation record and future architecture guide  
+**Scope:** Phase 1 through Phase 11 — complete implementation record and future architecture guide  
 **Status:** Living Document
 
 ---
@@ -23,7 +23,8 @@
 11. [Phase 8 — Irrigation Management Domain](#11-phase-8--irrigation-management-domain)
 12. [Phase 9 — Yield Domain](#12-phase-9--yield-domain)
 13. [Phase 10 – Disease Observation Domain Architecture](#phase-10--disease-observation-domain-architecture)
-14. [Current Domain Architecture (Post Phase 10)](#13-current-domain-architecture-post-phase-10)
+14. [Phase 11 – Satellite Observation Domain Architecture](#phase-11--satellite-observation-domain-architecture)
+15. [Current Domain Architecture (Post Phase 11)](#15-current-domain-architecture-post-phase-11)
 15. [Future Architecture: TimescaleDB](#14-future-architecture-timescaledb)
 16. [Future Architecture: Apache Cassandra](#15-future-architecture-apache-cassandra)
 17. [Future Architecture: CQRS](#16-future-architecture-cqrs)
@@ -1408,9 +1409,102 @@ DELETE /api/v1/disease-observations/{observation_id}            204 No Content
 
 ---
 
-## 13. Current Domain Architecture (Post Phase 10)
+## Phase 11 – Satellite Observation Domain Architecture
 
-### Complete Entity Relationship (Post Phase 10)
+**Status:** ✅ Implementation Complete | ⏳ Validation Deferred | ⏳ Testing Deferred
+
+### Business Context
+
+Satellite-derived spectral indices (NDVI, EVI, NDWI, LAI) provide field-scale vegetation and water-stress signals that complement ground-based sensor telemetry. Without a structured satellite observation log, the platform cannot:
+
+- Feed Phase 12 Yield Prediction with growing-season NDVI time series
+- Correlate remote sensing trends with disease pressure (`SatelliteObservation` × `DiseaseObservation`)
+- Power Digital Twin field canopy health state with latest spectral index values
+- Support GaaS SatelliteAdvisor natural language queries
+
+Phase 11 introduces `SatelliteObservation` as a **field-anchored** mutable domain — the closest analogue is `IrrigationEvent` (field-level operational data), not the crop-anchored grandchild pattern.
+
+### Domain Model
+
+```
+Farm → Field → SatelliteObservation
+```
+
+### Entity Design
+
+| Field | Type | Notes |
+|---|---|---|
+| `id` | `UUID` PK | Server-generated |
+| `field_id` | `UUID` FK → `fields.id` | Primary domain anchor; immutable after creation |
+| `observed_at` | `TIMESTAMPTZ NOT NULL` | Primary time key; not in the future |
+| `satellite_provider` | `satellite_provider` ENUM | SENTINEL_2, LANDSAT_8, LANDSAT_9, PLANET, MODIS, SPOT, WORLDVIEW, UNKNOWN |
+| `processing_level` | `processing_level` ENUM | L1C, L2A, ARD, DERIVED |
+| `spectral_index` | `spectral_index` ENUM | NDVI, EVI, NDWI, SAVI, NDRE, LAI, MSAVI, GNDVI |
+| `index_value` | `NUMERIC(9,6)` | Contextual bounds enforced by service layer |
+| `cloud_cover_percent` | `NUMERIC(5,2)` nullable | [0, 100] when supplied |
+| `resolution_m` | `NUMERIC(8,2)` nullable | > 0 when supplied |
+| `scene_id` | `VARCHAR(255)` nullable | Provider scene identifier |
+| `source_url` | `VARCHAR(500)` nullable | COG or derived product URL |
+| `notes` | `TEXT` nullable | Operator annotations |
+
+### Repository Architecture
+
+`SatelliteObservationRepository` extends `BaseRepository[SatelliteObservation]`:
+
+| Method | Responsibility |
+|---|---|
+| `create`, `get_by_id`, `update`, `delete` | Standard CRUD (inherited) |
+| `list` | Paginated global listing |
+| `list_by_field` | Field observation history |
+| `list_by_field_and_date_range` | AI feature extraction window |
+| `get_latest_by_field_and_spectral_index` | Digital Twin current-state lookup |
+| `list_by_field_and_spectral_index` | Index-specific time series |
+| `list_by_provider` | Provider-scoped analytics |
+| `list_by_processing_level` | Quality-gate queries (ARD/L2A) |
+
+### Service Architecture
+
+`SatelliteObservationService` enforces:
+
+1. Field must exist before observation creation (`FieldNotFoundError` → 404)
+2. `observed_at` must not be in the future (`InvalidSatelliteObservationError` → 400)
+3. `index_value` contextual bounds per `spectral_index`
+4. `resolution_m > 0` when supplied
+5. `cloud_cover_percent` in [0, 100] when supplied
+6. Date-range queries require `start <= end`
+
+### API Architecture
+
+```http
+POST   /api/v1/fields/{field_id}/satellite-observations              201 Created
+GET    /api/v1/fields/{field_id}/satellite-observations              200 OK
+GET    /api/v1/fields/{field_id}/satellite-observations/range        200 OK
+GET    /api/v1/fields/{field_id}/satellite-observations/latest       200 OK
+GET    /api/v1/satellite-observations/by-provider/{provider}         200 OK
+GET    /api/v1/satellite-observations/by-processing-level/{level}    200 OK
+GET    /api/v1/satellite-observations/{observation_id}             200 OK
+PATCH  /api/v1/satellite-observations/{observation_id}             200 OK
+DELETE /api/v1/satellite-observations/{observation_id}            204 No Content
+```
+
+### Implementation Summary
+
+| Layer | Artifact | Notes |
+|---|---|---|
+| Enums | `SatelliteProvider`, `SpectralIndex`, `ProcessingLevel` in `app/core/enums.py` | 8 + 8 + 4 values |
+| ORM | `backend/app/db/models/satellite_observation.py` | Field-anchored; compound indexes |
+| Migration | `a1b2c3d4e5f6_create_satellite_observations_table` | Three PostgreSQL enums + 7 indexes |
+| Schemas | `backend/app/schemas/satellite_observation.py` | Create, Update, Response, ListResponse |
+| Repository | `backend/app/db/repositories/satellite_observation.py` | AI-oriented query methods |
+| Service | `backend/app/services/satellite_observation.py` | Contextual index value validation |
+| DI | `backend/app/api/deps.py` | `SatelliteObservationServiceDep` |
+| Router | `backend/app/api/satellite_observations/router.py` | 9 endpoints |
+
+---
+
+## 15. Current Domain Architecture (Post Phase 11)
+
+### Complete Entity Relationship (Post Phase 11)
 
 ```mermaid
 erDiagram
@@ -1571,7 +1665,7 @@ erDiagram
 * yield_records
 * disease_observations
 
-### Current API Surface (Post Phase 10)
+### Current API Surface (Post Phase 11)
 
 ```
 Health
@@ -1637,7 +1731,19 @@ Disease Observations (Phase 10 — mutable, grandchild)
   DELETE /api/v1/disease-observations/{observation_id}
 ```
 
-### Shared Enum Module (Post Phase 10)
+Satellite Observations (Phase 11 — mutable, field-anchored)
+
+* POST   /api/v1/fields/{field_id}/satellite-observations
+* GET    /api/v1/fields/{field_id}/satellite-observations
+* GET    /api/v1/fields/{field_id}/satellite-observations/range
+* GET    /api/v1/fields/{field_id}/satellite-observations/latest
+* GET    /api/v1/satellite-observations/by-provider/{satellite_provider}
+* GET    /api/v1/satellite-observations/by-processing-level/{processing_level}
+* GET    /api/v1/satellite-observations/{observation_id}
+* PATCH  /api/v1/satellite-observations/{observation_id}
+* DELETE /api/v1/satellite-observations/{observation_id}
+
+### Shared Enum Module (Post Phase 11)
 
 `app/core/enums.py` now contains six shared cross-domain enumerations:
 
@@ -1650,7 +1756,9 @@ Disease Observations (Phase 10 — mutable, grandchild)
 | `DiseaseSeverity` | 10 | DiseaseObservation, Phase 13 Disease Risk Scoring Engine, GaaS PlantHealthAdvisor |
 | `DiagnosisMethod` | 10 | DiseaseObservation, Phase 13 data quality weighting, future CV integration |
 
-### Current Capability Matrix (Post Phase 10)
+* `SatelliteProvider`, `SpectralIndex`, `ProcessingLevel` (Phase 11)
+
+### Current Capability Matrix (Post Phase 11)
 
 | Capability | Status | Phase |
 |---|---|---|
@@ -1663,7 +1771,7 @@ Disease Observations (Phase 10 — mutable, grandchild)
 | Irrigation event tracking (mutable) | ✅ | 8 |
 | Yield observation log (grandchild) | ✅ | 9 |
 | Disease observation log (grandchild) | ✅ | 10 |
-| Satellite remote sensing | 🔜 | 11 |
+| Satellite remote sensing | ✅ | 11 |
 | Yield Prediction Engine | 🔮 | 12 |
 | Disease Risk Scoring Engine | 🔮 | 13 |
 | Irrigation Recommendation Engine | 🔮 | 14 |
@@ -2292,7 +2400,7 @@ graph TB
 | ✅ 8 | Irrigation | Water management |
 | ✅ 9 | Yield | Harvest intelligence |
 | ✅ 10 | Disease Observation | Plant health monitoring |
-| 🔜 11 | Satellite | Remote sensing |
+| ✅ 11 | Satellite | Remote sensing |
 | 🔮 12 | Yield Prediction Engine | First AI model |
 | 🔮 13 | Disease Prediction Engine | Risk scoring |
 | 🔮 14 | Irrigation Recommendation | Optimisation |
@@ -2302,4 +2410,4 @@ graph TB
 
 *This document is the authoritative implementation history and architecture reference for AGRIFLOW-AI. It should be updated at the completion of each phase.*
 
-*Last updated: Phase 10 completion — June 2026*
+*Last updated: Phase 11 completion — June 2026*

@@ -1,13 +1,13 @@
 # Database Design
 
-**Last Updated:** Phase 10 — Disease Observation Domain Complete  
-**Migration Head:** `d3e7b2a9f1c4_create_disease_observations_table`
+**Last Updated:** Phase 11 — Satellite Observation Domain Complete
+**Migration Head:** `a1b2c3d4e5f6_create_satellite_observations_table`
 
 ---
 
 ## Current Schema Overview
 
-AGRIFLOW-AI operates nine PostgreSQL tables after Phase 10 completion. All tables inherit the `AuditableModel` mixin (UUID PK, `created_at TIMESTAMPTZ`, `updated_at TIMESTAMPTZ`). All foreign keys to `fields.id` and `crops.id` use `ON DELETE CASCADE` where applicable.
+AGRIFLOW-AI operates ten PostgreSQL domain tables after Phase 11 completion. All tables inherit the `AuditableModel` mixin (UUID PK, `created_at TIMESTAMPTZ`, `updated_at TIMESTAMPTZ`). All foreign keys to `fields.id` and `crops.id` use `ON DELETE CASCADE` where applicable.
 
 ```mermaid
 erDiagram
@@ -19,6 +19,7 @@ erDiagram
     fields ||--o{ irrigation_events : "receives"
     fields ||--o{ yield_records : "denormalized"
     fields ||--o{ disease_observations : "denormalized"
+    fields ||--o{ satellite_observations : "observes"
     crops ||--o{ yield_records : "measures"
     crops ||--o{ disease_observations : "observes"
 ```
@@ -36,14 +37,15 @@ Farm
      ├── SoilProfile         (1:1)
      ├── WeatherRecord
      ├── SensorReading       (append-only)
-     └── IrrigationEvent     (mutable operational events)
+     ├── IrrigationEvent     (mutable operational events)
+     └── SatelliteObservation (mutable Earth observation)
 ```
 
 ---
 
 ## Current Schema
 
-The production database after Phase 10 comprises **nine domain tables** plus `alembic_version`. All domain entities map to the hierarchy below.
+The production database after Phase 11 comprises **ten domain tables** plus `alembic_version`. All domain entities map to the hierarchy below.
 
 ```text
 Farm
@@ -54,18 +56,20 @@ Farm
      ├── SoilProfile         (1:1)
      ├── WeatherRecord
      ├── SensorReading       (append-only)
-     └── IrrigationEvent     (mutable operational events)
+     ├── IrrigationEvent     (mutable operational events)
+     └── SatelliteObservation (mutable Earth observation)
 ```
 
-**Tables:** `farms`, `fields`, `crops`, `soil_profiles`, `weather_records`, `sensor_readings`, `irrigation_events`, `yield_records`, `disease_observations`
+**Tables:** `farms`, `fields`, `crops`, `soil_profiles`, `weather_records`, `sensor_readings`, `irrigation_events`, `yield_records`, `disease_observations`, `satellite_observations`
 
 **Relationship summary:**
 
 * Farm (1) → (N) Fields
-* Field (1) → (N) Crops, WeatherRecords, SensorReadings, IrrigationEvents, YieldRecords, DiseaseObservations
+* Field (1) → (N) Crops, WeatherRecords, SensorReadings, IrrigationEvents, SatelliteObservations, YieldRecords, DiseaseObservations
 * Field (1) → (1) SoilProfile
 * Crop (1) → (N) YieldRecords, DiseaseObservations
 * `field_id` is denormalized on `yield_records` and `disease_observations` for direct field-scoped queries (ADR-009-02, ADR-010-02)
+* `SatelliteObservation` is field-anchored only — no crop FK (ADR-011-01)
 
 ### farms
 Primary agricultural entity. Root aggregate for all domain hierarchies.
@@ -400,7 +404,72 @@ Field (1) → (N) DiseaseObservations  (ON DELETE CASCADE, denormalized FK)
 
 ## Future Database Evolution
 
-- Satellite Imagery (`satellite_observations` table) — Phase 11
+| `a1b2c3d4e5f6_create_satellite_observations_table` | `satellite_observations` table + `satellite_provider` + `spectral_index` + `processing_level` enums + 7 indexes |
+
+---
+
+## Phase 11 — Satellite Observation Domain
+
+### `satellite_provider` Enum
+
+```sql
+CREATE TYPE satellite_provider AS ENUM (
+    'SENTINEL_2', 'LANDSAT_8', 'LANDSAT_9', 'PLANET',
+    'MODIS', 'SPOT', 'WORLDVIEW', 'UNKNOWN'
+);
+```
+
+### `spectral_index` Enum
+
+```sql
+CREATE TYPE spectral_index AS ENUM (
+    'NDVI', 'EVI', 'NDWI', 'SAVI', 'NDRE', 'LAI', 'MSAVI', 'GNDVI'
+);
+```
+
+### `processing_level` Enum
+
+```sql
+CREATE TYPE processing_level AS ENUM ('L1C', 'L2A', 'ARD', 'DERIVED');
+```
+
+Created via `postgresql.ENUM` with `create_type=False` (ADR-008-01 pattern). Owned by migration `a1b2c3d4e5f6`.
+
+### `satellite_observations` Table
+
+`SatelliteObservation` is **field-anchored** — satellite imagery is captured at the field level independently of any crop cycle. PATCH is supported for reprocessing corrections.
+
+| Column | Type | Notes |
+|---|---|---|
+| `id` | `UUID` | Primary key |
+| `field_id` | `UUID` (FK) | References `fields.id` ON DELETE CASCADE — primary domain anchor |
+| `observed_at` | `TIMESTAMPTZ NOT NULL` | Primary time key; TimescaleDB partition key candidate |
+| `satellite_provider` | `satellite_provider` ENUM | Imagery source platform |
+| `processing_level` | `processing_level` ENUM | L1C, L2A, ARD, DERIVED |
+| `spectral_index` | `spectral_index` ENUM | NDVI, EVI, NDWI, SAVI, NDRE, LAI, MSAVI, GNDVI |
+| `index_value` | `NUMERIC(9,6)` | Computed index value |
+| `cloud_cover_percent` | `NUMERIC(5,2)` | Nullable; percentage cloud cover [0, 100] |
+| `resolution_m` | `NUMERIC(8,2)` | Nullable; effective pixel resolution in metres |
+| `scene_id` | `VARCHAR(255)` | Nullable; provider scene identifier for provenance |
+| `source_url` | `VARCHAR(500)` | Nullable; COG or derived product URL |
+| `notes` | `TEXT` | Nullable operator annotations |
+| `created_at` / `updated_at` | `TIMESTAMPTZ` | Audit timestamps |
+
+**Indexes (7):**
+
+| Index | Columns | Purpose |
+|---|---|---|
+| `ix_satellite_observations_field_id` | `field_id` | Field observation history |
+| `ix_satellite_observations_observed_at` | `observed_at` | Time-range queries |
+| `ix_satellite_observations_satellite_provider` | `satellite_provider` | Provider-scoped analytics |
+| `ix_satellite_observations_spectral_index` | `spectral_index` | Index-type filtering |
+| `ix_satellite_observations_scene_id` | `scene_id` | Provenance / deduplication |
+| `ix_satellite_observations_field_id_observed_at` | `(field_id, observed_at)` | Primary field history path |
+| `ix_satellite_observations_spectral_index_observed_at` | `(spectral_index, observed_at)` | Primary AI feature pipeline path |
+
+**TimescaleDB readiness:** `create_hypertable('satellite_observations', 'observed_at')` requires no application code changes.
+
+---
 - GIS / PostGIS Support (field boundary polygons)
 - AI Recommendation Engine (inference output tables)
 

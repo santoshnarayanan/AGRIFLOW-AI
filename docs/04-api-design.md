@@ -47,7 +47,7 @@
 
 ## Field Domain Endpoints
 
-Cumulative API inventory for all implemented domains through Phase 10.
+Cumulative API inventory for all implemented domains through Phase 11.
 
 ### Health
 
@@ -243,8 +243,51 @@ Cumulative API inventory for all implemented domains through Phase 10.
 
 * DELETE /api/v1/disease-observations/{observation_id}
 
+---
 
-## API Architecture
+## Satellite Observation Domain Endpoints
+
+### Create Satellite Observation
+
+* POST /api/v1/fields/{field_id}/satellite-observations
+
+### List Satellite Observations for Field
+
+* GET /api/v1/fields/{field_id}/satellite-observations
+
+### List Satellite Observations by Date Range
+
+* GET /api/v1/fields/{field_id}/satellite-observations/range
+
+Query parameters: `start`, `end`, `limit`, `offset`
+
+### Get Latest Satellite Observation by Spectral Index
+
+* GET /api/v1/fields/{field_id}/satellite-observations/latest
+
+Query parameter: `spectral_index`
+
+### List Satellite Observations by Provider
+
+* GET /api/v1/satellite-observations/by-provider/{satellite_provider}
+
+### List Satellite Observations by Processing Level
+
+* GET /api/v1/satellite-observations/by-processing-level/{processing_level}
+
+### Get Satellite Observation
+
+* GET /api/v1/satellite-observations/{observation_id}
+
+### Update Satellite Observation
+
+* PATCH /api/v1/satellite-observations/{observation_id}
+
+### Delete Satellite Observation
+
+* DELETE /api/v1/satellite-observations/{observation_id}
+
+---
 
 Request Flow:
 
@@ -318,6 +361,11 @@ Crop
 
 Crop
 └── DiseaseObservations (mutable observation records)
+
+### Satellite Observation Domain
+
+Field
+└── SatelliteObservations (mutable Earth observation records)
 
 ---
 
@@ -412,6 +460,18 @@ Crop
 * Update Disease Observation
 * Delete Disease Observation
 
+### Satellite Observation APIs
+
+* Create Satellite Observation
+* List Satellite Observations for Field
+* List Satellite Observations by Date Range
+* Get Latest Satellite Observation by Spectral Index
+* List Satellite Observations by Provider
+* List Satellite Observations by Processing Level
+* Get Satellite Observation
+* Update Satellite Observation
+* Delete Satellite Observation
+
 ---
 
 ## Business Rules Exposed Through APIs
@@ -488,9 +548,19 @@ Crop
 * PATCH is permitted — DiseaseObservation is a mutable observation record
 * List responses are ordered by `observed_at DESC` (most recent first)
 
----
+### Satellite Observation Domain
 
-## Current API Inventory
+* Field must exist before SatelliteObservation creation (→ 404 Not Found)
+* `field_id` is supplied through the route path — not in the request body
+* `observed_at` must be timezone-aware and not in the future (→ 400 Bad Request)
+* `index_value` validated against contextual range for `spectral_index` (ratio indices in [-1.0, 1.0]; LAI > 0)
+* `resolution_m`, when supplied, must be > 0 (→ 400 Bad Request)
+* `cloud_cover_percent`, when supplied, must be within [0, 100] (schema + service validation)
+* `field_id` is immutable after creation — excluded from update schema
+* PATCH is permitted — SatelliteObservation is a mutable Earth observation record
+* List responses are ordered by `observed_at DESC` (most recent first)
+
+---
 
 ### Health
 
@@ -564,11 +634,22 @@ Crop
 * PATCH  /api/v1/disease-observations/{observation_id}
 * DELETE /api/v1/disease-observations/{observation_id}
 
+### Satellite Observations
+
+* POST   /api/v1/fields/{field_id}/satellite-observations
+* GET    /api/v1/fields/{field_id}/satellite-observations
+* GET    /api/v1/fields/{field_id}/satellite-observations/range
+* GET    /api/v1/fields/{field_id}/satellite-observations/latest
+* GET    /api/v1/satellite-observations/by-provider/{satellite_provider}
+* GET    /api/v1/satellite-observations/by-processing-level/{processing_level}
+* GET    /api/v1/satellite-observations/{observation_id}
+* PATCH  /api/v1/satellite-observations/{observation_id}
+* DELETE /api/v1/satellite-observations/{observation_id}
+
 ---
 
 ## Future API Evolution
 
-* Satellite Imagery APIs (Phase 11)
 * AI Recommendation APIs (Phase 12+)
 * Sensor Aggregation APIs (TimescaleDB continuous aggregates)
 * Digital Twin State API

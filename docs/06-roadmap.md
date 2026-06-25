@@ -512,6 +512,40 @@ AI Coverage Improvement (Post Phase 10):
 
 ---
 
+# Phase 11 – Satellite Observation Domain
+
+Status: ✅ Implementation Complete | ⏳ Validation Deferred | ⏳ Testing Deferred
+
+Objectives:
+
+* `SatelliteProvider`, `SpectralIndex`, `ProcessingLevel` enums added to `app/core/enums.py`
+* SatelliteObservation ORM Model — field-anchored Earth observation domain
+* Alembic Migration `a1b2c3d4e5f6`: `satellite_observations` table, three PostgreSQL enums, 7 indexes
+* SatelliteObservation Pydantic Schemas, Repository, Service, and API Router (9 endpoints)
+* `SatelliteObservationServiceDep` dependency injection registration
+
+Delivered APIs:
+
+* POST   /api/v1/fields/{field_id}/satellite-observations
+* GET    /api/v1/fields/{field_id}/satellite-observations
+* GET    /api/v1/fields/{field_id}/satellite-observations/range
+* GET    /api/v1/fields/{field_id}/satellite-observations/latest
+* GET    /api/v1/satellite-observations/by-provider/{satellite_provider}
+* GET    /api/v1/satellite-observations/by-processing-level/{processing_level}
+* GET    /api/v1/satellite-observations/{observation_id}
+* PATCH  /api/v1/satellite-observations/{observation_id}
+* DELETE /api/v1/satellite-observations/{observation_id}
+
+Business Value:
+
+* NDVI/EVI/LAI time-series foundation for Phase 12 Yield Prediction Engine
+* Remote sensing feature source for Phase 13 Disease Risk Scoring Engine
+* NDWI water-stress signal for Phase 14 Irrigation Recommendation Engine
+* Digital Twin field canopy health state updates
+* GaaS SatelliteAdvisor tool foundation
+
+---
+
 # Cross-Cutting Capabilities
 
 Implemented:
@@ -529,19 +563,20 @@ Implemented:
 * Soil Intelligence Domain
 * Weather Intelligence Domain
 * SensorReading Domain (Phase 7)
-* Shared Enum Module (`app/core/enums.py`) — SensorType, IrrigationMethod, WaterSource, YieldMeasurementMethod, DiseaseSeverity, DiagnosisMethod
+* Shared Enum Module (`app/core/enums.py`) — SensorType, IrrigationMethod, WaterSource, YieldMeasurementMethod, DiseaseSeverity, DiagnosisMethod, SatelliteProvider, SpectralIndex, ProcessingLevel
 * Telemetry Immutability Pattern
 * Compound Index Strategy (time-series domains)
-* Operational Event Mutable Pattern (IrrigationEvent, YieldRecord, DiseaseObservation)
+* Operational Event Mutable Pattern (IrrigationEvent, YieldRecord, DiseaseObservation, SatelliteObservation)
 * IrrigationEvent Domain
 * Grandchild Domain Pattern (YieldRecord, DiseaseObservation anchor on Crop)
 * Denormalized FK Pattern (`field_id` on `yield_records` and `disease_observations` for direct field-scoped queries)
 * YieldRecord Domain
 * Disease Observation Domain
+* Satellite Observation Domain
 
-Near-Term (Phases 11–15):
+Near-Term (Phases 12–15):
 
-* TimescaleDB (sensor_readings, irrigation_events, yield_records, disease_observations hypertable promotion)
+* TimescaleDB (sensor_readings, irrigation_events, yield_records, disease_observations, satellite_observations hypertable promotion)
 * Redpanda (event streaming for SensorReadingCreated events)
 * Redis (Digital Twin field state cache)
 * PostGIS (field boundary polygon support)
@@ -560,7 +595,7 @@ Future:
 
 ---
 
-# Current Domain Hierarchy (Post Phase 10)
+# Current Domain Hierarchy (Post Phase 11)
 
 ```text
 Farm
@@ -571,7 +606,8 @@ Farm
      ├── SoilProfile
      ├── WeatherRecord
      ├── SensorReading       (append-only)
-     └── IrrigationEvent     (mutable operational events)
+     ├── IrrigationEvent     (mutable operational events)
+     └── SatelliteObservation (mutable Earth observation)
 ```
 
 # Target Domain Hierarchy (Long-Term)
@@ -586,8 +622,25 @@ Farm
      ├── WeatherRecord
      ├── SensorReading
      ├── IrrigationEvent
-     └── SatelliteObservation       🔜 Phase 11
+     └── SatelliteObservation       ✅ Phase 11
 ```
+
+---
+
+# Phase 16 – Platform Stabilization & Quality Engineering (Future)
+
+Status: ⏳ Planned
+
+Comprehensive testing and production readiness validation deferred until Phase 16 to avoid rewriting large test suites while the domain model continues to expand.
+
+Expected deliverables:
+
+* Complete API validation across all domains
+* Full unit test suite (Repository, Service, Schema layers)
+* Integration tests and end-to-end workflow validation
+* Performance benchmarking and security review
+* CI/CD quality gates and code coverage reporting
+* Production readiness validation and documentation review
 
 ---
 
@@ -608,8 +661,21 @@ AGRIFLOW-AI evolves from a farm management system into a comprehensive Agricultu
 ✅ Phase 8  – Irrigation Management Domain
 ✅ Phase 9  – Yield Domain
 ✅ Phase 10 – Disease Observation Domain
+✅ Phase 11 – Satellite Observation Domain
 
-🔜 Phase 11 – Satellite Observation Domain
+## Upcoming Phases
+
+🔜 Phase 12 – AI Recommendation Foundation
+
+🔜 Phase 13 – Advanced AI Intelligence
+
+🔜 Phase 14 – Predictive Agriculture
+
+🔜 Phase 15 – Digital Twin & Farm Copilot
+
+## Future Phase
+
+⏳ Phase 16 – Platform Stabilization & Quality Engineering
 
 AI Layer (Post Phase 11)
 - Yield Prediction Engine
@@ -623,7 +689,7 @@ AI Layer (Post Phase 11)
 
 ## TimescaleDB
 
-The `sensor_readings`, `irrigation_events`, `yield_records`, and `disease_observations` tables were designed for zero-friction TimescaleDB promotion. A single `create_hypertable(...)` call converts each to a time-partitioned hypertable. No application code changes are required.
+The `sensor_readings`, `irrigation_events`, `yield_records`, `disease_observations`, and `satellite_observations` tables were designed for zero-friction TimescaleDB promotion. A single `create_hypertable(...)` call converts each to a time-partitioned hypertable. No application code changes are required.
 
 Capabilities unlocked:
 * Automatic weekly chunk partitioning on `recorded_at`

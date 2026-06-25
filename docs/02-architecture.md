@@ -4,7 +4,7 @@
 
 AGRIFLOW-AI is an Agricultural Intelligence Platform built using a layered architecture that emphasizes maintainability, scalability, separation of concerns, and domain-driven development.
 
-The platform currently implements Farm, Field, Crop, Soil Intelligence, Weather Intelligence, Sensor Telemetry, Irrigation Management, Yield Intelligence, and Disease Observation domains across ten completed phases, following a Clean Architecture approach with clearly separated responsibilities across API, Service, Repository, and Database layers.
+The platform currently implements Farm, Field, Crop, Soil Intelligence, Weather Intelligence, Sensor Telemetry, Irrigation Management, Yield Intelligence, Disease Observation, and Satellite Observation domains across eleven completed phases, following a Clean Architecture approach with clearly separated responsibilities across API, Service, Repository, and Database layers.
 
 ---
 
@@ -65,7 +65,7 @@ PostgreSQL
 
 # Current Domain Hierarchy
 
-The authoritative domain hierarchy reflects all implemented entities through Phase 10:
+The authoritative domain hierarchy reflects all implemented entities through Phase 11:
 
 ```text
 Farm
@@ -76,7 +76,8 @@ Farm
       ├── SoilProfile
       ├── WeatherRecord
       ├── SensorReading             (append-only telemetry)
-      └── IrrigationEvent           (mutable operational events)
+      ├── IrrigationEvent           (mutable operational events)
+      └── SatelliteObservation      (mutable Earth observation — field-anchored)
 ```
 
 ### Implemented Domains
@@ -90,10 +91,7 @@ Farm
 * Irrigation Management
 * Yield Intelligence
 * Disease Observation
-
-### Planned Domains
-
-* Satellite Observation (Phase 11)
+* Satellite Observation
 
 ### Planned AI Layer
 
@@ -112,6 +110,7 @@ backend/
 │   ├── api
 │   │   ├── crops/
 │   │   ├── disease_observations/
+│   │   ├── satellite_observations/
 │   │   ├── fields/
 │   │   ├── irrigation_events/
 │   │   ├── sensor_readings/
@@ -438,7 +437,8 @@ BaseRepository
       ├── SensorReadingRepository
       ├── IrrigationEventRepository
       ├── YieldRecordRepository
-      └── DiseaseObservationRepository
+      ├── DiseaseObservationRepository
+      └── SatelliteObservationRepository
 ```
 
 Benefits:
@@ -465,9 +465,10 @@ sensor_readings
 irrigation_events
 yield_records
 disease_observations
+satellite_observations
 ```
 
-Current migration head: `d3e7b2a9f1c4_create_disease_observations_table`
+Current migration head: `a1b2c3d4e5f6_create_satellite_observations_table`
 
 Relationships:
 
@@ -491,6 +492,8 @@ Field (N)
 
 `DiseaseObservation` anchors on `Crop` because disease pressure belongs to a specific crop cycle. `field_id` is denormalized on `disease_observations` for direct field-scoped queries without a JOIN through `crops` (ADR-010-02).
 
+`SatelliteObservation` anchors on `Field` because satellite imagery is captured at the field level independently of any crop cycle. Spectral index time series persist across planting boundaries (ADR-011-01).
+
 ---
 
 # Database Migration Architecture
@@ -510,6 +513,7 @@ Migration sequence:
 235a51cdf901_create_irrigation_events_table
 b7e2a9f4c8d3_create_yield_records_table
 d3e7b2a9f1c4_create_disease_observations_table
+a1b2c3d4e5f6_create_satellite_observations_table
 ```
 
 Migration flow:
@@ -627,6 +631,26 @@ Domain exception mapping for Disease Observation endpoints:
 | `DiseaseObservationNotFoundError` | 404 |
 | `InvalidDiseaseObservationError` | 400 |
 
+## Satellite Observations
+
+* POST   /api/v1/fields/{field_id}/satellite-observations
+* GET    /api/v1/fields/{field_id}/satellite-observations
+* GET    /api/v1/fields/{field_id}/satellite-observations/range
+* GET    /api/v1/fields/{field_id}/satellite-observations/latest
+* GET    /api/v1/satellite-observations/by-provider/{satellite_provider}
+* GET    /api/v1/satellite-observations/by-processing-level/{processing_level}
+* GET    /api/v1/satellite-observations/{observation_id}
+* PATCH  /api/v1/satellite-observations/{observation_id}
+* DELETE /api/v1/satellite-observations/{observation_id}
+
+Domain exception mapping for Satellite Observation endpoints:
+
+| Domain Exception | HTTP Status |
+| ---------------- | ----------- |
+| `FieldNotFoundError` | 404 |
+| `SatelliteObservationNotFoundError` | 404 |
+| `InvalidSatelliteObservationError` | 400 |
+
 ---
 
 # Current Platform Status
@@ -645,6 +669,15 @@ Domain exception mapping for Disease Observation endpoints:
 | Irrigation Management | IrrigationEvent | Mutable operational events |
 | Yield Intelligence | YieldRecord | Mutable, Crop-anchored grandchild |
 | Disease Observation | DiseaseObservation | Mutable, Crop-anchored grandchild |
+| Satellite Observation | SatelliteObservation | Mutable, Field-anchored |
+
+### Phase 11 Implementation Status
+
+| Status | Detail |
+|---|---|
+| Implementation | ✅ Complete |
+| Validation | ⏳ Deferred to Phase 16 |
+| Testing | ⏳ Deferred to Phase 16 |
 
 ### Implemented Architecture
 
@@ -658,9 +691,10 @@ Domain exception mapping for Disease Observation endpoints:
 * Alembic Migration Framework
 * Shared Enum Module (`app/core/enums.py`)
 * Telemetry Immutability Pattern (SensorReading)
-* Operational Event Mutable Pattern (IrrigationEvent, YieldRecord, DiseaseObservation)
+* Operational Event Mutable Pattern (IrrigationEvent, YieldRecord, DiseaseObservation, SatelliteObservation)
 * Compound Index Strategy (time-series domains)
 * Crop-Anchored Grandchild Pattern (YieldRecord, DiseaseObservation)
+* Field-Anchored Observation Pattern (SatelliteObservation)
 
 ---
 
@@ -947,7 +981,7 @@ Farm
       ├── WeatherRecord
       ├── SensorReading
       ├── IrrigationEvent
-      └── SatelliteObservation          planned (Phase 11)
+      └── SatelliteObservation          ✅ implemented (Phase 11)
 ```
 
 ### PostGIS
