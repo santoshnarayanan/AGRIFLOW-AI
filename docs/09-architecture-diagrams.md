@@ -352,8 +352,8 @@ sequenceDiagram
     end
 
     Svc->>Svc: Validate observed_at is timezone-aware and not in the future
-    Svc->>Svc: Validate index_value bounds (ratio indices [-1,1]; LAI > 0)
-    Svc->>Svc: Validate cloud_cover_percent in [0,100] when supplied
+    Svc->>Svc: Validate index_value bounds for spectral_index (ratio -1 to 1, LAI positive)
+    Svc->>Svc: Validate cloud_cover_percent 0 to 100 when supplied
 
     Svc->>Repo: create(SatelliteObservation ORM instance)
     Repo->>DB: INSERT INTO satellite_observations (...)
@@ -362,7 +362,7 @@ sequenceDiagram
     Repo-->>Svc: SatelliteObservation ORM instance
 
     Svc-->>Router: SatelliteObservation ORM instance
-    Router->>Schema: model_validate(orm) → SatelliteObservationResponse
+    Router->>Schema: model_validate(orm) to SatelliteObservationResponse
     Deps->>Deps: session.commit()
     Router-->>Client: 201 Created\n{SatelliteObservationResponse JSON}
 ```
