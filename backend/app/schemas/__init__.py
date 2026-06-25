@@ -14,6 +14,13 @@ from .irrigation_event import (
     IrrigationEventResponse,
     IrrigationEventUpdate,
 )
+from .satellite_observation import (
+    SatelliteObservationBase,
+    SatelliteObservationCreate,
+    SatelliteObservationListResponse,
+    SatelliteObservationResponse,
+    SatelliteObservationUpdate,
+)
 from .sensor_reading import (
     SensorReadingBase,
     SensorReadingCreate,
@@ -56,6 +63,11 @@ __all__ = [
     "IrrigationEventResponse",
     "IrrigationEventUpdate",
     "PaginatedResponse",
+    "SatelliteObservationBase",
+    "SatelliteObservationCreate",
+    "SatelliteObservationListResponse",
+    "SatelliteObservationResponse",
+    "SatelliteObservationUpdate",
     "SensorReadingBase",
     "SensorReadingCreate",
     "SensorReadingResponse",
