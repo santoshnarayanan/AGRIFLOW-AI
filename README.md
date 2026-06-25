@@ -27,7 +27,7 @@ docs/01-vision.md
 
 ---
 
-## Current Platform Status
+## Project Status
 
 ### Completed Phases
 
@@ -50,6 +50,10 @@ docs/01-vision.md
 ✅ Phase 9 – Yield Domain
 
 ✅ Phase 10 – Disease Observation Domain
+
+### Current Phase
+
+🔄 Phase 11 – Satellite Observation Domain (In Progress)
 
 ---
 
@@ -122,12 +126,218 @@ PostgreSQL
 | ------------------- | -------------- |
 | Backend API         | FastAPI        |
 | Language            | Python 3.12    |
-| Database            | PostgreSQL     |
+| Database            | PostgreSQL 17  |
 | ORM                 | SQLAlchemy 2.x |
 | Migration Framework | Alembic        |
 | Validation          | Pydantic       |
 | Containerization    | Docker         |
 | Version Control     | Git + GitHub   |
+
+---
+
+## Development Environment
+
+This section documents the officially supported development environment for AGRIFLOW-AI.
+
+### Python
+
+* **Python 3.12.x** (recommended)
+
+> **Note:** Python 3.14 is currently not supported. `pydantic-core` and its native compiled extensions do not yet fully support Python 3.14. Use Python 3.12.x for all development until upstream support is confirmed.
+
+### Database
+
+The development database is:
+
+* **PostgreSQL 17**
+* Running inside **Docker Desktop**
+* Exposed on **`localhost:25432`**
+
+A local PostgreSQL installation is optional and is **not** used by the application during normal development. All database connectivity is handled through the Docker-managed container.
+
+### Docker
+
+Docker Compose starts the following services:
+
+* **PostgreSQL** — development database
+* **FastAPI Backend** — application server
+
+Containers communicate internally using Docker service names (e.g., `db`). Host-to-container connectivity uses `localhost:25432`.
+
+### Operating Systems
+
+AGRIFLOW-AI has been verified on:
+
+* **Windows 11**
+* **macOS** (Apple Silicon — M1/M2)
+
+---
+
+## Initial Project Setup
+
+Complete the following steps to set up a local development environment from scratch.
+
+### 1. Clone the Repository
+
+```bash
+git clone <repository-url>
+cd AGRIFLOW-AI
+```
+
+### 2. Create a Python Virtual Environment
+
+**Windows**
+
+```powershell
+python -m venv .venv
+.venv\Scripts\activate
+```
+
+**macOS**
+
+```bash
+python3.12 -m venv .venv
+source .venv/bin/activate
+```
+
+### 3. Install Dependencies
+
+```bash
+pip install -r requirements.txt
+```
+
+### 4. Configure the Backend Environment File
+
+Copy the example environment file and populate it with your local credentials:
+
+```text
+backend/.env.example
+→
+backend/.env
+```
+
+### 5. Configure Database Credentials
+
+Edit `backend/.env` and set your PostgreSQL connection string to match the Docker Compose configuration. By default:
+
+```text
+DATABASE_URL=postgresql+psycopg2://agriflow:agriflow@localhost:25432/agriflow
+```
+
+### 6. Start Docker
+
+```bash
+docker compose up -d
+```
+
+This starts PostgreSQL and the FastAPI backend as Docker containers.
+
+### 7. Run Alembic Migrations
+
+```bash
+cd backend
+alembic upgrade head
+```
+
+### 8. Start FastAPI (Local Development)
+
+```bash
+cd backend
+uvicorn app.main:app --reload
+```
+
+### API Documentation
+
+```text
+http://localhost:8000/docs
+```
+
+---
+
+## Python Version Management
+
+The repository contains a `.python-version` file at the repository root:
+
+```text
+.python-version
+```
+
+Its contents:
+
+```text
+3.12
+```
+
+This file is recognized by `pyenv` and compatible version managers to automatically select the correct Python interpreter. It standardizes the development environment across Windows, macOS, and Linux, ensuring that all contributors build against the same Python runtime.
+
+---
+
+## Database Architecture
+
+```text
+Docker Desktop
+      ↓
+PostgreSQL 17 (container: db, exposed on localhost:25432)
+      ↓
+AGRIFLOW-AI Backend
+      ↓
+pgAdmin (optional, connects to localhost:25432)
+```
+
+### Connection Reference
+
+| Client                                    | Host        | Port  |
+| ----------------------------------------- | ----------- | ----- |
+| pgAdmin (host machine)                    | `localhost` | 25432 |
+| FastAPI running on the host machine       | `localhost` | 25432 |
+| FastAPI running inside Docker (container) | `db`        | 5432  |
+
+When FastAPI runs inside a Docker container, it resolves the database using the Docker Compose service name `db` on the default PostgreSQL port 5432. When running directly on the host (e.g., during local development with `uvicorn --reload`), it connects via `localhost:25432`.
+
+---
+
+## Backup and Restore
+
+### Creating a Backup
+
+Use `pg_dump` to create a logical backup of the development database:
+
+```bash
+pg_dump -h localhost -p 25432 -U agriflow -d agriflow -F c -f agriflow_backup.dump
+```
+
+For a plain SQL export:
+
+```bash
+pg_dump -h localhost -p 25432 -U agriflow -d agriflow > agriflow_backup.sql
+```
+
+### Restoring a Backup
+
+```bash
+pg_restore -h localhost -p 25432 -U agriflow -d agriflow -F c agriflow_backup.dump
+```
+
+### Important
+
+> **SQL backups must NOT be committed to Git.** Database dumps contain environment-specific data and potentially sensitive credentials. Store all backups outside the repository, in a secure location (e.g., local filesystem, encrypted cloud storage, or a dedicated backup volume).
+
+---
+
+## Git Ignore Recommendations
+
+The following file types and directories must never be committed to version control:
+
+| Pattern             | Reason                                            |
+| ------------------- | ------------------------------------------------- |
+| `.env`              | Contains secrets and environment-specific config  |
+| `.venv/`            | Python virtual environment — machine-specific     |
+| `*.sql`             | Database dump files — may contain sensitive data  |
+| `*.dump`            | Binary database backups                           |
+| `*.backup`          | Alternative backup file extensions                |
+| `*.pg_dump`         | PostgreSQL-specific dump files                    |
+
+Verify these patterns are present in `.gitignore` before committing any new file types.
 
 ---
 
@@ -353,41 +563,6 @@ backend/
 
 ---
 
-## Getting Started
-
-### Clone Repository
-
-```bash
-git clone <repository-url>
-cd AGRIFLOW-AI
-```
-
-### Start Services
-
-```bash
-docker compose up -d
-```
-
-### Run Database Migrations
-
-```bash
-alembic upgrade head
-```
-
-### Start Backend
-
-```bash
-uvicorn app.main:app --reload
-```
-
-### API Documentation
-
-```text
-http://localhost:8000/docs
-```
-
----
-
 ## Roadmap Summary
 
 ### Completed
@@ -403,9 +578,9 @@ http://localhost:8000/docs
 ✅ Phase 9 – Yield Domain  
 ✅ Phase 10 – Disease Observation Domain  
 
-### Current Next Phase
+### Current Phase
 
-Phase 11 – Satellite Observation Domain
+🔄 Phase 11 – Satellite Observation Domain (In Progress)
 
 ### Planned Phases
 
@@ -462,7 +637,7 @@ Farm
       ├── WeatherRecord
       ├── SensorReading
       ├── IrrigationEvent
-      └── SatelliteObservation       🔜 Phase 11
+      └── SatelliteObservation       🔄 Phase 11 (In Progress)
 ```
 
 ---
