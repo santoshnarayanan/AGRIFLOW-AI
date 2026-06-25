@@ -23,6 +23,7 @@ if TYPE_CHECKING:
     from app.db.models.disease_observation import DiseaseObservation
     from app.db.models.farm import Farm
     from app.db.models.irrigation_event import IrrigationEvent
+    from app.db.models.satellite_observation import SatelliteObservation
     from app.db.models.sensor_reading import SensorReading
     from app.db.models.soil_profile import SoilProfile
     from app.db.models.weather_record import WeatherRecord
@@ -105,6 +106,11 @@ class Field(AuditableModel, Base):
         back_populates="field",
         cascade="all, delete-orphan",
         order_by="desc(DiseaseObservation.observed_at)",
+    )
+    satellite_observations: Mapped[list[SatelliteObservation]] = relationship(
+        back_populates="field",
+        cascade="all, delete-orphan",
+        order_by="desc(SatelliteObservation.observed_at)",
     )
 
     def __repr__(self) -> str:
