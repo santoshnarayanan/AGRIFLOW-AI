@@ -2,12 +2,12 @@
 
 from __future__ import annotations
 
-from datetime import datetime, time
+from datetime import date, datetime, time, timedelta
 from decimal import Decimal, ROUND_HALF_UP
 from zoneinfo import ZoneInfo
 
 from app.core.enums import SensorType
-from app.cdd.config import CDD_TIMEZONE
+from app.cdd.config import CDD_REFERENCE_NOW, CDD_TIMEZONE, TEMPORAL_END
 from app.cdd.context import GenerationContext
 from app.cdd.correlation.engine import (
     apply_disease_yield_reduction,
@@ -124,18 +124,23 @@ class YieldFactory:
         return records
 
     @staticmethod
-    def _harvest_dates(crop: CDDCropRecord, count: int, rng) -> list:
-        if count == 1:
-            return [crop.expected_harvest_date]
-        midpoint = crop.expected_harvest_date
-        from datetime import timedelta
+    def _harvest_dates(crop: CDDCropRecord, count: int, rng) -> list[date]:
+        if crop.expected_harvest_date is None:
+            return []
 
-        return sorted(
+        max_harvest = min(TEMPORAL_END.date(), CDD_REFERENCE_NOW)
+
+        if count == 1:
+            return [min(crop.expected_harvest_date, max_harvest)]
+
+        midpoint = min(crop.expected_harvest_date, max_harvest)
+        dates = sorted(
             [
                 midpoint - timedelta(days=rng.randint(5, 15)),
                 midpoint + timedelta(days=rng.randint(0, 5)),
             ][:count]
         )
+        return [min(d, max_harvest) for d in dates]
 
     @staticmethod
     def _min_moisture_during_reproductive(
