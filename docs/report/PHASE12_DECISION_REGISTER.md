@@ -47,9 +47,9 @@ Adopt the official **`timescale/timescaledb`** Docker image (Alpine-based, light
 timescale/timescaledb:<semver>-pg17
 ```
 
-**Example at time of planning:** `timescale/timescaledb:2.28.0-pg17` — illustrative only; see P12-D002 for version selection policy.
+**Implemented pin:** `timescale/timescaledb:2.28.1-pg17` (recorded 2026-06-25 — see P12-D002 § Implemented Pin Record).
 
-**Implemented pin:** Record the exact tag selected at Step 1B implementation in P12-D002 § Implemented Pin Record.
+**Example at time of planning:** `timescale/timescaledb:2.28.0-pg17` — illustrative only; see P12-D002 for version selection policy.
 
 ### Alternatives Considered
 
@@ -115,9 +115,10 @@ Pin the Docker image to an **exact semver tag** encoding both TimescaleDB and Po
 
 | Field | Value |
 |---|---|
-| **Implemented pin** | *To be recorded at Step 1B implementation* |
-| **Implementation date** | *To be recorded* |
-| **Verified on Docker Hub** | *To be recorded* |
+| **Implemented pin** | `timescale/timescaledb:2.28.1-pg17` |
+| **Implementation date** | 2026-06-25 |
+| **Verified on Docker Hub** | Yes — `2.28.1-pg17` confirmed as latest stable `*-pg17` semver at implementation time |
+| **Step 1C infrastructure execution** | Completed — image swap validated; extension not enabled |
 | **Example (planning reference only)** | `2.28.0-pg17` |
 
 ### Upgrade Policy
