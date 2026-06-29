@@ -85,13 +85,17 @@ class IrrigationEvent(AuditableModel, Base):
     )
 
     # ── Event window ──────────────────────────────────────────────────────────
+    # started_at declared primary_key=True to express the composite PRIMARY KEY
+    # (id, started_at) required by TimescaleDB 2.28.x.  UUID `id` is inherited
+    # from AuditableModel with primary_key=True; both columns form the composite PK.
+    # ADR-002 §Primary Key Strategy — Composite PK Strategy A.
     started_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),
         nullable=False,
-        index=True,
+        primary_key=True,
         comment=(
             "Timezone-aware timestamp when irrigation began; "
-            "serves as the primary time key and TimescaleDB partition key"
+            "primary time key and TimescaleDB partition key (composite PK with id)"
         ),
     )
     ended_at: Mapped[datetime | None] = mapped_column(

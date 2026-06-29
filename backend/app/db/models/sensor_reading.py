@@ -103,12 +103,17 @@ class SensorReading(AuditableModel, Base):
         ),
     )
 
-    # ── Observation timestamp ─────────────────────────────────────────────────
+    # ── Observation timestamp (TimescaleDB partition key) ────────────────────
+    # Declared primary_key=True to express the composite PRIMARY KEY (id, recorded_at)
+    # required by TimescaleDB 2.28.x.  UUID `id` is inherited from AuditableModel
+    # with primary_key=True; both columns together form the composite PK.
+    # All repository queries use WHERE id = :id predicate — zero code impact.
+    # ADR-002 §Primary Key Strategy — Composite PK Strategy A.
     recorded_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),
         nullable=False,
-        index=True,
-        comment="Timezone-aware timestamp when the sensor captured this reading",
+        primary_key=True,
+        comment="Timezone-aware timestamp when the sensor captured this reading; TimescaleDB partition key",
     )
 
     # ── Metadata ──────────────────────────────────────────────────────────────

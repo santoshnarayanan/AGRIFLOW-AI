@@ -20,9 +20,9 @@ This register records formal decisions made during Phase 12. Decisions affecting
 | P12-D004 | TimescaleDB Extension Enablement Strategy | 1C | ✅ Approved for Implementation | June 2026 |
 | P12-D005 | Infrastructure Rollback Strategy | 1B / 1C | ✅ Approved for Implementation | June 2026 |
 | P12-D006 | shared_preload_libraries Configuration Gap Resolution | 1D | ✅ Implemented | 2026-06-29 |
-| P12-D007 | Hypertable Primary Key Strategy | 1E-A | ⏳ Assessed — Pending ADR-002 Approval | 2026-06-29 |
-| P12-D008 | Hypertable Candidate Tables & Conversion Sequence | 1E-A | ⏳ Assessed — Pending ADR-002 Approval | 2026-06-29 |
-| P12-D009 | Hypertable Chunk Interval Strategy | 1E-A | ⏳ Assessed — Pending ADR-002 Approval | 2026-06-29 |
+| P12-D007 | Hypertable Primary Key Strategy | 1E-B | ✅ Implemented | 2026-06-29 |
+| P12-D008 | Hypertable Candidate Tables & Conversion Sequence | 1E-B | ✅ Implemented | 2026-06-29 |
+| P12-D009 | Hypertable Chunk Interval Strategy | 1E-B | ✅ Implemented | 2026-06-29 |
 | P12-D010 | Compression Policy Strategy | 1E-A | ⏳ Deferred to Step 1E-C | 2026-06-29 |
 | P12-D011 | Retention Policy Strategy | 1E-A | ⏳ Deferred — Design-Time Decision | 2026-06-29 |
 | P12-D012 | Continuous Aggregate Strategy | 1E-A | ⏳ Deferred to Step 1E-D | 2026-06-29 |
@@ -619,6 +619,75 @@ The following remain **deferred pending Architecture Decision Review** per Step 
 
 ---
 
+---
+
+## Step 1E-B Implementation Record
+
+| Field | Value |
+|---|---|
+| **Migration revision ID** | `c9d8e7f6a5b4` |
+| **Migration name** | `convert_time_series_tables_to_hypertables` |
+| **Pre-migration backup** | `backups/pre_phase12_step1eb_20260629_140549.dump` (76 KB, 247 TOC entries) |
+| **Backup integrity** | ✅ Verified via `pg_restore --list` |
+| **Hypertables created** | 6 |
+| **Governing ADR** | `docs/adr/ADR-002-hypertable-primary-key-conversion-strategy.md` |
+| **Date implemented** | 2026-06-29 |
+| **Alembic head (post-migration)** | `c9d8e7f6a5b4` |
+
+### Hypertables Created
+
+| Table | Partition Column | Chunk Interval | PK Strategy |
+|---|---|---|---|
+| `sensor_readings` | `recorded_at` | 7 days | Composite `(id, recorded_at)` |
+| `weather_records` | `recorded_at` | 7 days | Composite `(id, recorded_at)` |
+| `satellite_observations` | `observed_at` | 7 days | Composite `(id, observed_at)` |
+| `irrigation_events` | `started_at` | 30 days (1 month) | Composite `(id, started_at)` |
+| `yield_records` | `recorded_at` | 90 days (3 months) | Composite `(id, recorded_at)` |
+| `disease_observations` | `observed_at` | 30 days (1 month) | Composite `(id, observed_at)` |
+
+### Additional Change
+
+`ix_weather_records_field_id_recorded_at` compound index added to `weather_records` (gap identified in Step 1E-A §9.3).
+
+### SQLAlchemy Models Updated
+
+Six models updated with `primary_key=True` on the time column to reflect composite PK:
+`SensorReading`, `WeatherRecord`, `SatelliteObservation`, `IrrigationEvent`, `YieldRecord`, `DiseaseObservation`.
+
+### Validation Status
+
+| Check | Result |
+|---|---|
+| 6 hypertables in `timescaledb_information.hypertables` | ✅ |
+| Composite PKs `(id, time_col)` on all 6 tables | ✅ |
+| Relational tables (farms, fields, crops, soil_profiles) unchanged | ✅ |
+| All FK constraints preserved | ✅ |
+| All existing indexes preserved | ✅ |
+| `weather_records` compound index added | ✅ |
+| Alembic history linear: `c9d8e7f6a5b4` (head) | ✅ |
+| Backend `GET /api/v1/health/live` → alive | ✅ |
+| Swagger UI `GET /docs` → HTTP 200 | ✅ |
+| All 25 API routes present in OpenAPI spec | ✅ |
+| `BaseRepository.get_by_id` — predicate query unchanged | ✅ |
+| No compression enabled | ✅ |
+| No continuous aggregates created | ✅ |
+| No retention policies set | ✅ |
+
+### Decisions Updated
+
+P12-D007, P12-D008, P12-D009 status updated from "Assessed — Pending ADR-002 Approval" to "Implemented".
+
+---
+
+**Version 1.4**
+
+**Revision Summary (v1.4 — 2026-06-29):**
+
+* Updated P12-D007, P12-D008, P12-D009 status to ✅ Implemented.
+* Updated Decision Index table to reflect Step 1E-B implementation.
+* Added Step 1E-B Implementation Record (migration revision ID, 6 hypertables, backup, validation status).
+* No existing decisions were modified.
+
 **Version 1.3**
 
 **Revision Summary (v1.3 — 2026-06-29):**
@@ -650,4 +719,4 @@ No architectural decisions were changed.
 
 ---
 
-*Decision Register v1.3 — Step 1E-A hypertable architecture assessment decisions recorded: 2026-06-29*
+*Decision Register v1.4 — Step 1E-B hypertable conversion implementation recorded: 2026-06-29*

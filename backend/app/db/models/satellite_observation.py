@@ -103,14 +103,18 @@ class SatelliteObservation(AuditableModel, Base):
         ),
     )
 
-    # ── Observation timestamp ─────────────────────────────────────────────────
+    # ── Observation timestamp (TimescaleDB partition key) ────────────────────
+    # Declared primary_key=True to express the composite PRIMARY KEY (id, observed_at)
+    # required by TimescaleDB 2.28.x.  UUID `id` is inherited from AuditableModel
+    # with primary_key=True; both columns together form the composite PK.
+    # ADR-002 §Primary Key Strategy — Composite PK Strategy A.
     observed_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),
         nullable=False,
-        index=True,
+        primary_key=True,
         comment=(
             "Timezone-aware timestamp of the satellite overpass; "
-            "serves as the primary time key and TimescaleDB partition key"
+            "primary time key and TimescaleDB partition key (composite PK with id)"
         ),
     )
 
