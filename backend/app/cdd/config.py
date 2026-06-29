@@ -13,6 +13,10 @@ CDD_VERSION: str = "cdd-v1.0.0"
 CDD_SEED: int = 42
 DEFAULT_PROFILE: str = "cdd-dev"
 
+# Framework code version (distinct from dataset specification version).
+# Bump when generator/validation logic changes without a CDD_VERSION bump.
+CDD_GENERATOR_VERSION: str = "2c-b.1"
+
 # ── Temporal anchor (America/Chicago per ADR-007-25) ─────────────────────────
 CDD_TIMEZONE = ZoneInfo("America/Chicago")
 

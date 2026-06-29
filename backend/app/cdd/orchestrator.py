@@ -2,7 +2,8 @@
 CDD generation orchestrator.
 
 Manages FK-safe generation sequencing only. Domain logic lives in factories;
-cross-domain physics lives in the correlation engine.
+cross-domain physics lives in the correlation engine. Profile selection is
+delegated to ``manifest.py`` — this class never embeds profile-specific rules.
 """
 
 from __future__ import annotations
@@ -31,9 +32,14 @@ class CDDOrchestrator:
     """
     Central orchestrator for Canonical Development Dataset generation.
 
-    Generation order (FK-safe):
+    Responsibilities are limited to FK-safe sequencing and manifest binding.
+    Generation order:
+
         Farm → Fields → Soil Profiles → Crops → Weather → Sensors →
         Satellite → Irrigation → Disease → Yield
+
+    Callers attach session metadata via ``CDDDataset.attach_metadata()`` after
+    generation. Pre-persistence validation uses ``CDDValidator`` separately.
     """
 
     def __init__(

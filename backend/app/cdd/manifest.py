@@ -3,6 +3,9 @@ CDD manifest — single source of truth for all configurable dataset parameters.
 
 No generation logic lives here. Factories and the orchestrator read manifest values
 rather than embedding hard-coded counts, cadences, or domain rules.
+
+Profile extensibility: register new profiles via ``register_profile()`` without
+modifying factories or the orchestrator. See ``FUTURE_PROFILES`` for planned profiles.
 """
 
 from __future__ import annotations
@@ -624,6 +627,38 @@ _PROFILES: dict[str, CDDManifest] = {
     "cdd-dev": _CDD_DEV_MANIFEST,
 }
 
+# Planned profiles — register implementations in this module when ready.
+# Factories and the orchestrator remain profile-agnostic; only manifest data changes.
+FUTURE_PROFILES: dict[str, str] = {
+    "cdd-demo": (
+        "Stakeholder demonstration profile — same AGRIFLOW Demonstration Farm topology "
+        "with reduced temporal horizon or subset domains for fast demo reload."
+    ),
+    "cdd-benchmark": (
+        "Compression and query performance profile — 15-minute sensor cadence targeting "
+        "~4.4M sensor rows per ADR-003 benchmark scenarios."
+    ),
+    "cdd-large": (
+        "Production-scale simulation profile — 100 farms, 1,000 fields for Phase 16+ "
+        "Digital Twin and load testing."
+    ),
+}
+
+
+def register_profile(manifest: CDDManifest) -> None:
+    """
+    Register a new dataset profile.
+
+    Adding a profile requires only a new ``CDDManifest`` instance and a call to this
+    function from ``manifest.py``. Factories and the orchestrator require no changes.
+    """
+    _PROFILES[manifest.profile_name] = manifest
+
+
+def expected_total_row_count(manifest: CDDManifest) -> int:
+    """Sum of per-domain target row counts declared in the manifest."""
+    return sum(manifest.target_row_counts.values())
+
 
 def get_manifest(profile: str | None = None) -> CDDManifest:
     """Return the manifest for the requested profile (default: cdd-dev)."""
@@ -635,5 +670,10 @@ def get_manifest(profile: str | None = None) -> CDDManifest:
 
 
 def list_profiles() -> tuple[str, ...]:
-    """Return registered profile names."""
+    """Return registered (implemented) profile names."""
     return tuple(sorted(_PROFILES))
+
+
+def list_future_profiles() -> tuple[str, ...]:
+    """Return planned profile names not yet registered."""
+    return tuple(sorted(FUTURE_PROFILES))

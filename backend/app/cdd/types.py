@@ -11,6 +11,7 @@ import uuid
 from dataclasses import dataclass, field
 from datetime import date, datetime
 from decimal import Decimal
+from typing import TYPE_CHECKING
 
 from app.core.enums import (
     DiagnosisMethod,
@@ -25,6 +26,9 @@ from app.core.enums import (
 )
 from app.db.models.crop import CropStatus
 from app.db.models.soil_profile import SoilType
+
+if TYPE_CHECKING:
+    from app.cdd.manifest import CDDManifest
 
 
 @dataclass(frozen=True, slots=True)
@@ -176,13 +180,83 @@ class CDDYieldRecord:
     notes: str | None = None
 
 
+@dataclass(frozen=True, slots=True)
+class CDDDatasetMetadata:
+    """
+    Session-level metadata describing a generated in-memory dataset.
+
+    Populated after generation and before persistence validation. Does not imply
+    database storage or execution timing measurement.
+    """
+
+    generator_version: str
+    manifest_profile: str
+    dataset_version: str
+    seed: int
+    generated_at: datetime
+    temporal_start: datetime
+    temporal_end: datetime
+    expected_row_count: int
+    actual_row_count: int
+    domain_row_counts: dict[str, int]
+    generation_duration_ms: int | None = None
+    notes: str | None = None
+
+    @classmethod
+    def from_dataset(
+        cls,
+        dataset: CDDDataset,
+        *,
+        manifest: CDDManifest | None = None,
+        generated_at: datetime | None = None,
+        generation_duration_ms: int | None = None,
+        notes: str | None = None,
+    ) -> CDDDatasetMetadata:
+        """
+        Build metadata from an in-memory dataset and optional manifest.
+
+        ``generation_duration_ms`` is a placeholder for Step 2C-C timing capture.
+        """
+        from app.cdd.config import (
+            CDD_GENERATOR_VERSION,
+            TEMPORAL_END,
+            TEMPORAL_START,
+        )
+        from app.cdd.manifest import expected_total_row_count, get_manifest
+
+        resolved_manifest = manifest or get_manifest(dataset.profile)
+        expected = expected_total_row_count(resolved_manifest)
+        actual = dataset.total_row_count
+
+        return cls(
+            generator_version=CDD_GENERATOR_VERSION,
+            manifest_profile=dataset.profile,
+            dataset_version=dataset.version,
+            seed=dataset.seed,
+            generated_at=generated_at or datetime.now(tz=TEMPORAL_START.tzinfo),
+            temporal_start=TEMPORAL_START,
+            temporal_end=TEMPORAL_END,
+            expected_row_count=expected,
+            actual_row_count=actual,
+            domain_row_counts=dataset.domain_row_counts(),
+            generation_duration_ms=generation_duration_ms,
+            notes=notes,
+        )
+
+
 @dataclass(slots=True)
 class CDDDataset:
-    """Complete generated dataset bundle returned by the orchestrator."""
+    """
+    Complete generated dataset bundle returned by the orchestrator.
+
+    Domain lists hold in-memory records prior to persistence. Attach session
+    metadata via :meth:`attach_metadata` after generation completes.
+    """
 
     version: str
     profile: str
     seed: int
+    metadata: CDDDatasetMetadata | None = None
     farms: list[CDDFarmRecord] = field(default_factory=list)
     fields: list[CDDFieldRecord] = field(default_factory=list)
     soil_profiles: list[CDDSoilProfileRecord] = field(default_factory=list)
@@ -198,17 +272,39 @@ class CDDDataset:
     )
     yield_records: list[CDDYieldRecord] = field(default_factory=list)
 
+    def domain_row_counts(self) -> dict[str, int]:
+        """Per-domain record counts for validation and metadata."""
+        return {
+            "farms": len(self.farms),
+            "fields": len(self.fields),
+            "soil_profiles": len(self.soil_profiles),
+            "crops": len(self.crops),
+            "weather_records": len(self.weather_records),
+            "sensor_readings": len(self.sensor_readings),
+            "satellite_observations": len(self.satellite_observations),
+            "irrigation_events": len(self.irrigation_events),
+            "disease_observations": len(self.disease_observations),
+            "yield_records": len(self.yield_records),
+        }
+
+    def attach_metadata(
+        self,
+        *,
+        manifest: CDDManifest | None = None,
+        generated_at: datetime | None = None,
+        generation_duration_ms: int | None = None,
+        notes: str | None = None,
+    ) -> CDDDatasetMetadata:
+        """Build and attach session metadata to this dataset."""
+        self.metadata = CDDDatasetMetadata.from_dataset(
+            self,
+            manifest=manifest,
+            generated_at=generated_at,
+            generation_duration_ms=generation_duration_ms,
+            notes=notes,
+        )
+        return self.metadata
+
     @property
     def total_row_count(self) -> int:
-        return (
-            len(self.farms)
-            + len(self.fields)
-            + len(self.soil_profiles)
-            + len(self.crops)
-            + len(self.weather_records)
-            + len(self.sensor_readings)
-            + len(self.satellite_observations)
-            + len(self.irrigation_events)
-            + len(self.disease_observations)
-            + len(self.yield_records)
-        )
+        return sum(self.domain_row_counts().values())
