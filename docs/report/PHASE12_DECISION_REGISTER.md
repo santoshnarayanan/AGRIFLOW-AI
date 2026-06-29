@@ -23,7 +23,7 @@ This register records formal decisions made during Phase 12. Decisions affecting
 | P12-D007 | Hypertable Primary Key Strategy | 1E-B | ✅ Implemented | 2026-06-29 |
 | P12-D008 | Hypertable Candidate Tables & Conversion Sequence | 1E-B | ✅ Implemented | 2026-06-29 |
 | P12-D009 | Hypertable Chunk Interval Strategy | 1E-B | ✅ Implemented | 2026-06-29 |
-| P12-D010 | Compression Policy Strategy | 1E-A | ⏳ Deferred to Step 1E-C | 2026-06-29 |
+| P12-D010 | Compression Policy Strategy | 2B | ✅ Implemented | 2026-06-29 |
 | P12-D011 | Retention Policy Strategy | 1E-A | ⏳ Deferred — Design-Time Decision | 2026-06-29 |
 | P12-D012 | Continuous Aggregate Strategy | 1E-A | ⏳ Deferred to Step 1E-D | 2026-06-29 |
 
@@ -531,8 +531,8 @@ Assessment complete. ADR-002 must be approved before Step 1E-B implementation.
 | Attribute | Value |
 |---|---|
 | **Decision ID** | P12-D010 |
-| **Step** | 1E-A (Identified) → 1E-C |
-| **Status** | ⏳ Deferred to Step 1E-C |
+| **Step** | 1E-A (Identified) → 2B (Implemented) |
+| **Status** | ✅ Implemented |
 | **Date** | 2026-06-29 |
 
 ### Context
@@ -548,7 +548,7 @@ TimescaleDB columnar compression on cold hypertable chunks provides 10–30× st
 
 ### Status
 
-Deferred to Step 1E-C. Implementation requires ADR-002 approval and successful Step 1E-B execution.
+✅ **Implemented** — Step 2B (2026-06-29). Governing ADR: `docs/adr/ADR-003-timescaledb-compression-policy-strategy.md`. Migration `d4f5e6a7b8c9`. See Step 2B Implementation Record below.
 
 ---
 
@@ -679,6 +679,63 @@ P12-D007, P12-D008, P12-D009 status updated from "Assessed — Pending ADR-002 A
 
 ---
 
+## Step 2B Implementation Record
+
+| Field | Value |
+|---|---|
+| **Migration revision ID** | `d4f5e6a7b8c9` |
+| **Migration name** | `enable_hypertable_compression_policies` |
+| **Pre-migration backup** | `backups/agriflow_phase12_step1_complete.dump` (49 KB, verified readable) |
+| **Backup integrity** | ✅ Verified via `pg_restore --list` |
+| **Compression policies created** | 6 |
+| **Governing ADR** | `docs/adr/ADR-003-timescaledb-compression-policy-strategy.md` v1.1 |
+| **Date implemented** | 2026-06-29 |
+| **Alembic head (post-migration)** | `d4f5e6a7b8c9` |
+
+### Compression Policies Implemented (ADR-003 §4)
+
+| Hypertable | Compress After | Segment By | Order By | Rollout Phase |
+|---|---|---|---|---|
+| `sensor_readings` | 7 days | `field_id`, `sensor_type` | `recorded_at DESC` | Phase 1 |
+| `weather_records` | 7 days | `field_id` | `recorded_at DESC` | Phase 1 |
+| `satellite_observations` | 14 days | `field_id`, `spectral_index` | `observed_at DESC` | Phase 1 |
+| `irrigation_events` | 60 days | `field_id` | `started_at DESC` | Phase 2 |
+| `yield_records` | 180 days | `crop_id` | `recorded_at DESC` | Phase 2 |
+| `disease_observations` | 60 days | `crop_id` | `observed_at DESC` | Phase 3 |
+
+### Validation Status
+
+| Check | Result |
+|---|---|
+| TimescaleDB extension active (2.28.1) | ✅ |
+| 6 hypertables `compression_enabled = true` | ✅ |
+| 6 `policy_compression` jobs registered | ✅ |
+| `compress_segmentby` / `compress_orderby` match ADR-003 | ✅ |
+| Alembic history linear: `d4f5e6a7b8c9` (head) | ✅ |
+| Backend `GET /api/v1/health/live` → alive | ✅ |
+| Swagger UI `GET /docs` → HTTP 200 | ✅ |
+| No repository changes | ✅ |
+| No service changes | ✅ |
+| No API changes | ✅ |
+| No SQLAlchemy model changes | ✅ |
+| No continuous aggregates created | ✅ |
+| No retention policies set | ✅ |
+
+### Decisions Updated
+
+P12-D010 status updated from "Deferred to Step 1E-C" to "Implemented".
+
+---
+
+**Version 1.5**
+
+**Revision Summary (v1.5 — 2026-06-29):**
+
+* Updated P12-D010 status to ✅ Implemented.
+* Updated Decision Index table to reflect Step 2B compression implementation.
+* Added Step 2B Implementation Record (migration revision ID, 6 compression policies, validation status).
+* No existing architectural decisions were modified.
+
 **Version 1.4**
 
 **Revision Summary (v1.4 — 2026-06-29):**
@@ -719,4 +776,4 @@ No architectural decisions were changed.
 
 ---
 
-*Decision Register v1.4 — Step 1E-B hypertable conversion implementation recorded: 2026-06-29*
+*Decision Register v1.5 — Step 2B compression implementation recorded: 2026-06-29*
