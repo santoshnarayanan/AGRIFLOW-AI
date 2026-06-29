@@ -19,6 +19,7 @@ This register records formal decisions made during Phase 12. Decisions affecting
 | P12-D003 | Pre-Migration Backup Strategy | 1B | ✅ Approved for Implementation | June 2026 |
 | P12-D004 | TimescaleDB Extension Enablement Strategy | 1C | ✅ Approved for Implementation | June 2026 |
 | P12-D005 | Infrastructure Rollback Strategy | 1B / 1C | ✅ Approved for Implementation | June 2026 |
+| P12-D006 | shared_preload_libraries Configuration Gap Resolution | 1D | ✅ Implemented | 2026-06-29 |
 
 ---
 
@@ -337,6 +338,81 @@ Adopt a **three-tier rollback model**:
 
 ---
 
+---
+
+## P12-D006 — shared_preload_libraries Configuration Gap Resolution
+
+| Attribute | Value |
+|---|---|
+| **Decision ID** | P12-D006 |
+| **Step** | 1D |
+| **Status** | ✅ Implemented |
+| **Date** | 2026-06-29 |
+| **Baseline Reference** | Step 1C §9 Known Issues; P12-D004 |
+
+### Context
+
+During Step 1D extension enablement, `CREATE EXTENSION timescaledb CASCADE` failed because `shared_preload_libraries` was empty in the existing `postgresql.conf`. This occurred because the Docker volume was originally initialised by `postgres:17-alpine`, which does not include timescaledb. The Step 1C image swap to `timescale/timescaledb:2.28.1-pg17` reused the existing volume; the timescale image's initialisation scripts (which set `shared_preload_libraries`) run only on a fresh data directory and were therefore skipped.
+
+Step 1C detected that TimescaleDB binaries were present (`default_version = 2.28.1`, `installed_version = NULL`) but did not verify or configure `shared_preload_libraries`. This was an operational gap, not an architecture conflict.
+
+### Decision
+
+Apply the PostgreSQL configuration change via `ALTER SYSTEM SET shared_preload_libraries = 'timescaledb'` executed inside the running container, followed by a single `docker compose restart db`. This writes to `postgresql.auto.conf` inside the existing volume.
+
+This is a **database configuration operation**. No changes were made to:
+- `docker-compose.yml`
+- Backend Dockerfile
+- Backend Python code
+- SQLAlchemy models
+- Alembic migration history
+- Application APIs, services, repositories, or schemas
+
+### Alternatives Considered
+
+| Alternative | Rejected Because |
+|---|---|
+| Destroy volume and reinitialise | Destructive; existing schema and row data lost; not justified for a config-only fix |
+| Mount custom `postgresql.conf` via docker-compose volume override | Requires Docker Compose modification — prohibited by Step 1D constraints |
+| Set `timescaledb.telemetry_level=off` workaround | Not relevant; issue is `shared_preload_libraries`, not telemetry |
+
+### Consequences
+
+* `postgresql.auto.conf` now contains `shared_preload_libraries = 'timescaledb'`.
+* All future container restarts will load TimescaleDB as a preload library.
+* TimescaleDB extension was successfully enabled via Alembic migration `f1e2d3c4b5a6`.
+* No application behaviour changed.
+
+### Implementation Record
+
+| Field | Value |
+|---|---|
+| **Command executed** | `ALTER SYSTEM SET shared_preload_libraries = 'timescaledb'` |
+| **Container restart** | `docker compose restart db` |
+| **Verification** | `SHOW shared_preload_libraries;` → `timescaledb` |
+| **Date** | 2026-06-29 |
+
+### Compliance
+
+✅ Compliant with Step 1A approved baseline. Does not constitute Docker infrastructure modification.
+
+---
+
+## Step 1D Implementation Record
+
+| Field | Value |
+|---|---|
+| **Migration revision ID** | `f1e2d3c4b5a6` |
+| **Extension installed** | timescaledb 2.28.1 |
+| **Pre-extension backup** | `backups/pre_phase12_step1d_20260629_115426.dump` (67 KB, 210 TOC entries) |
+| **Backup integrity** | ✅ Verified via `pg_restore --list` |
+| **Validation completed** | ✅ All checks passed |
+| **Date implemented** | 2026-06-29 |
+| **Alembic head (post-migration)** | `f1e2d3c4b5a6` |
+| **ADR created** | `docs/adr/ADR-001-timescaledb-extension-enablement.md` |
+
+---
+
 ## Deferred Decisions (Not in This Register)
 
 The following remain **deferred pending Architecture Decision Review** per Step 1A §2.2. They must **not** be implemented based on Step 1B planning alone:
@@ -352,9 +428,15 @@ The following remain **deferred pending Architecture Decision Review** per Step 
 
 ---
 
-**Version 1.1**
+**Version 1.2**
 
-**Revision Summary:**
+**Revision Summary (v1.2 — 2026-06-29):**
+
+* Added P12-D006: shared_preload_libraries Configuration Gap Resolution (Step 1D).
+* Added Step 1D Implementation Record (migration revision ID, extension version, backup filename, validation status).
+* No existing decisions were modified.
+
+**Revision Summary (v1.1):**
 
 * Generalized version pinning policy (P12-D001, P12-D002).
 * Added Implemented Pin Record to P12-D002.
@@ -366,4 +448,4 @@ No architectural decisions were changed.
 
 ---
 
-*Decision Register v1.1 — Architecture review refinements incorporated: June 2026*
+*Decision Register v1.2 — Step 1D extension enablement recorded: 2026-06-29*
