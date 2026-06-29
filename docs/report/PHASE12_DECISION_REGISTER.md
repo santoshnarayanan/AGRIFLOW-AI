@@ -20,6 +20,12 @@ This register records formal decisions made during Phase 12. Decisions affecting
 | P12-D004 | TimescaleDB Extension Enablement Strategy | 1C | ✅ Approved for Implementation | June 2026 |
 | P12-D005 | Infrastructure Rollback Strategy | 1B / 1C | ✅ Approved for Implementation | June 2026 |
 | P12-D006 | shared_preload_libraries Configuration Gap Resolution | 1D | ✅ Implemented | 2026-06-29 |
+| P12-D007 | Hypertable Primary Key Strategy | 1E-A | ⏳ Assessed — Pending ADR-002 Approval | 2026-06-29 |
+| P12-D008 | Hypertable Candidate Tables & Conversion Sequence | 1E-A | ⏳ Assessed — Pending ADR-002 Approval | 2026-06-29 |
+| P12-D009 | Hypertable Chunk Interval Strategy | 1E-A | ⏳ Assessed — Pending ADR-002 Approval | 2026-06-29 |
+| P12-D010 | Compression Policy Strategy | 1E-A | ⏳ Deferred to Step 1E-C | 2026-06-29 |
+| P12-D011 | Retention Policy Strategy | 1E-A | ⏳ Deferred — Design-Time Decision | 2026-06-29 |
+| P12-D012 | Continuous Aggregate Strategy | 1E-A | ⏳ Deferred to Step 1E-D | 2026-06-29 |
 
 ---
 
@@ -413,6 +419,191 @@ This is a **database configuration operation**. No changes were made to:
 
 ---
 
+---
+
+## P12-D007 — Hypertable Primary Key Strategy
+
+| Attribute | Value |
+|---|---|
+| **Decision ID** | P12-D007 |
+| **Step** | 1E-A (Assessment) → 1E-B (Implementation pending ADR-002) |
+| **Status** | ⏳ Assessed — Pending ADR-002 Approval |
+| **Date** | 2026-06-29 |
+| **Baseline Reference** | Step 1A §5.5 — Deferred PK strategy; Step 1E-A Assessment §6 |
+
+### Context
+
+All six hypertable candidate tables carry `PRIMARY KEY (id)` (UUID v4 only). TimescaleDB 2.28.x requires all unique constraints (including primary keys) to include the partitioning column. `create_hypertable()` fails with `ERROR: cannot create a unique index without the column "<time_col>" (used in partitioning)`.
+
+### Assessment Finding
+
+**Recommended: Composite Primary Key Strategy A** — `PRIMARY KEY (id, time_col)`.
+
+Four strategies were evaluated in Step 1E-A §6.3. Strategy A is the recommended approach because:
+- TimescaleDB constraint satisfied (partition column included in PK)
+- UUID identity preserved (application-level identity unchanged)
+- `BaseRepository.get_by_id` uses `WHERE id = :id` predicate — zero code changes required
+- No FK impact (no external table references time-series tables via FK)
+- API, service, repository interface, schema, business logic unchanged
+
+### Implementation Requirement
+
+Each time-series table migration:
+1. `ALTER TABLE <table> DROP CONSTRAINT pk_<table>;`
+2. `ALTER TABLE <table> ADD CONSTRAINT pk_<table> PRIMARY KEY (id, <time_col>);`
+3. `SELECT create_hypertable('<table>', '<time_col>', migrate_data => TRUE, if_not_hypertable => TRUE);`
+
+### Status
+
+Assessment complete. ADR-002 must be approved before Step 1E-B implementation.
+
+---
+
+## P12-D008 — Hypertable Candidate Tables & Conversion Sequence
+
+| Attribute | Value |
+|---|---|
+| **Decision ID** | P12-D008 |
+| **Step** | 1E-A (Assessment) → 1E-B (Implementation pending ADR-002) |
+| **Status** | ⏳ Assessed — Pending ADR-002 Approval |
+| **Date** | 2026-06-29 |
+| **Baseline Reference** | Step 1A §5.1; Step 1E-A Assessment §4, §5 |
+
+### Assessment Finding
+
+**Six tables recommended for hypertable conversion:**
+
+| Priority | Table | Partition Key | Reason |
+|---|---|---|---|
+| P1 Critical | `sensor_readings` | `recorded_at` | Highest insert frequency; IoT telemetry; AI Feature Store backbone |
+| P1 Critical | `weather_records` | `recorded_at` | Continuous meteorological ingestion; GDD/ET₀ features |
+| P1 Critical | `satellite_observations` | `observed_at` | Multi-spectral AI training; high-frequency satellite ingestion |
+| P2 High | `irrigation_events` | `started_at` | Agricultural intervention history; seasonal water management |
+| P2 High | `yield_records` | `recorded_at` | Yield Prediction Engine target variable history |
+| P3 Standard | `disease_observations` | `observed_at` | Disease Risk Scoring Engine features |
+
+**Four tables remain relational permanently:**
+
+| Table | Reason |
+|---|---|
+| `farms` | Root master data; no time-series growth |
+| `fields` | Spatial dimension entity; time-series data anchors ON fields, not IN fields |
+| `crops` | Lifecycle entity; planting/harvest dates are milestones, not measurements |
+| `soil_profiles` | Static profile; one-to-one with fields; UNIQUE (field_id) constraint incompatible with hypertable |
+
+**Additional finding:** `weather_records` is missing the `(field_id, recorded_at)` compound index present on all other Field-anchored time-series tables. This gap should be corrected in Step 1E-B.
+
+### Status
+
+Assessment complete. ADR-002 must be approved before Step 1E-B implementation.
+
+---
+
+## P12-D009 — Hypertable Chunk Interval Strategy
+
+| Attribute | Value |
+|---|---|
+| **Decision ID** | P12-D009 |
+| **Step** | 1E-A (Assessment) → 1E-B (Implementation pending ADR-002) |
+| **Status** | ⏳ Assessed — Pending ADR-002 Approval |
+| **Date** | 2026-06-29 |
+| **Baseline Reference** | Step 1E-A Assessment §7.1, §5 |
+
+### Assessment Finding
+
+| Table | Recommended Chunk Interval | Rationale |
+|---|---|---|
+| `sensor_readings` | 7 days | Sub-hourly IoT data; 1-week chunks align with telemetry dashboard windows |
+| `weather_records` | 7 days | Daily–sub-daily data; weekly chunks match agro-meteorological query windows |
+| `satellite_observations` | 7 days | 5–16 day satellite revisit; weekly chunks contain 1–2 passes per provider |
+| `irrigation_events` | 1 month | Weekly–seasonal frequency; monthly chunks align with water management reporting |
+| `disease_observations` | 1 month | Episodic; monthly chunks appropriate for disease season analysis |
+| `yield_records` | 3 months | Harvest-time only; quarterly chunks avoid over-partitioning sparse data |
+
+### Status
+
+Assessment complete. ADR-002 must be approved before Step 1E-B implementation.
+
+---
+
+## P12-D010 — Compression Policy Strategy
+
+| Attribute | Value |
+|---|---|
+| **Decision ID** | P12-D010 |
+| **Step** | 1E-A (Identified) → 1E-C |
+| **Status** | ⏳ Deferred to Step 1E-C |
+| **Date** | 2026-06-29 |
+
+### Context
+
+TimescaleDB columnar compression on cold hypertable chunks provides 10–30× storage savings for IoT and satellite data. Compression should be enabled only after successful hypertable conversion validation.
+
+### Key Considerations
+
+- Append-only `sensor_readings` is the primary compression target
+- Mutable tables (`irrigation_events`, `yield_records`, `disease_observations`) require careful age thresholds to avoid compressing recently-written chunks
+- Compression ORDER BY and SEGMENTBY configuration requires access pattern analysis
+- `weather_records` and `satellite_observations` are also strong compression candidates
+
+### Status
+
+Deferred to Step 1E-C. Implementation requires ADR-002 approval and successful Step 1E-B execution.
+
+---
+
+## P12-D011 — Retention Policy Strategy
+
+| Attribute | Value |
+|---|---|
+| **Decision ID** | P12-D011 |
+| **Step** | 1E-A (Identified) → Future |
+| **Status** | ⏳ Deferred — Design-Time Decision |
+| **Date** | 2026-06-29 |
+
+### Context
+
+TimescaleDB retention policies auto-delete chunks older than a configured interval. This requires explicit business decision about data lifecycle.
+
+### Assessment Finding
+
+**Do not enable automatic retention deletion policies at this stage.** All AGRIFLOW-AI time-series data is AI training material. Automatic deletion would degrade AI model quality over time. Recommended alternative: archive cold data to Azure Blob Storage / S3 via TimescaleDB's tiered storage or application-level archiving before deletion.
+
+### Status
+
+Deferred pending business data lifecycle decision. Not required for Phase 12 baseline.
+
+---
+
+## P12-D012 — Continuous Aggregate Strategy
+
+| Attribute | Value |
+|---|---|
+| **Decision ID** | P12-D012 |
+| **Step** | 1E-A (Identified) → 1E-D |
+| **Status** | ⏳ Deferred to Step 1E-D |
+| **Date** | 2026-06-29 |
+
+### Context
+
+Continuous aggregates pre-compute `time_bucket()` aggregations over hypertables for efficient Phase 13 AI Feature Store queries.
+
+### Assessment Finding
+
+Primary continuous aggregate candidates:
+- Hourly average sensor readings by `(field_id, sensor_type)`
+- Daily weather summary (min/max/avg temperature, total rainfall, total solar radiation) by `field_id`
+- Daily NDVI/EVI mean by `(field_id, spectral_index)` filtered to ARD/L2A processing levels
+- Monthly irrigation volume total by `field_id`
+
+These require hypertables to exist (Step 1E-B), and ideally compression to be active (Step 1E-C), before materialized views are established.
+
+### Status
+
+Deferred to Step 1E-D. Requires Step 1E-B and ADR-002 approval.
+
+---
+
 ## Deferred Decisions (Not in This Register)
 
 The following remain **deferred pending Architecture Decision Review** per Step 1A §2.2. They must **not** be implemented based on Step 1B planning alone:
@@ -428,7 +619,18 @@ The following remain **deferred pending Architecture Decision Review** per Step 
 
 ---
 
-**Version 1.2**
+**Version 1.3**
+
+**Revision Summary (v1.3 — 2026-06-29):**
+
+* Added P12-D007: Hypertable Primary Key Strategy — assessed; pending ADR-002 approval.
+* Added P12-D008: Hypertable Candidate Tables & Conversion Sequence — six tables recommended; four remain relational; weather_records compound index gap identified.
+* Added P12-D009: Hypertable Chunk Interval Strategy — per-table interval recommendations.
+* Added P12-D010: Compression Policy Strategy — deferred to Step 1E-C.
+* Added P12-D011: Retention Policy Strategy — deferred; no automatic deletion recommended.
+* Added P12-D012: Continuous Aggregate Strategy — deferred to Step 1E-D.
+* Updated Decision Index table with new entries.
+* No existing decisions were modified.
 
 **Revision Summary (v1.2 — 2026-06-29):**
 
@@ -448,4 +650,4 @@ No architectural decisions were changed.
 
 ---
 
-*Decision Register v1.2 — Step 1D extension enablement recorded: 2026-06-29*
+*Decision Register v1.3 — Step 1E-A hypertable architecture assessment decisions recorded: 2026-06-29*
