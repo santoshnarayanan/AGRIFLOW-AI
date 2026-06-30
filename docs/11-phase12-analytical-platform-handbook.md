@@ -76,6 +76,20 @@ flowchart TB
 
 ---
 
+## Phase 12 Analytical Platform at a Glance
+
+| Layer | Technology | Responsibility | Introduced |
+|---|---|---|---|
+| Raw Storage | PostgreSQL + TimescaleDB Hypertables | Authoritative time-series data | Step 1 |
+| Storage Optimization | TimescaleDB Compression | Reduce storage footprint and optimize historical reads | Step 2 |
+| Analytical Layer | Continuous Aggregates | Precomputed analytical rollups | Step 3 |
+| AI Feature Layer | Feature Store (Upcoming) | Versioned reusable ML features | Phase 13 |
+| AI Applications | Prediction Engine, Farm Copilot, Digital Twin | AI workloads consuming analytical data | Phases 14–16 |
+
+Phase 12 constructs the complete analytical persistence layer — from raw event storage through compression and pre-computed rollups — that all subsequent AI phases build upon. Steps 1–3 deliver the storage, optimization, and analytical tiers; Phases 13–16 consume that foundation without requiring persistence-layer redesign.
+
+---
+
 ## 2. Analytical Architecture
 
 ### Why Continuous Aggregates Exist
@@ -476,6 +490,23 @@ Retention is **out of scope** for Step 3 — deferred to [ADR-005](adr/) (Phase 
 
 ## Next Phase
 
+Phase 12 has completed the analytical persistence platform. **Phase 13** introduces the Feature Store — the next layer that transforms validated continuous aggregates into reusable, versioned feature vectors for machine learning and conversational AI workloads.
+
+```mermaid
+flowchart LR
+    HT["Hypertables"] --> CP["Compression"]
+    CP --> CA["Continuous Aggregates"]
+    CA --> FS["Feature Store (Phase 13)"]
+    FS --> PE["Prediction Engine"]
+    FS --> FC["Farm Copilot"]
+    FS --> DT["Digital Twin"]
+```
+
+- **Phase 12** established the storage, optimization, and analytical layers — hypertables (ADR-002), compression (ADR-003), and continuous aggregates (ADR-004).
+- **Phase 13** introduces reusable, versioned feature vectors derived from the eight validated continuous aggregates.
+- **No redesign of the persistence layer is expected** — Phase 13 builds on the architecture validated in Steps 3C and 3D.
+- **Phase 13 will build directly** on the validated continuous aggregates created in Phase 12 Step 3.
+
 Phase 12 concludes the construction of the AGRIFLOW-AI analytical persistence layer.
 
 The next phase (Phase 13) builds upon this foundation by introducing the Feature Store.
@@ -489,5 +520,8 @@ The Feature Store will consume validated Continuous Aggregates to produce reusab
 
 No additional persistence redesign is expected.
 
+Phase 12 serves as the **permanent analytical foundation** for all subsequent AI capabilities in the AGRIFLOW-AI platform. The persistence stack validated through Steps 1–3E is complete; Feature Store development and AI application phases may proceed with confidence in the underlying data architecture.
+
+---
 
 *11-phase12-analytical-platform-handbook.md v1.0 — 2026-06-30 — Phase 12 Step 3E*
