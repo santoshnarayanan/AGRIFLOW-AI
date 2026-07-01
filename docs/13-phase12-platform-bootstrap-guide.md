@@ -1,6 +1,6 @@
 # Phase 12 — Platform Bootstrap Guide
 
-**Version:** 1.5  
+**Version:** 1.6  
 **Status:** Approved  
 **Last Updated:** 2026-07-01  
 **Scope:** Operational guide — rebuild the complete Phase 12 analytical platform from scratch  
@@ -26,6 +26,46 @@ Use this guide for:
 
 ---
 
+## Cross-Platform Command Compatibility
+
+AGRIFLOW-AI local development is validated on **macOS (Apple Silicon)**, **Linux**, and **Windows (Intel, PowerShell)**. Commands in this guide are written to run on all three unless explicitly noted.
+
+### Supported Platforms
+
+| Platform | Shell | Validated |
+|---|---|---|
+| macOS | bash / zsh | ✓ Apple Silicon |
+| Linux | bash | ✓ |
+| Windows | PowerShell | ✓ Intel |
+
+### Line Continuation
+
+| Platform | Line continuation character |
+|---|---|
+| macOS / Linux | `\` (backslash) |
+| Windows PowerShell | `` ` `` (backtick) |
+
+**Preference:** This guide uses **single-line commands** wherever practical so the same command works on every platform without line-continuation syntax.
+
+> **Command Compatibility**
+>
+> Commands shown in this guide are written to be platform-independent whenever possible.
+>
+> When shell syntax genuinely differs, separate examples are provided for **macOS / Linux** and **Windows PowerShell**.
+>
+> Every command block is prefixed with a **📍 location indicator** — Repository Root, `backend/`, Docker Container, PostgreSQL (psql), or Host Machine — so you always know where to run it.
+
+### Platform Validation Notes
+
+This bootstrap guide has been validated on:
+
+- ✓ **macOS Apple Silicon** (bash / zsh)
+- ✓ **Windows Intel** (PowerShell)
+
+Platform-specific differences discovered during validation — virtual environment activation, file copy, directory creation, and shell-only loops — are documented inline. Docker, Alembic, and `docker compose exec … psql -c "…"` commands are identical across platforms.
+
+---
+
 ## Platform Bootstrap Philosophy
 
 This guide is an **operational runbook** — it tells you what to run, in what order, and how to verify success. It does not explain *why* the architecture was designed this way. For architectural rationale, use the [Phase 12 Complete Architecture Handbook](12-phase12-complete-architecture-handbook.md).
@@ -38,7 +78,7 @@ This guide is an **operational runbook** — it tells you what to run, in what o
 4. **Cross-reference, don't duplicate.** ADRs, handbooks, and validation reports contain the detailed explanations. This guide links to them instead of repeating architectural content.
 5. **Treat this as the operational companion** to the Complete Architecture Handbook — architecture explains *what* was built; this guide explains *how to build it again*.
 
-> **Working directory legend:** Commands in this guide are prefixed with a location indicator — **📍 Repository Root**, **📍 `backend/`**, **📍 Host Machine**, **📍 Docker Container**, or **📍 PostgreSQL (psql)** — so you always know where to run them.
+> **Working directory legend:** Commands are prefixed with **📍 Repository Root**, **📍 `backend/`**, **📍 Host Machine**, **📍 Docker Container**, or **📍 PostgreSQL (psql)**. See [Cross-Platform Command Compatibility](#cross-platform-command-compatibility) for platform-specific shell notes.
 
 ---
 
@@ -432,7 +472,8 @@ source .venv/bin/activate
 .venv\Scripts\activate
 
 # Install / update dependencies
-cd backend && pip install -r requirements.txt
+cd backend
+pip install -r requirements.txt
 
 # Verify Python version
 python --version
@@ -474,8 +515,7 @@ alembic upgrade head
 docker compose exec db psql -U agriflow -d agriflow
 
 # Verify TimescaleDB extension
-docker compose exec -T db psql -U agriflow -d agriflow -c \
-  "SELECT extname, extversion FROM pg_extension WHERE extname = 'timescaledb';"
+docker compose exec -T db psql -U agriflow -d agriflow -c "SELECT extname, extversion FROM pg_extension WHERE extname = 'timescaledb';"
 
 # List databases
 docker compose exec -T db psql -U agriflow -d postgres -c "\l"
@@ -505,19 +545,17 @@ Run these after schema changes, CDD reload, or container restart:
 
 ```bash
 # 1. Alembic head
-cd backend && alembic current
+cd backend
+alembic current
 
 # 2. Hypertable count
-docker compose exec -T db psql -U agriflow -d agriflow -c \
-  "SELECT COUNT(*) FROM timescaledb_information.hypertables;"
+docker compose exec -T db psql -U agriflow -d agriflow -c "SELECT COUNT(*) FROM timescaledb_information.hypertables;"
 
 # 3. Background job summary
-docker compose exec -T db psql -U agriflow -d agriflow -c \
-  "SELECT proc_name, COUNT(*) FROM timescaledb_information.jobs GROUP BY proc_name ORDER BY proc_name;"
+docker compose exec -T db psql -U agriflow -d agriflow -c "SELECT proc_name, COUNT(*) FROM timescaledb_information.jobs GROUP BY proc_name ORDER BY proc_name;"
 
 # 4. CDD sensor row count
-docker compose exec -T db psql -U agriflow -d agriflow -c \
-  "SELECT COUNT(*) FROM sensor_readings;"
+docker compose exec -T db psql -U agriflow -d agriflow -c "SELECT COUNT(*) FROM sensor_readings;"
 
 # 5. API health
 curl -s http://localhost:8000/api/v1/health/live
@@ -539,6 +577,7 @@ curl -s http://localhost:8000/api/v1/health/ready
 ## Table of Contents
 
 - [Platform Bootstrap Philosophy](#platform-bootstrap-philosophy)
+- [Cross-Platform Command Compatibility](#cross-platform-command-compatibility)
 - [TimescaleDB Platform Initialization](#timescaledb-platform-initialization)
 - [Platform Verification Gates](#platform-verification-gates)
 - [Phase 12 Platform Build Pipeline](#phase-12-platform-build-pipeline)
@@ -694,8 +733,16 @@ Docker Compose requires `POSTGRES_PASSWORD` at the **project root**. The backend
 
 > **📍 Repository Root**
 
+**macOS / Linux:**
+
 ```bash
 cp backend/.env.example backend/.env
+```
+
+**Windows (PowerShell):**
+
+```powershell
+Copy-Item backend\.env.example backend\.env
 ```
 
 Edit `backend/.env`:
@@ -717,8 +764,16 @@ Create a `.env` file at the repository root (same password as `backend/.env`):
 
 > **📍 Repository Root**
 
+**macOS / Linux:**
+
 ```bash
 echo "POSTGRES_PASSWORD=changeme" > .env
+```
+
+**Windows (PowerShell):**
+
+```powershell
+Set-Content -Path .env -Value "POSTGRES_PASSWORD=changeme"
 ```
 
 **Expected outcome:** `docker compose config` resolves `POSTGRES_PASSWORD` without error.
@@ -940,8 +995,7 @@ The extension is **not** active on a fresh PostgreSQL instance until migration `
 > **📍 Repository Root** → **📍 PostgreSQL (psql)**
 
 ```bash
-docker compose exec -T db psql -U agriflow -d agriflow -c \
-  "SELECT extname, extversion FROM pg_extension WHERE extname = 'timescaledb';"
+docker compose exec -T db psql -U agriflow -d agriflow -c "SELECT extname, extversion FROM pg_extension WHERE extname = 'timescaledb';"
 ```
 
 **Expected output:**
@@ -986,9 +1040,18 @@ Alembic migration `f1e2d3c4b5a6` executes `CREATE EXTENSION timescaledb`. This r
 
 > **📍 Repository Root**
 
+**macOS / Linux:**
+
 ```bash
 docker compose ps db
 docker compose config | grep -i timescale
+```
+
+**Windows (PowerShell):**
+
+```powershell
+docker compose ps db
+docker compose config | Select-String -Pattern timescale
 ```
 
 **Expected:**
@@ -1021,10 +1084,7 @@ On a **fresh database** (before migration `f1e2d3c4b5a6`), the extension is not 
 > **📍 Repository Root** → **📍 PostgreSQL (psql)**
 
 ```bash
-docker compose exec -T db psql -U agriflow -d agriflow -c \
-  "SELECT name, default_version, installed_version
-   FROM pg_available_extensions
-   WHERE name = 'timescaledb';"
+docker compose exec -T db psql -U agriflow -d agriflow -c "SELECT name, default_version, installed_version FROM pg_available_extensions WHERE name = 'timescaledb';"
 ```
 
 **Expected output:**
@@ -1107,8 +1167,7 @@ Sequential `INFO` lines: `Running upgrade <rev> -> <rev>, <description>`. Final 
 
 ```bash
 alembic current
-docker compose exec -T db psql -U agriflow -d agriflow -c \
-  "SELECT version_num FROM alembic_version;"
+docker compose exec -T db psql -U agriflow -d agriflow -c "SELECT version_num FROM alembic_version;"
 ```
 
 Both should show `f6a7b8c9d0e1`.
@@ -1417,16 +1476,17 @@ Constants are defined in `backend/app/cdd/config.py`. **Always wipe the database
 
 CAs are created `WITH NO DATA`. Automatic refresh policies scan only recent windows relative to `now()`. CDD data is predominantly historical — a **one-time full refresh** is required after first seed.
 
-Run each aggregate individually (cannot run inside a transaction):
-
-> **📍 Repository Root** → **📍 PostgreSQL (psql)**
+Run each aggregate individually (cannot run inside a transaction). Run all eight commands from **📍 Repository Root**:
 
 ```bash
-for agg in ca_sensor_hourly ca_sensor_daily ca_weather_daily ca_satellite_daily \
-           ca_weather_weekly ca_irrigation_monthly ca_disease_weekly ca_yield_seasonal; do
-  echo "CALL refresh_continuous_aggregate('${agg}', NULL, NULL);" | \
-    docker compose exec -T db psql -U agriflow -d agriflow
-done
+echo "CALL refresh_continuous_aggregate('ca_sensor_hourly', NULL, NULL);" | docker compose exec -T db psql -U agriflow -d agriflow
+echo "CALL refresh_continuous_aggregate('ca_sensor_daily', NULL, NULL);" | docker compose exec -T db psql -U agriflow -d agriflow
+echo "CALL refresh_continuous_aggregate('ca_weather_daily', NULL, NULL);" | docker compose exec -T db psql -U agriflow -d agriflow
+echo "CALL refresh_continuous_aggregate('ca_satellite_daily', NULL, NULL);" | docker compose exec -T db psql -U agriflow -d agriflow
+echo "CALL refresh_continuous_aggregate('ca_weather_weekly', NULL, NULL);" | docker compose exec -T db psql -U agriflow -d agriflow
+echo "CALL refresh_continuous_aggregate('ca_irrigation_monthly', NULL, NULL);" | docker compose exec -T db psql -U agriflow -d agriflow
+echo "CALL refresh_continuous_aggregate('ca_disease_weekly', NULL, NULL);" | docker compose exec -T db psql -U agriflow -d agriflow
+echo "CALL refresh_continuous_aggregate('ca_yield_seasonal', NULL, NULL);" | docker compose exec -T db psql -U agriflow -d agriflow
 ```
 
 **Expected outcome:** Each command returns `CALL` with no error. After refresh, all 8 CAs contain materialised buckets.
@@ -1438,10 +1498,7 @@ done
 > **📍 Repository Root** → **📍 PostgreSQL (psql)**
 
 ```bash
-docker compose exec -T db psql -U agriflow -d agriflow -c \
-  "SELECT 'sensor_readings' AS tbl, COUNT(*) FROM sensor_readings
-   UNION ALL SELECT 'weather_records', COUNT(*) FROM weather_records
-   UNION ALL SELECT 'yield_records', COUNT(*) FROM yield_records;"
+docker compose exec -T db psql -U agriflow -d agriflow -c "SELECT 'sensor_readings' AS tbl, COUNT(*) FROM sensor_readings UNION ALL SELECT 'weather_records', COUNT(*) FROM weather_records UNION ALL SELECT 'yield_records', COUNT(*) FROM yield_records;"
 ```
 
 **Expected output:**
@@ -1536,7 +1593,8 @@ Failed background jobs, empty CAs, wrong counts — see [Section 11](#11-trouble
 > **📍 `backend/`**
 
 ```bash
-cd backend && alembic current
+cd backend
+alembic current
 ```
 
 **Expected:** `f6a7b8c9d0e1 (head)`
@@ -1546,11 +1604,7 @@ cd backend && alembic current
 > **📍 Repository Root** → **📍 PostgreSQL (psql)**
 
 ```bash
-docker compose exec -T db psql -U agriflow -d agriflow -c \
-  "SELECT hypertable_name, compression_enabled, num_chunks
-   FROM timescaledb_information.hypertables
-   WHERE hypertable_schema = 'public'
-   ORDER BY hypertable_name;"
+docker compose exec -T db psql -U agriflow -d agriflow -c "SELECT hypertable_name, compression_enabled, num_chunks FROM timescaledb_information.hypertables WHERE hypertable_schema = 'public' ORDER BY hypertable_name;"
 ```
 
 **Expected:** 6 rows; all `compression_enabled = t`; total chunks ≈ **172** after CDD load.
@@ -1560,8 +1614,7 @@ docker compose exec -T db psql -U agriflow -d agriflow -c \
 > **📍 Repository Root** → **📍 PostgreSQL (psql)**
 
 ```bash
-docker compose exec -T db psql -U agriflow -d agriflow -c \
-  "SELECT COUNT(*) FROM timescaledb_information.jobs WHERE proc_name = 'policy_compression';"
+docker compose exec -T db psql -U agriflow -d agriflow -c "SELECT COUNT(*) FROM timescaledb_information.jobs WHERE proc_name = 'policy_compression';"
 ```
 
 **Expected:** `6`
@@ -1571,8 +1624,7 @@ docker compose exec -T db psql -U agriflow -d agriflow -c \
 > **📍 Repository Root** → **📍 PostgreSQL (psql)**
 
 ```bash
-docker compose exec -T db psql -U agriflow -d agriflow -c \
-  "SELECT COUNT(*) FROM timescaledb_information.continuous_aggregates;"
+docker compose exec -T db psql -U agriflow -d agriflow -c "SELECT COUNT(*) FROM timescaledb_information.continuous_aggregates;"
 ```
 
 **Expected:** `8`
@@ -1582,8 +1634,7 @@ docker compose exec -T db psql -U agriflow -d agriflow -c \
 > **📍 Repository Root** → **📍 PostgreSQL (psql)**
 
 ```bash
-docker compose exec -T db psql -U agriflow -d agriflow -c \
-  "SELECT COUNT(*) FROM timescaledb_information.jobs WHERE proc_name = 'policy_refresh_continuous_aggregate';"
+docker compose exec -T db psql -U agriflow -d agriflow -c "SELECT COUNT(*) FROM timescaledb_information.jobs WHERE proc_name = 'policy_refresh_continuous_aggregate';"
 ```
 
 **Expected:** `8`
@@ -1593,8 +1644,7 @@ docker compose exec -T db psql -U agriflow -d agriflow -c \
 > **📍 Repository Root** → **📍 PostgreSQL (psql)**
 
 ```bash
-docker compose exec -T db psql -U agriflow -d agriflow -c \
-  "SELECT COUNT(*) FROM timescaledb_information.jobs WHERE proc_name = 'policy_retention';"
+docker compose exec -T db psql -U agriflow -d agriflow -c "SELECT COUNT(*) FROM timescaledb_information.jobs WHERE proc_name = 'policy_retention';"
 ```
 
 **Expected:** `11`
@@ -1604,9 +1654,7 @@ docker compose exec -T db psql -U agriflow -d agriflow -c \
 > **📍 Repository Root** → **📍 PostgreSQL (psql)**
 
 ```bash
-docker compose exec -T db psql -U agriflow -d agriflow -c \
-  "SELECT COUNT(*) FROM timescaledb_information.jobs
-   WHERE proc_name = 'policy_retention' AND hypertable_name = 'yield_records';"
+docker compose exec -T db psql -U agriflow -d agriflow -c "SELECT COUNT(*) FROM timescaledb_information.jobs WHERE proc_name = 'policy_retention' AND hypertable_name = 'yield_records';"
 ```
 
 **Expected:** `0`
@@ -1616,8 +1664,7 @@ docker compose exec -T db psql -U agriflow -d agriflow -c \
 > **📍 Repository Root** → **📍 PostgreSQL (psql)**
 
 ```bash
-docker compose exec -T db psql -U agriflow -d agriflow -c \
-  "SELECT proc_name, COUNT(*) FROM timescaledb_information.jobs GROUP BY proc_name ORDER BY proc_name;"
+docker compose exec -T db psql -U agriflow -d agriflow -c "SELECT proc_name, COUNT(*) FROM timescaledb_information.jobs GROUP BY proc_name ORDER BY proc_name;"
 ```
 
 **Expected:**
@@ -1664,9 +1711,9 @@ Run all queries via:
 docker compose exec -T db psql -U agriflow -d agriflow
 ```
 
-Or pipe single queries with `-c` as shown below.
+Or pipe single queries with `-c` as shown below. All `-c` examples use **single-line shell syntax** compatible with macOS, Linux, and PowerShell.
 
-> **📍 PostgreSQL (psql)** — all `sql` blocks below execute inside the `agriflow` database.
+> **📍 PostgreSQL (psql)** — all `sql` blocks below execute inside the `agriflow` database. Copy SQL directly into an interactive `psql` session, or use the `-c "…"` one-liner form from Section 7.
 
 ### Infrastructure
 
@@ -1919,8 +1966,16 @@ File `agriflow_backup.dump` created on disk. No error output from `pg_dump`.
 
 > **📍 Repository Root**
 
+**macOS / Linux:**
+
 ```bash
 ls -lh agriflow_backup.dump
+```
+
+**Windows (PowerShell):**
+
+```powershell
+Get-Item agriflow_backup.dump | Select-Object Name, Length
 ```
 
 Non-zero file size (~40–50 MB with CDD).
@@ -2109,8 +2164,19 @@ Create `backups/README.md` locally to document your snapshot naming convention (
 
 **Example — save before an experiment** (file path only; commands unchanged from Section 9):
 
+> **📍 Repository Root**
+
+**macOS / Linux:**
+
 ```bash
 mkdir -p backups
+docker compose exec -T db pg_dump -U agriflow -d agriflow -F c > backups/agriflow_before_phase13.dump
+```
+
+**Windows (PowerShell):**
+
+```powershell
+New-Item -ItemType Directory -Force -Path backups
 docker compose exec -T db pg_dump -U agriflow -d agriflow -F c > backups/agriflow_before_phase13.dump
 ```
 
@@ -2209,7 +2275,7 @@ Execute these steps in order for a **clean rebuild from empty environment**:
 | 2 | Configure `backend/.env` and root `.env` | Credentials set; port 25432 on host |
 | 3 | `docker compose down -v` | Old volume removed (optional) |
 | 4 | `docker compose up -d --build` | `db` healthy, `backend` running |
-| 5 | `cd backend && alembic upgrade head` | Head = `f6a7b8c9d0e1` |
+| 5 | `cd backend` then `alembic upgrade head` | Head = `f6a7b8c9d0e1` |
 | 6 | Run `execute_cdd_workflow` (Section 6) | 458,645 rows persisted |
 | 7 | Manual CA refresh loop (Section 6) | 8 CAs materialised |
 | 8 | Run Section 7 validation | All counts match |
@@ -2327,8 +2393,7 @@ After resolution, confirm before re-running Alembic:
 > **📍 Repository Root** → **📍 PostgreSQL (psql)**
 
 ```bash
-docker compose exec -T db psql -U agriflow -d agriflow -c \
-  "SELECT name, default_version FROM pg_available_extensions WHERE name = 'timescaledb';"
+docker compose exec -T db psql -U agriflow -d agriflow -c "SELECT name, default_version FROM pg_available_extensions WHERE name = 'timescaledb';"
 ```
 
 Expected: one row with `default_version = 2.28.1`.
@@ -2363,11 +2428,7 @@ docker compose logs db --tail 50
 docker compose logs backend --tail 50
 
 # Failed background jobs
-docker compose exec -T db psql -U agriflow -d agriflow -c \
-  "SELECT j.job_id, j.proc_name, j.hypertable_name, js.last_run_status, js.last_run_status_detail
-   FROM timescaledb_information.jobs j
-   JOIN timescaledb_information.job_stats js ON j.job_id = js.job_id
-   WHERE js.last_run_status != 'Success';"
+docker compose exec -T db psql -U agriflow -d agriflow -c "SELECT j.job_id, j.proc_name, j.hypertable_name, js.last_run_status, js.last_run_status_detail FROM timescaledb_information.jobs j JOIN timescaledb_information.job_stats js ON j.job_id = js.job_id WHERE js.last_run_status != 'Success';"
 ```
 
 ### Further Reading
@@ -2512,18 +2573,13 @@ One-page status summary. Replace status indicators after running validation comm
 | Canonical Development Dataset | `SELECT COUNT(*) FROM sensor_readings` | ✅ Generated (`438000`) |
 | Platform Ready | All checks above + `health/ready` 200 | ✅ Yes |
 
-**Quick verify all:**
-
-> **📍 Repository Root** + **📍 `backend/`**
+**Quick verify all** (run sequentially from **📍 Repository Root**, then **📍 `backend/`** for Alembic):
 
 ```bash
-docker compose ps && \
-cd backend && alembic current && \
-docker compose exec -T db psql -U agriflow -d agriflow -c \
-  "SELECT (SELECT extversion FROM pg_extension WHERE extname='timescaledb') AS tsdb,
-          (SELECT COUNT(*) FROM timescaledb_information.hypertables) AS hypertables,
-          (SELECT COUNT(*) FROM timescaledb_information.continuous_aggregates) AS cas,
-          (SELECT COUNT(*) FROM sensor_readings) AS sensors;" && \
+docker compose ps
+cd backend
+alembic current
+docker compose exec -T db psql -U agriflow -d agriflow -c "SELECT (SELECT extversion FROM pg_extension WHERE extname='timescaledb') AS tsdb, (SELECT COUNT(*) FROM timescaledb_information.hypertables) AS hypertables, (SELECT COUNT(*) FROM timescaledb_information.continuous_aggregates) AS cas, (SELECT COUNT(*) FROM sensor_readings) AS sensors;"
 curl -s http://localhost:8000/api/v1/health/ready
 ```
 
@@ -2537,7 +2593,7 @@ Practical checklist for rebuilding from an empty Docker environment. Check each 
 |---|---|---|
 | Clone repository | `git clone` + `cd AGRIFLOW-AI` | ☐ |
 | Create virtual environment | `python3.12 -m venv .venv` + activate | ☐ |
-| Install dependencies | `cd backend && pip install -r requirements.txt` | ☐ |
+| Install dependencies | `cd backend` then `pip install -r requirements.txt` | ☐ |
 | Configure `backend/.env` | Port `25432`, credentials set | ☐ |
 | Configure root `.env` | `POSTGRES_PASSWORD` set | ☐ |
 | Start Docker | `docker compose up -d --build` | ☐ |
@@ -2622,4 +2678,4 @@ Begin Phase 13 by reading the Complete Architecture Handbook [§12 AI Readiness]
 
 ---
 
-*13-phase12-platform-bootstrap-guide.md v1.5 — 2026-07-01*
+*13-phase12-platform-bootstrap-guide.md v1.6 — 2026-07-01*
