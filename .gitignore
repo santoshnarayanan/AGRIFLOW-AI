@@ -29,4 +29,4 @@ node_modules/
 # backup files
 *backup.sql
 tree_output.txt
-backups/*.dump
+/backups/*.*

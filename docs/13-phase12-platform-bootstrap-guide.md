@@ -1,6 +1,6 @@
 # Phase 12 — Platform Bootstrap Guide
 
-**Version:** 1.3  
+**Version:** 1.5  
 **Status:** Approved  
 **Last Updated:** 2026-07-01  
 **Scope:** Operational guide — rebuild the complete Phase 12 analytical platform from scratch  
@@ -558,6 +558,7 @@ curl -s http://localhost:8000/api/v1/health/ready
 7. [Platform Validation](#7-platform-validation)
 8. [SQL Verification Cheat Sheet](#8-sql-verification-cheat-sheet)
 9. [Backup & Restore](#9-backup--restore)
+- [Development vs Production Backup Strategy](#development-vs-production-backup-strategy)
 10. [Complete Platform Rebuild](#10-complete-platform-rebuild)
 11. [Troubleshooting](#11-troubleshooting)
 12. [Platform Health Checklist](#12-platform-health-checklist)
@@ -1322,7 +1323,8 @@ async def main():
     print(f'success={report.success}')
     if report.statistics:
         s = report.statistics
-        print(f'version={s.version} seed={s.seed} rows={s.actual_row_count}')
+        rows = sum(s.persisted_row_counts.values())
+        print(f'version={s.version} seed={s.seed} rows={rows}')
         print(f'generation_ms={s.generation_duration_ms} persistence_ms={s.persistence_duration_ms}')
     if report.errors:
         for e in report.errors:
@@ -1988,6 +1990,213 @@ curl -s http://localhost:8000/api/v1/health/ready
 
 ---
 
+## Development vs Production Backup Strategy
+
+Section 9 documents **how** to create and restore backups. This section explains **when** backups matter — and why development and production follow different rules.
+
+### Development Environment
+
+The Canonical Development Dataset (CDD) is **deterministic**. Identical inputs (`cdd-v1.0.0`, profile `cdd-dev`, seed `42`) produce identical UUIDs, row counts, and values on every machine. The development database is therefore **regenerable**, not irreplaceable.
+
+A complete analytical platform can be recreated from source at any time:
+
+```text
+docker compose down -v
+docker compose up -d --build
+alembic upgrade head
+execute_cdd_workflow
+```
+
+This sequence wipes the Docker volume, rebuilds containers, applies all migrations, and repopulates 458,645 CDD rows. No backup file is required for routine development.
+
+**Development implications:**
+
+- Docker volumes (`postgres_data`) may be deleted without risk — data is reproducible.
+- `docker compose down -v` is the preferred clean-slate mechanism, not a last resort.
+- Local database backups are **optional** and exist only as a convenience.
+
+**Optional backup use cases in development:**
+
+| Scenario | Why a local backup helps |
+|---|---|
+| Before experimenting with Alembic downgrades | Roll back quickly without re-running CDD |
+| Before large refactoring | Snapshot current state for comparison |
+| Before major architectural changes | Preserve a known-good platform for diff testing |
+
+Even in these cases, the authoritative recovery path remains: rebuild from Git + CDD regeneration.
+
+### Production Environment
+
+Production data is **not deterministic**. Real farm measurements, user actions, audit trails, and operational history cannot be regenerated from the CDD generator.
+
+Production databases must always be backed up **before**:
+
+- Schema migrations (`alembic upgrade`)
+- Major application upgrades
+- TimescaleDB or PostgreSQL version changes
+- Infrastructure maintenance (volume migration, host replacement, cluster failover)
+
+Production backup, restore, disaster recovery, replication, and high availability are **out of scope** for this guide. They will be documented separately in future infrastructure phases. Section 9 commands remain valid for ad-hoc production snapshots when authorised by platform operations.
+
+### Backup Philosophy
+
+> **Source code belongs in Git. Generated data does not.**
+>
+> - **Database backups do not** — environment-specific operational snapshots.
+> - **Docker volumes do not** — ephemeral runtime state, reproducible in development.
+> - **Generated Canonical Development Datasets do not** — derived from deterministic code, not stored as files.
+>
+> **Git stores:** source code, Alembic migrations, documentation, architecture handbooks, and ADRs.
+>
+> **Git does not store:** PostgreSQL data, `pg_dump` files, or local backup directories. These are environment-specific operational artifacts — each developer or deployment maintains its own copies outside version control.
+
+### Local Backup Directory
+
+Developers may optionally create a local `backups/` directory at the repository root to store PostgreSQL backup files created via Section 9 commands.
+
+| Property | Guidance |
+|---|---|
+| **Optional** | Not required to bootstrap the platform |
+| **Purpose** | Local development convenience only |
+| **Ownership** | Every developer maintains their own local backups |
+| **Scope** | Environment-specific operational artifacts — not shared |
+
+Bootstrap never depends on a backup file. The authoritative development path remains: clone from Git → Docker → Alembic → CDD generation.
+
+**Why `backups/` must be excluded from Git:**
+
+- Backups are **generated artifacts**, not source code.
+- In development, data can be **regenerated** from deterministic CDD generation (`execute_cdd_workflow`).
+- Backup files **quickly become outdated** as Alembic migrations and platform policies evolve.
+- Committed dumps **unnecessarily increase repository size** (40–50 MB per CDD-loaded snapshot).
+- Keeping backups local ensures the repository remains **clean, lightweight, and reproducible**.
+
+**Recommended `.gitignore` entries:**
+
+```gitignore
+backups/
+*.dump
+*.sql
+*.backup
+*.bak
+```
+
+> **Git should contain only:** source code, Alembic migrations, documentation, ADRs, and architecture handbooks.
+>
+> **Git must never be used as a storage location for database backups.**
+
+### Recommended Backup Directory
+
+When creating optional development snapshots, use a local `backups/` directory at the repository root:
+
+```text
+AGRIFLOW-AI/
+├── docs/
+├── backend/
+└── backups/
+    ├── README.md
+    ├── agriflow_before_phase13.dump
+    └── agriflow_before_phase14.dump
+```
+
+| Rule | Rationale |
+|---|---|
+| Keep `backups/` **local** | Backups are machine-specific; not shared via Git |
+| Exclude from Git | Prevents large binary files and stale data in the repository |
+| Each developer maintains their own | Deterministic CDD makes shared backup files unnecessary |
+
+Create `backups/README.md` locally to document your snapshot naming convention (date, phase, purpose). Do not commit backup files.
+
+**Example — save before an experiment** (file path only; commands unchanged from Section 9):
+
+```bash
+mkdir -p backups
+docker compose exec -T db pg_dump -U agriflow -d agriflow -F c > backups/agriflow_before_phase13.dump
+```
+
+### Git Ignore Recommendation
+
+Add the following entries to `.gitignore` to prevent accidental commits of backup artifacts:
+
+```gitignore
+backups/
+*.dump
+*.sql
+*.backup
+*.bak
+```
+
+**Why backup files must never be committed:**
+
+- **Size** — CDD-loaded dumps are 40–50 MB; they bloat repository history permanently.
+- **Stale data** — committed dumps become outdated after the next migration or CDD version bump.
+- **Environment coupling** — dumps may contain machine-specific state incompatible with other developers.
+- **Determinism** — the CDD generator is the canonical data source; backup files duplicate what code already reproduces.
+
+The repository already excludes some backup patterns. Align local `.gitignore` with the entries above for complete coverage.
+
+### Deterministic Dataset Philosophy
+
+The Canonical Development Dataset is **intentionally deterministic** — a core architectural decision of Phase 12.
+
+| Principle | Effect |
+|---|---|
+| **Regenerate, don't restore** | Development databases are rebuilt from code, not replayed from dumps |
+| **Lightweight repository** | No multi-megabyte data files in Git |
+| **Identical datasets everywhere** | Every developer obtains the same 458,645 rows from the same seed |
+| **Reproducible validation** | Platform checks (hypertables, compression, CAs, retention) yield consistent results |
+
+Because CDD v1.0.0 is defined entirely by version, profile, and seed constants in `backend/app/cdd/config.py`, the development backup file adds no information that the generator cannot recreate in ~34 seconds.
+
+Detail: [CDD Architecture](report/PHASE12_STEP2CA_CANONICAL_DEVELOPMENT_DATASET_ARCHITECTURE.md) · [CDD generator package](../backend/app/cdd/README.md) · [Section 6](#6-canonical-development-dataset-cdd).
+
+### Development vs Production Data Flow
+
+```mermaid
+flowchart TD
+    subgraph dev ["Development — Deterministic Regeneration"]
+        SC["Source Code"]
+        GIT["Git Repository"]
+        CLONE["Clone Repository"]
+        DOCKER["Docker"]
+        TSDB["TimescaleDB"]
+        ALE["Alembic"]
+        CDD["Generate CDD"]
+        DEVDB["Development Database"]
+
+        SC --> GIT --> CLONE --> DOCKER --> TSDB --> ALE --> CDD --> DEVDB
+    end
+
+    subgraph prod ["Production — Backup Required"]
+        PRODDB["Production Database"]
+        BACKUP["Backup<br/>pg_dump"]
+        RESTORE["Restore<br/>pg_restore"]
+        PRODDB2["Production Database"]
+
+        PRODDB --> BACKUP --> RESTORE --> PRODDB2
+    end
+
+    style DEVDB fill:#c8e6c9
+    style BACKUP fill:#fff9c4
+    style PRODDB fill:#ffebee
+    style PRODDB2 fill:#ffebee
+```
+
+**Development path:** Git is the source of truth. Data is generated on demand — backups are optional convenience, not dependency.
+
+**Production path:** The database is the source of truth. Backups are mandatory before any destructive or irreversible operation.
+
+### Further Reading
+
+| Topic | Document |
+|---|---|
+| CDD architecture | [PHASE12_STEP2CA_CANONICAL_DEVELOPMENT_DATASET_ARCHITECTURE.md](report/PHASE12_STEP2CA_CANONICAL_DEVELOPMENT_DATASET_ARCHITECTURE.md) |
+| Backup commands | [Section 9](#9-backup--restore) |
+| Complete rebuild | [Section 10](#10-complete-platform-rebuild) |
+| Backup governance (migrations) | [PHASE12_DECISION_REGISTER.md](report/PHASE12_DECISION_REGISTER.md) — P12-D003 |
+
+---
+
 ## 10. Complete Platform Rebuild
 
 ### Full Rebuild Workflow
@@ -2413,4 +2622,4 @@ Begin Phase 13 by reading the Complete Architecture Handbook [§12 AI Readiness]
 
 ---
 
-*13-phase12-platform-bootstrap-guide.md v1.3 — 2026-07-01*
+*13-phase12-platform-bootstrap-guide.md v1.5 — 2026-07-01*
