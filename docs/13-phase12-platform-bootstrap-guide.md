@@ -1,8 +1,8 @@
 # Phase 12 — Platform Bootstrap Guide
 
-**Version:** 1.2  
+**Version:** 1.3  
 **Status:** Approved  
-**Last Updated:** 2026-06-30  
+**Last Updated:** 2026-07-01  
 **Scope:** Operational guide — rebuild the complete Phase 12 analytical platform from scratch  
 **Architecture Reference:** [12-phase12-complete-architecture-handbook.md](12-phase12-complete-architecture-handbook.md)  
 **CDD Reference:** [backend/app/cdd/README.md](../backend/app/cdd/README.md)
@@ -39,6 +39,259 @@ This guide is an **operational runbook** — it tells you what to run, in what o
 5. **Treat this as the operational companion** to the Complete Architecture Handbook — architecture explains *what* was built; this guide explains *how to build it again*.
 
 > **Working directory legend:** Commands in this guide are prefixed with a location indicator — **📍 Repository Root**, **📍 `backend/`**, **📍 Host Machine**, **📍 Docker Container**, or **📍 PostgreSQL (psql)** — so you always know where to run them.
+
+---
+
+## TimescaleDB Platform Initialization
+
+AGRIFLOW-AI begins bootstrap with a **standard PostgreSQL schema** — relational domain tables created through Alembic migrations `8f3a1c2d9e04` through `a1b2c3d4e5f6`. The platform **progressively transforms** into a complete TimescaleDB analytical stack through five additional Phase 12 migrations (`f1e2d3c4b5a6` → `f6a7b8c9d0e1`). No manual DDL is required beyond `alembic upgrade head`; every TimescaleDB capability is version-controlled and reproducible.
+
+### Why TimescaleDB Is Required
+
+AGRIFLOW-AI ingests high-frequency, unbounded time-series data — IoT sensor telemetry, weather observations, satellite imagery, irrigation events, yield records, and disease observations. Phases 13–16 (Feature Store, Prediction Engine, Farm Copilot, Digital Twin) depend on:
+
+- **Chunk exclusion** — time-window queries skip irrelevant partitions
+- **Columnar compression** — 10–30× storage reduction on cold chunks
+- **Continuous Aggregates** — pre-computed `time_bucket()` rollups for AI feature extraction
+- **Retention policies** — governed lifecycle for raw and derived data
+
+These capabilities are TimescaleDB-specific. Standard PostgreSQL cannot provide them natively.
+
+### Why PostgreSQL Alone Is Insufficient
+
+Plain PostgreSQL stores time-series rows in monolithic heap tables. As historical data grows:
+
+| Limitation | Impact |
+|---|---|
+| No time-based partitioning | Full-table scans on `WHERE recorded_at BETWEEN …` |
+| No columnar compression | Storage cost grows linearly with sensor volume |
+| No incremental rollups | Repeated aggregation scans raw hypertables on every Feature Store run |
+| No chunk-level retention | Manual partition management or ad-hoc `DELETE` scripts |
+
+ADR-002 documents the architectural evidence: six domain tables exhibit time-ordered growth patterns that require hypertable conversion. Relational reference tables (`farms`, `fields`, `crops`, `soil_profiles`) remain standard PostgreSQL permanently.
+
+### Why the Extension Must Exist Before Hypertable Conversion
+
+TimescaleDB functions (`create_hypertable`, `add_compression_policy`, `create_materialized_view … WITH (timescaledb.continuous)`, `add_retention_policy`) are registered by the `timescaledb` extension. Migration `c9d8e7f6a5b4` calls `create_hypertable()` — if the extension is not active, Alembic fails immediately.
+
+The approved sequence (ADR-001 → ADR-002) is non-negotiable:
+
+1. **Extension enablement** (`f1e2d3c4b5a6`) — `CREATE EXTENSION timescaledb`
+2. **Hypertable conversion** (`c9d8e7f6a5b4`) — partition six tables by time column
+3. **Compression** (`d4f5e6a7b8c9`) — columnar encoding on closed chunks
+4. **Continuous Aggregates** (`e5f6a7b8c9d0`) — derived analytical layer
+5. **Retention** (`f6a7b8c9d0e1`) — governed data lifecycle
+
+Each layer depends on the previous one. Compression requires hypertables. Continuous aggregates require hypertables. Retention policies target hypertables and CA materialisations.
+
+### Complete Initialization Workflow
+
+```mermaid
+flowchart TD
+    START["Clean PostgreSQL<br/>timescale/timescaledb image"]
+    DOMAIN["Domain schema<br/>migrations 8f3a1c2d9e04–a1b2c3d4e5f6"]
+    VERIFY["Pre-migration verification<br/>Docker · connection · extension available"]
+    EXT["Migration f1e2d3c4b5a6<br/>CREATE EXTENSION timescaledb<br/>ADR-001"]
+    HYP["Migration c9d8e7f6a5b4<br/>6 hypertables · composite PKs<br/>ADR-002"]
+    COMP["Migration d4f5e6a7b8c9<br/>6 compression policies<br/>ADR-003"]
+    CA["Migration e5f6a7b8c9d0<br/>8 continuous aggregates<br/>ADR-004"]
+    RET["Migration f6a7b8c9d0e1<br/>11 retention policies<br/>ADR-005"]
+    READY["TimescaleDB analytical platform<br/>ready for CDD"]
+
+    START --> DOMAIN --> VERIFY --> EXT --> HYP --> COMP --> CA --> RET --> READY
+
+    style EXT fill:#e3f2fd
+    style HYP fill:#e3f2fd
+    style COMP fill:#fff9c4
+    style CA fill:#fff3e0
+    style RET fill:#eceff1
+    style READY fill:#c8e6c9
+```
+
+For architectural rationale, see [ADR-001](adr/ADR-001-timescaledb-extension-enablement.md) through [ADR-005](adr/ADR-005-timescaledb-retention-policy-strategy.md) and the [Complete Architecture Handbook](12-phase12-complete-architecture-handbook.md).
+
+---
+
+## Platform Verification Gates
+
+Bootstrap is a **gated pipeline**. Each gate must pass before proceeding to the next stage. Do not skip gates — a passing `alembic upgrade head` does not guarantee hypertables, policies, or populated aggregates.
+
+```mermaid
+flowchart TD
+    G1["Gate 1<br/>Docker Running"]
+    G2["Gate 2<br/>TimescaleDB Extension Available"]
+    G3["Gate 3<br/>Alembic Head"]
+    G4["Gate 4<br/>Hypertables Verified"]
+    G5["Gate 5<br/>Compression Verified"]
+    G6["Gate 6<br/>Continuous Aggregates Verified"]
+    G7["Gate 7<br/>Retention Verified"]
+    G8["Gate 8<br/>CDD Generated"]
+    G9["Gate 9<br/>Platform Validation"]
+    DONE["Ready for Phase 13"]
+
+    G1 --> G2 --> G3 --> G4 --> G5 --> G6 --> G7 --> G8 --> G9 --> DONE
+
+    style G1 fill:#e3f2fd
+    style G3 fill:#e3f2fd
+    style G8 fill:#fff3e0
+    style DONE fill:#c8e6c9
+```
+
+| Gate | Validates | Section | Blocking if failed |
+|---|---|---|---|
+| **Gate 1** | `db` container healthy; TimescaleDB image running | [Section 3](#3-docker-environment) | Alembic, CDD, all SQL checks |
+| **Gate 2** | Extension binaries available; correct container connected | [Section 5](#verify-timescaledb-before-running-alembic) | `CREATE EXTENSION` fails |
+| **Gate 3** | Alembic at `f6a7b8c9d0e1` (head) | [Section 5](#5-schema-creation) | CDD persistence, policy objects missing |
+| **Gate 4** | 6 hypertables in `timescaledb_information.hypertables` | [Section 7](#7-platform-validation) | Chunk creation, compression, CAs |
+| **Gate 5** | 6 compression policies registered | [Section 7](#7-platform-validation) | Storage optimisation inactive |
+| **Gate 6** | 8 continuous aggregates + 8 refresh policies | [Section 7](#7-platform-validation) | Analytical rollups empty |
+| **Gate 7** | 11 retention policies registered | [Section 7](#7-platform-validation) | Lifecycle governance incomplete |
+| **Gate 8** | CDD v1.0.0 persisted (458,645 rows) | [Section 6](#6-canonical-development-dataset-cdd) | Validation corpus absent |
+| **Gate 9** | SQL checks + API health pass | [Section 7](#7-platform-validation) | Phase 13 blocked |
+
+**Rule:** Resolve the root cause at the failed gate, re-run verification from that gate forward, then continue.
+
+---
+
+## Phase 12 Platform Build Pipeline
+
+End-to-end build process from empty machine to Phase 13 readiness:
+
+```mermaid
+flowchart TD
+    DOCKER["Docker<br/>docker compose up -d --build"]
+    TSDB["TimescaleDB Container<br/>timescale/timescaledb:2.28.1-pg17"]
+    VERIFY["Verify Extension Available<br/>Gate 1 + Gate 2"]
+    ALE["Alembic Migrations<br/>alembic upgrade head"]
+    HYP["Hypertables<br/>6 tables · composite PKs"]
+    COMP["Compression<br/>6 policies"]
+    CA["Continuous Aggregates<br/>8 CAs · 8 refresh policies"]
+    RET["Retention<br/>11 policies"]
+    CDD["Canonical Development Dataset<br/>execute_cdd_workflow"]
+    PERSIST["Dataset Persistence<br/>458,645 rows · ~172 chunks"]
+    REFRESH["Aggregate Refresh<br/>manual × 8 CAs"]
+    VALID["Platform Validation<br/>SQL + API health"]
+    P13["Ready for Phase 13"]
+
+    DOCKER --> TSDB --> VERIFY --> ALE --> HYP --> COMP --> CA --> RET
+    RET --> CDD --> PERSIST --> REFRESH --> VALID --> P13
+
+    style VERIFY fill:#fff9c4
+    style CDD fill:#fff3e0
+    style VALID fill:#e3f2fd
+    style P13 fill:#c8e6c9
+```
+
+| Stage | Action | Outcome |
+|---|---|---|
+| **Docker** | Start `db` + `backend` services | PostgreSQL 17.10 reachable on port `25432` |
+| **TimescaleDB Container** | `timescale/timescaledb:2.28.1-pg17` image | Extension binaries present in image |
+| **Verify Extension** | Pre-migration checks (Gates 1–2) | Confirms correct database target |
+| **Alembic Migrations** | `alembic upgrade head` | Full schema + TimescaleDB stack at head |
+| **Hypertables** | Migration `c9d8e7f6a5b4` | Time-partitioned storage for 6 tables |
+| **Compression** | Migration `d4f5e6a7b8c9` | Columnar encoding policies on all hypertables |
+| **Continuous Aggregates** | Migration `e5f6a7b8c9d0` | 8 pre-computed rollups `WITH NO DATA` |
+| **Retention** | Migration `f6a7b8c9d0e1` | 11 lifecycle policies on raw + CA objects |
+| **Canonical Development Dataset** | `execute_cdd_workflow` | Deterministic validation corpus |
+| **Dataset Persistence** | Bulk insert into hypertables | ~172 chunks created; FK integrity verified |
+| **Aggregate Refresh** | Manual `refresh_continuous_aggregate` × 8 | Historical CDD buckets materialised |
+| **Platform Validation** | SQL cheat sheet + `/health/*` | All gates pass; Phase 13 unblocked |
+
+---
+
+## Database Evolution Through Alembic
+
+Alembic applies migrations in strict linear order. The platform evolves through distinct layers — each layer unlocks the next.
+
+```mermaid
+flowchart TD
+    BASE["Base Schema<br/>farms · fields · crops · soil_profiles"]
+    BIZ["Business Tables<br/>weather · sensors · irrigation · yield · disease · satellite"]
+    EXT["TimescaleDB Extension<br/>f1e2d3c4b5a6"]
+    HYP["Hypertable Conversion<br/>c9d8e7f6a5b4"]
+    COMP["Compression<br/>d4f5e6a7b8c9"]
+    CA["Continuous Aggregates<br/>e5f6a7b8c9d0"]
+    RET["Retention Policies<br/>f6a7b8c9d0e1"]
+    READY["Platform Ready"]
+
+    BASE --> BIZ --> EXT --> HYP --> COMP --> CA --> RET --> READY
+
+    style EXT fill:#e3f2fd
+    style HYP fill:#e3f2fd
+    style COMP fill:#fff9c4
+    style CA fill:#fff3e0
+    style RET fill:#eceff1
+    style READY fill:#c8e6c9
+```
+
+### Complete Migration Sequence
+
+Actual Alembic history (oldest → newest):
+
+| Revision | Description | Layer |
+|---|---|---|
+| `8f3a1c2d9e04` | Create `farms` table | Base schema |
+| `3b7e9f1a2c85` | Create `fields` table | Base schema |
+| `5c2d8e3f7a19` | Create `crops` table | Base schema |
+| `13aabbe35d51` | Add `soil_profiles` table | Base schema |
+| `7d4f2a9b1e63` | Create `weather_records` table | Business tables |
+| `f3a8c1d9e047` | Add P1 AI readiness columns | Business tables |
+| `a8f3d1b6e924` | Create `sensor_readings` table | Business tables |
+| `235a51cdf901` | Create `irrigation_events` table | Business tables |
+| `b7e2a9f4c8d3` | Create `yield_records` table | Business tables |
+| `d3e7b2a9f1c4` | Create `disease_observations` table | Business tables |
+| `a1b2c3d4e5f6` | Create `satellite_observations` table | Business tables |
+| `f1e2d3c4b5a6` | Enable TimescaleDB extension | TimescaleDB extension — [ADR-001](adr/ADR-001-timescaledb-extension-enablement.md) |
+| `c9d8e7f6a5b4` | Convert 6 tables to hypertables | Hypertable conversion — [ADR-002](adr/ADR-002-hypertable-primary-key-conversion-strategy.md) |
+| `d4f5e6a7b8c9` | Enable compression policies | Compression — [ADR-003](adr/ADR-003-timescaledb-compression-policy-strategy.md) |
+| `e5f6a7b8c9d0` | Create continuous aggregates | Continuous aggregates — [ADR-004](adr/ADR-004-timescaledb-continuous-aggregate-strategy.md) |
+| `f6a7b8c9d0e1` | Enable retention policies | Retention — [ADR-005](adr/ADR-005-timescaledb-retention-policy-strategy.md) |
+
+Domain migrations establish the relational foundation. Phase 12 migrations (`f1e2d3c4b5a6` onward) transform time-series tables into an analytical platform. CDD generation and runtime validation occur **after** all migrations complete.
+
+---
+
+## TimescaleDB Conversion Matrix
+
+Six time-series domain tables are converted to hypertables by migration `c9d8e7f6a5b4` (ADR-002). Four reference tables remain standard PostgreSQL relations permanently.
+
+| Table | Converted | Time Column | Chunk Interval | Purpose | TimescaleDB Benefit |
+|---|---|---|---|---|---|
+| `sensor_readings` | ✅ Hypertable | `recorded_at` | 7 days | IoT telemetry (438K CDD rows) | Chunk exclusion on sub-hourly scans; compression on cold telemetry |
+| `weather_records` | ✅ Hypertable | `recorded_at` | 7 days | Meteorological observations | Efficient field-scoped weather window queries |
+| `satellite_observations` | ✅ Hypertable | `observed_at` | 7 days | Multi-spectral imagery events | Partition pruning on revisit-cycle data |
+| `irrigation_events` | ✅ Hypertable | `started_at` | 1 month | Water management events | Monthly chunking for sparse event data |
+| `disease_observations` | ✅ Hypertable | `observed_at` | 1 month | Crop disease pressure events | Time-bucketed disease trend analysis |
+| `yield_records` | ✅ Hypertable | `recorded_at` | 3 months | Harvest measurements | Season-aligned storage; exempt from retention drop |
+| `farms` | ❌ Relational | — | — | Farm aggregate root | Low row count; UUID identity preserved |
+| `fields` | ❌ Relational | — | — | Field aggregate | Reference FK anchor for all time-series |
+| `crops` | ❌ Relational | — | — | Crop planting records | Season metadata; not time-partitioned |
+| `soil_profiles` | ❌ Relational | — | — | Soil composition | Static reference data |
+
+Each hypertable receives a composite primary key `(id, <time_column>)` per ADR-002. Application-layer UUID identity is unchanged — repositories continue `WHERE id = :id` predicate queries.
+
+Detail: [ADR-002 §Approved Decisions](adr/ADR-002-hypertable-primary-key-conversion-strategy.md).
+
+---
+
+## Phase 12 Timeline Mapping
+
+Direct mapping between Phase 12 implementation steps, Alembic migrations, and operational outcomes:
+
+| Phase 12 Step | Alembic Migration | Revision | Outcome |
+|---|---|---|---|
+| Step 1C — Infrastructure execution | *(Docker image only)* | — | `timescale/timescaledb:2.28.1-pg17` running |
+| Step 1D — Extension enablement | Enable TimescaleDB | `f1e2d3c4b5a6` | `timescaledb` extension active |
+| Step 1E-B — Hypertable conversion | Convert time-series tables | `c9d8e7f6a5b4` | 6 hypertables; composite PKs |
+| Step 2B — Compression implementation | Enable compression policies | `d4f5e6a7b8c9` | 6 compression jobs |
+| Step 3B — Continuous aggregate DDL | Create continuous aggregates | `e5f6a7b8c9d0` | 8 CAs + 8 refresh policies |
+| Step 4B — Retention implementation | Enable retention policies | `f6a7b8c9d0e1` | 11 retention jobs |
+| Step 2C — CDD persistence | *(application workflow)* | — | 458,645 rows; chunk creation |
+| Step 3C — CA validation | *(manual refresh)* | — | 8 CAs populated with buckets |
+
+Domain table migrations (`8f3a1c2d9e04`–`a1b2c3d4e5f6`) precede all Phase 12 TimescaleDB steps and are applied automatically during `alembic upgrade head`.
+
+Cross-reference: [Foundation Handbook](10-phase12-step1-foundation-handbook.md) · [Complete Architecture Handbook §Phase Map](12-phase12-complete-architecture-handbook.md).
 
 ---
 
@@ -286,6 +539,12 @@ curl -s http://localhost:8000/api/v1/health/ready
 ## Table of Contents
 
 - [Platform Bootstrap Philosophy](#platform-bootstrap-philosophy)
+- [TimescaleDB Platform Initialization](#timescaledb-platform-initialization)
+- [Platform Verification Gates](#platform-verification-gates)
+- [Phase 12 Platform Build Pipeline](#phase-12-platform-build-pipeline)
+- [Database Evolution Through Alembic](#database-evolution-through-alembic)
+- [TimescaleDB Conversion Matrix](#timescaledb-conversion-matrix)
+- [Phase 12 Timeline Mapping](#phase-12-timeline-mapping)
 - [Expected Platform State After Successful Bootstrap](#expected-platform-state-after-successful-bootstrap)
 - [Estimated Execution Timeline](#estimated-execution-timeline)
 - [Daily Developer Commands](#daily-developer-commands)
@@ -638,6 +897,8 @@ docker compose down -v
 
 ## 4. Database Initialization
 
+> **Context:** This section covers PostgreSQL startup (Gate 1). TimescaleDB extension installation occurs during Alembic migration `f1e2d3c4b5a6` — pre-migration availability checks are in [Section 5](#verify-timescaledb-before-running-alembic) (Gate 2). For the complete evolution path, see [TimescaleDB Platform Initialization](#timescaledb-platform-initialization).
+
 ### Database Initialization Flow
 
 ```mermaid
@@ -662,6 +923,8 @@ PostgreSQL starts automatically with `docker compose up -d`. The `db` service us
 - **Healthcheck:** `pg_isready` every 10 seconds
 
 Wait for healthy status before running migrations:
+
+> **Gate 1:** `db` must report `healthy` before any Alembic or CDD command. See [Platform Verification Gates](#platform-verification-gates).
 
 > **📍 Repository Root**
 
@@ -712,6 +975,102 @@ docker compose exec -T db psql -U agriflow -d agriflow -c "\dt"
 
 ## 5. Schema Creation
 
+### Verify TimescaleDB Before Running Alembic
+
+> **Gates 1–2 must pass before proceeding.** Do not run `alembic upgrade head` until every check below succeeds.
+
+Alembic migration `f1e2d3c4b5a6` executes `CREATE EXTENSION timescaledb`. This requires a TimescaleDB-capable PostgreSQL instance — not a local PostgreSQL installation, not a plain `postgres` Docker image, and not a misconfigured connection string pointing at the wrong host or port.
+
+#### Gate 1 — Verify Docker Container
+
+> **📍 Repository Root**
+
+```bash
+docker compose ps db
+docker compose config | grep -i timescale
+```
+
+**Expected:**
+
+- `db` service status: `Up (healthy)`
+- Image: `timescale/timescaledb:2.28.1-pg17`
+
+If the container is not healthy, wait or inspect logs (`docker compose logs db --tail 50`) before continuing. See [Section 3](#3-docker-environment).
+
+#### Gate 2 — Verify PostgreSQL Connection
+
+> **📍 Repository Root** → **📍 PostgreSQL (psql)**
+
+```bash
+docker compose exec -T db psql -U agriflow -d agriflow -c "SELECT version();"
+```
+
+**Expected output** (abbreviated):
+
+```text
+PostgreSQL 17.10 on x86_64-pc-linux-musl, compiled by gcc ...
+```
+
+The version string must report **PostgreSQL 17.10** from the TimescaleDB image. If connection fails, verify `POSTGRES_PORT=25432` in `backend/.env` and that Docker is running.
+
+#### Gate 2 — Verify TimescaleDB Extension Availability
+
+On a **fresh database** (before migration `f1e2d3c4b5a6`), the extension is not yet *installed* but must be *available* in the image:
+
+> **📍 Repository Root** → **📍 PostgreSQL (psql)**
+
+```bash
+docker compose exec -T db psql -U agriflow -d agriflow -c \
+  "SELECT name, default_version, installed_version
+   FROM pg_available_extensions
+   WHERE name = 'timescaledb';"
+```
+
+**Expected output:**
+
+```text
+    name     | default_version | installed_version
+-------------+-----------------+-------------------
+ timescaledb | 2.28.1          |
+```
+
+`default_version = 2.28.1` confirms the TimescaleDB binaries are present. `installed_version` is empty **before** Alembic runs — this is normal.
+
+After migrations complete, confirm installation:
+
+```sql
+SELECT extname, extversion
+FROM pg_extension
+WHERE extname = 'timescaledb';
+```
+
+**Expected output (post-migration):**
+
+```text
+   extname   | extversion
+-------------+------------
+ timescaledb | 2.28.1
+```
+
+#### Pre-Migration Warning
+
+> **⚠️ STOP if TimescaleDB is not available**
+>
+> If `pg_available_extensions` returns **no row** for `timescaledb`, or if migration fails with:
+>
+> ```text
+> extension "timescaledb" is not available
+> ```
+>
+> **Do not continue.** This error means Alembic is connected to a PostgreSQL instance that does not include TimescaleDB binaries. Common root causes:
+>
+> - Wrong Docker image (plain `postgres` instead of `timescale/timescaledb`)
+> - `DATABASE_URL` pointing at a local PostgreSQL installation on port `5432`
+> - Wrong host port in `backend/.env` (must be `25432` from the host)
+> - Stale container from a previous non-TimescaleDB setup
+>
+> Verify the container image, connection string, and port before re-running migrations. See [TimescaleDB Extension Missing](#timescaledb-extension-missing) in [Section 11](#11-troubleshooting).
+
 ### Run All Migrations
 
 From the `backend` directory with venv active:
@@ -752,6 +1111,8 @@ docker compose exec -T db psql -U agriflow -d agriflow -c \
 ```
 
 Both should show `f6a7b8c9d0e1`.
+
+> **Gate 3 passed.** Proceed to Gates 4–7 via [Section 7](#7-platform-validation) before generating CDD (Gate 8).
 
 #### Troubleshooting
 
@@ -839,6 +1200,63 @@ Prior migrations (`001` through `a1b2c3d4e5f6`) create the standard PostgreSQL d
 
 ## 6. Canonical Development Dataset (CDD)
 
+### CDD Generation Timing
+
+> **Gate 8 — CDD must be generated only after Gates 1–7 pass.**
+
+CDD persistence (`execute_cdd_workflow`) creates ~172 hypertable chunks, triggers compression eligibility, and requires continuous aggregate and retention policy objects to exist. Generating data **before** platform initialization completes produces an incorrect validation state.
+
+**Generate CDD only after all of the following are confirmed:**
+
+| Prerequisite | Gate | Verification |
+|---|---|---|
+| Docker healthy | Gate 1 | `docker compose ps` — `db` healthy |
+| TimescaleDB extension installed | Gate 2–3 | `pg_extension` shows `timescaledb 2.28.1` |
+| Alembic at head | Gate 3 | `alembic current` → `f6a7b8c9d0e1` |
+| 6 hypertables exist | Gate 4 | `timescaledb_information.hypertables` count = 6 |
+| 6 compression policies | Gate 5 | Compression jobs registered |
+| 8 continuous aggregates | Gate 6 | `timescaledb_information.continuous_aggregates` count = 8 |
+| 11 retention policies | Gate 7 | Retention jobs registered |
+
+**Why early CDD generation is incorrect:**
+
+- **Before hypertables:** Inserts go to plain PostgreSQL heap tables; chunk exclusion and TimescaleDB APIs are inactive.
+- **Before compression policies:** CDD cannot validate columnar compression behaviour.
+- **Before continuous aggregates:** No CA objects exist to refresh; analytical validation is blocked.
+- **Before retention policies:** Platform lifecycle governance is incomplete.
+
+In-memory generation (`generate_cdd()`) may be run earlier to validate determinism — but **database persistence must wait** until the TimescaleDB stack is fully initialised.
+
+```mermaid
+flowchart TD
+    subgraph infra ["Infrastructure Creation"]
+        DOCKER["Docker healthy"]
+        EXT["TimescaleDB extension"]
+        ALE["Alembic head"]
+        HYP["Hypertables"]
+        COMP["Compression policies"]
+        CA["Continuous aggregates"]
+        RET["Retention policies"]
+    end
+
+    subgraph data ["Data Generation — AFTER infrastructure"]
+        GEN["generate_cdd()<br/>optional · in-memory only"]
+        PERSIST["execute_cdd_workflow<br/>mandatory · database writes"]
+        REFRESH["Manual CA refresh × 8"]
+    end
+
+    DOCKER --> EXT --> ALE --> HYP --> COMP --> CA --> RET
+    RET --> GEN
+    RET --> PERSIST
+    PERSIST --> REFRESH
+
+    style RET fill:#fff9c4
+    style PERSIST fill:#fff3e0
+    style REFRESH fill:#e3f2fd
+```
+
+See [Platform Verification Gates](#platform-verification-gates) and [Phase 12 Platform Build Pipeline](#phase-12-platform-build-pipeline).
+
 ### CDD Overview
 
 | Attribute | Value |
@@ -886,6 +1304,8 @@ flowchart TD
 ```
 
 ### Generate and Persist CDD
+
+> **Gate 8:** Run only after Gates 1–7 pass. See [CDD Generation Timing](#cdd-generation-timing).
 
 There is no `make cdd-regenerate` target yet. Run the workflow from Python:
 
@@ -1044,6 +1464,8 @@ Full domain counts: Section 8.
 ---
 
 ## 7. Platform Validation
+
+> **Gates 4–9:** This section validates hypertables (Gate 4), compression (Gate 5), continuous aggregates (Gate 6), retention (Gate 7), CDD row counts (Gate 8), and API health (Gate 9). Complete all checks before declaring Phase 13 readiness. See [Platform Verification Gates](#platform-verification-gates).
 
 ### Validation Flow
 
@@ -1656,11 +2078,62 @@ flowchart TD
 
 This section summarises common Phase 12 issues. Full debugging narratives are in dedicated documents — not duplicated here.
 
+### TimescaleDB Extension Missing
+
+#### Symptoms
+
+- `alembic upgrade head` fails at migration `f1e2d3c4b5a6`
+- Hypertable migration fails with extension-related errors
+- `pg_available_extensions` returns no row for `timescaledb`
+- Post-migration check: `pg_extension` query returns zero rows
+
+#### Root Cause
+
+Alembic is connected to a PostgreSQL instance that does not include TimescaleDB extension binaries, or the connection targets the wrong database host.
+
+#### Typical Error Messages
+
+```text
+extension "timescaledb" is not available
+```
+
+```text
+extension "timescaledb" does not exist
+```
+
+The first message indicates the **server lacks TimescaleDB binaries** (wrong image or local PostgreSQL). The second typically appears when code references TimescaleDB functions before `CREATE EXTENSION` has run.
+
+#### Resolution
+
+1. **Verify Docker image** — `docker compose config` must show `timescale/timescaledb:2.28.1-pg17`. If using plain `postgres`, update `docker-compose.yml` and recreate the volume.
+2. **Verify connection target** — `backend/.env` must use `POSTGRES_PORT=25432` from the host (not `5432` unless running inside the Docker network).
+3. **Eliminate local PostgreSQL conflicts** — if a local PostgreSQL service listens on port `5432`, ensure `DATABASE_URL` does not accidentally connect to it instead of the Docker-mapped port.
+4. **Recreate on persistent wrong state** — if a volume was initialised with a non-TimescaleDB image: `docker compose down -v` then `docker compose up -d --build`.
+5. **Re-run pre-migration checks** — [Verify TimescaleDB Before Running Alembic](#verify-timescaledb-before-running-alembic).
+
+#### Verification
+
+After resolution, confirm before re-running Alembic:
+
+> **📍 Repository Root** → **📍 PostgreSQL (psql)**
+
+```bash
+docker compose exec -T db psql -U agriflow -d agriflow -c \
+  "SELECT name, default_version FROM pg_available_extensions WHERE name = 'timescaledb';"
+```
+
+Expected: one row with `default_version = 2.28.1`.
+
+Cross-reference: [ADR-001](adr/ADR-001-timescaledb-extension-enablement.md) · [Step 3B Implementation Lessons Learned](report/PHASE12_STEP3B_IMPLEMENTATION_LESSONS_LEARNED.md) (extension and CA debugging patterns) · [Foundation Handbook §Known Issues](10-phase12-step1-foundation-handbook.md).
+
+---
+
 | Symptom | Likely Cause | Resolution | Detail In |
 |---|---|---|---|
 | `POSTGRES_PASSWORD must be set` on `docker compose up` | Missing root `.env` | Create `.env` at repo root with `POSTGRES_PASSWORD` | Section 2 |
 | Alembic connection refused | Wrong port in `backend/.env` | Use `POSTGRES_PORT=25432` from host | Section 2 |
-| `extension "timescaledb" does not exist` | Wrong Docker image | Verify `timescale/timescaledb:2.28.1-pg17` in `docker-compose.yml` | [ADR-001](adr/ADR-001-timescaledb-extension-enablement.md) |
+| `extension "timescaledb" is not available` | Wrong Docker image or connection | Verify TimescaleDB container and port; see [TimescaleDB Extension Missing](#timescaledb-extension-missing) | [ADR-001](adr/ADR-001-timescaledb-extension-enablement.md) |
+| `extension "timescaledb" does not exist` | Extension not yet installed | Run `alembic upgrade head` through `f1e2d3c4b5a6`; verify pre-migration checks | [Verify TimescaleDB Before Running Alembic](#verify-timescaledb-before-running-alembic) |
 | Migration fails on hypertable PK | Pre-Phase-12 schema state | Ensure all domain migrations applied before `c9d8e7f6a5b4` | [ADR-002](adr/ADR-002-hypertable-primary-key-conversion-strategy.md) |
 | CDD persistence `RETURNING` error | Composite PK + `add_all()` | Use `execute_cdd_workflow` (uses `bulk_insert_mappings`) | [Step 2C-C](report/PHASE12_STEP2CC_CDD_GENERATION_AND_PERSISTENCE_REPORT.md) |
 | CAs empty after migration | `WITH NO DATA` + historical CDD | Run manual `refresh_continuous_aggregate(NULL, NULL)` | [Step 3C](report/PHASE12_STEP3C_CONTINUOUS_AGGREGATE_VALIDATION_REPORT.md) |
@@ -1940,4 +2413,4 @@ Begin Phase 13 by reading the Complete Architecture Handbook [§12 AI Readiness]
 
 ---
 
-*13-phase12-platform-bootstrap-guide.md v1.2 — 2026-06-30*
+*13-phase12-platform-bootstrap-guide.md v1.3 — 2026-07-01*
