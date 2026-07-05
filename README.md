@@ -53,33 +53,29 @@ docs/01-vision.md
 
 ✅ Phase 11 – Satellite Observation Domain
 
+✅ Phase 12 – TimescaleDB Time-Series Foundation
+
 ### Current Phase
 
-🔜 Phase 12 – TimescaleDB Time-Series Foundation (Planned)
-
-### Phase 11 Implementation Status
-
-| Status | Detail |
-|---|---|
-| Implementation | ✅ Domain implemented (Model, Schema, Repository, Service, Router) |
-| Validation | ⏳ Deferred — comprehensive API validation planned for Phase 16 |
-| Testing | ⏳ Deferred — automated test suite planned for Phase 16 |
+🔜 Phase 13 – AI Feature Store & Recommendation Services
 
 ---
 
 ### Current Domain Hierarchy
 
 ```text
-Farm
- └── Field
-      ├── Crop
-      │    ├── YieldRecord           (Phase 9 — mutable, grandchild domain)
-      │    └── DiseaseObservation    (Phase 10 — mutable, grandchild domain)
-      ├── SoilProfile
-      ├── WeatherRecord
-      ├── SensorReading       (Phase 7 — append-only telemetry)
-      ├── IrrigationEvent     (Phase 8 — mutable operational events)
-      └── SatelliteObservation (Phase 11 — mutable Earth observation)
+Farm                                         (PostgreSQL — relational)
+ └── Field                                   (PostgreSQL — relational)
+      ├── Crop                               (PostgreSQL — relational)
+      │    ├── YieldRecord                   (Phase 9 — TimescaleDB hypertable)
+      │    └── DiseaseObservation            (Phase 10 — TimescaleDB hypertable)
+      ├── SoilProfile                        (PostgreSQL — relational)
+      ├── WeatherRecord                      (Phase 5 — TimescaleDB hypertable)
+      ├── SensorReading                      (Phase 7 — TimescaleDB hypertable)
+      ├── IrrigationEvent                    (Phase 8 — TimescaleDB hypertable)
+      └── SatelliteObservation               (Phase 11 — TimescaleDB hypertable)
+
+Phase 12: TimescaleDB 2.28.1 · 6 hypertables · compression · continuous aggregates · retention
 ```
 
 ---
@@ -87,11 +83,14 @@ Farm
 ### Current Database Tables
 
 ```text
+PostgreSQL (relational)
 alembic_version
 farms
 fields
 crops
 soil_profiles
+
+TimescaleDB hypertables (Phase 12)
 weather_records
 sensor_readings
 irrigation_events
@@ -100,20 +99,20 @@ disease_observations
 satellite_observations
 ```
 
-Current migration head: `a1b2c3d4e5f6_create_satellite_observations_table`
+Current migration head: `f6a7b8c9d0e1_enable_retention_policies`
 
 #### Phase 12 Hypertable Candidates
 
-The following tables were intentionally designed using time-oriented schemas, `TIMESTAMPTZ` primary time keys, and compound `(parent_id, time_key)` indexes to support future TimescaleDB hypertable conversion in Phase 12:
+Six time-series tables were converted to TimescaleDB hypertables in Phase 12 (ADR-002). Each uses a composite primary key `(id, time_column)`; reference tables remain standard PostgreSQL relations:
 
-* `weather_records`
-* `sensor_readings`
-* `irrigation_events`
-* `yield_records`
-* `disease_observations`
-* `satellite_observations`
+* `weather_records` — hypertable, partition key `recorded_at`
+* `sensor_readings` — hypertable, partition key `recorded_at`
+* `irrigation_events` — hypertable, partition key `started_at`
+* `yield_records` — hypertable, partition key `recorded_at`
+* `disease_observations` — hypertable, partition key `observed_at`
+* `satellite_observations` — hypertable, partition key `observed_at`
 
-No schema redesign is required — Phase 12 activates TimescaleDB as a PostgreSQL extension and promotes these tables to hypertables for enterprise-scale time-series analytics.
+Phase 12 also enabled compression policies, eight continuous aggregates, and eleven retention policies on the analytical platform. No application-layer API or repository interface changes were required.
 
 ---
 
@@ -133,7 +132,7 @@ SQLAlchemy ORM
 PostgreSQL 17
 ```
 
-**Persistence evolution (Phase 12 — planned):** Phase 12 introduces **TimescaleDB as a PostgreSQL extension**. PostgreSQL 17 remains the primary relational database for all domain entities, migrations, and transactional workloads. TimescaleDB enhances time-series capabilities — hypertables, compression, continuous aggregates, retention policies, and `time_bucket()` analytics — rather than replacing PostgreSQL. TimescaleDB is **not yet implemented**; the current stack uses standard PostgreSQL 17 for all persistence.
+**Persistence (Phase 12 — complete):** Phase 12 activated **TimescaleDB 2.28.1 as a PostgreSQL extension** on PostgreSQL 17.10. PostgreSQL 17 remains the primary relational database for all domain entities, migrations, and transactional workloads. TimescaleDB enhances time-series capabilities — hypertables, compression, continuous aggregates, retention policies, and `time_bucket()` analytics — rather than replacing PostgreSQL. Six time-series tables are operational hypertables; reference tables remain standard PostgreSQL relations.
 
 ```text
 API Layer
@@ -144,9 +143,9 @@ Repository Layer
     ↓
 SQLAlchemy ORM
     ↓
-PostgreSQL 17  ←  primary relational database (current)
+PostgreSQL 17  ←  primary relational database
     +
-TimescaleDB extension  ←  time-series analytics layer (Phase 12 — planned)
+TimescaleDB 2.28.1 extension  ←  time-series analytics layer (Phase 12 — complete)
 ```
 
 ### Architectural Principles
@@ -168,7 +167,7 @@ TimescaleDB extension  ←  time-series analytics layer (Phase 12 — planned)
 | Backend API         | FastAPI                             |
 | Language            | Python 3.12                         |
 | Database            | PostgreSQL 17                       |
-| Time-Series Engine  | TimescaleDB (Planned — Phase 12)    |
+| Time-Series Engine  | TimescaleDB 2.28.1 (Phase 12 — complete) |
 | ORM                 | SQLAlchemy 2.x                      |
 | Migration Framework | Alembic                             |
 | Validation          | Pydantic                            |
@@ -423,7 +422,7 @@ Verify these patterns are present in `.gitignore` before committing any new file
 * Wind speed tracking
 * WeatherRecord CRUD APIs
 * Time-series weather data foundation
-* Designed for TimescaleDB hypertable conversion in Phase 12 to support scalable time-series analytics, compression, continuous aggregates, retention policies, and AI feature engineering
+* TimescaleDB hypertable (Phase 12) — chunk-partitioned storage with compression, continuous aggregates, retention policies, and AI-ready time-series analytics
 
 ### Sensor Telemetry (Phase 7)
 
@@ -431,7 +430,7 @@ Verify these patterns are present in `.gitignore` before committing any new file
 * 11 sensor types: SOIL_MOISTURE, SOIL_TEMPERATURE, AIR_TEMPERATURE, AIR_HUMIDITY, LIGHT_INTENSITY, LEAF_WETNESS, ELECTRICAL_CONDUCTIVITY, SOIL_SALINITY, WATER_LEVEL, BATTERY_STATUS, DEVICE_HEALTH
 * Append-only — immutable telemetry record
 * Timezone-aware timestamp validation
-* Designed for TimescaleDB hypertable conversion in Phase 12 to support scalable time-series analytics, compression, continuous aggregates, retention policies, and AI feature engineering
+* TimescaleDB hypertable (Phase 12) — chunk-partitioned storage with compression, continuous aggregates, retention policies, and AI-ready time-series analytics
 
 ### Irrigation Management (Phase 8)
 
@@ -441,7 +440,7 @@ Verify these patterns are present in `.gitignore` before committing any new file
 * Duration and water volume tracking
 * Timezone-aware timestamp validation with cross-field ordering guard
 * Mutable — operators can correct records after logging
-* Designed for TimescaleDB hypertable conversion in Phase 12 to support scalable time-series analytics, compression, continuous aggregates, retention policies, and AI feature engineering
+* TimescaleDB hypertable (Phase 12) — chunk-partitioned storage with compression, continuous aggregates, retention policies, and AI-ready time-series analytics
 
 ### Yield Intelligence (Phase 9)
 
@@ -452,7 +451,7 @@ Verify these patterns are present in `.gitignore` before committing any new file
 * Server-side `field_id` resolution from crop record
 * Mutable — operators can correct measurements after logging
 * Primary training label source for Phase 13 Yield Prediction Engine
-* Designed for TimescaleDB hypertable conversion in Phase 12 to support scalable time-series analytics, compression, continuous aggregates, retention policies, and AI feature engineering
+* TimescaleDB hypertable (Phase 12) — chunk-partitioned storage with compression, continuous aggregates, retention policies, and AI-ready time-series analytics
 
 ### Disease Observation (Phase 10)
 
@@ -466,7 +465,7 @@ Verify these patterns are present in `.gitignore` before committing any new file
 * Crop-scoped and field-scoped list endpoints with pagination
 * Primary training label source for Phase 13 Disease Risk Scoring Engine
 * DiseaseObservation CRUD APIs
-* Designed for TimescaleDB hypertable conversion in Phase 12 to support scalable time-series analytics, compression, continuous aggregates, retention policies, and AI feature engineering
+* TimescaleDB hypertable (Phase 12) — chunk-partitioned storage with compression, continuous aggregates, retention policies, and AI-ready time-series analytics
 
 ### Satellite Observation (Phase 11)
 
@@ -477,7 +476,7 @@ Verify these patterns are present in `.gitignore` before committing any new file
 * AI-oriented query endpoints: date range, latest by spectral index, filter by provider/processing level
 * Mutable — operators and data engineers can correct records after reprocessing
 * Primary feature source for Phase 13 Yield Prediction and Disease Risk engines
-* Designed for TimescaleDB hypertable conversion in Phase 12 to support scalable time-series analytics, compression, continuous aggregates, retention policies, and AI feature engineering
+* TimescaleDB hypertable (Phase 12) — chunk-partitioned storage with compression, continuous aggregates, retention policies, and AI-ready time-series analytics
 
 ---
 
@@ -671,10 +670,11 @@ backend/
 ✅ Phase 9 – Yield Domain  
 ✅ Phase 10 – Disease Observation Domain  
 ✅ Phase 11 – Satellite Observation Domain  
+✅ Phase 12 – TimescaleDB Time-Series Foundation  
 
 ### Current Phase
 
-🔜 Phase 12 – TimescaleDB Time-Series Foundation (Planned)
+🔜 Phase 13 – AI Feature Store & Recommendation Services
 
 ### Planned Phases
 
@@ -706,58 +706,55 @@ backend/
 
 For the detailed roadmap see `docs/06-roadmap.md`
 
-### Phase 12 – TimescaleDB Time-Series Foundation (Planned)
+### Phase 12 – TimescaleDB Time-Series Foundation (Complete)
 
-Phase 12 is an **infrastructure and data-platform phase** — not a business domain phase. It upgrades the existing PostgreSQL time-series tables to TimescaleDB hypertables before AI services begin. There are **no business domain changes** and **no API breaking changes**.
+Phase 12 is an **infrastructure and data-platform phase** — not a business domain phase. It upgraded six existing PostgreSQL time-series tables to TimescaleDB hypertables before AI services begin. There were **no business domain changes** and **no API breaking changes**.
 
-**Objectives:**
+**Delivered:**
 
-* Install TimescaleDB
-* Enable TimescaleDB extension
-* Convert eligible PostgreSQL tables into hypertables
-* Configure automatic chunking
-* Configure compression policies
-* Configure retention policies
-* Implement continuous aggregates
-* Introduce `time_bucket()` based analytics
-* Build repository support for optimized time-series queries
-* Prepare the platform for AI feature engineering
+* TimescaleDB 2.28.1 extension enabled via Alembic (`f1e2d3c4b5a6`)
+* Six tables converted to hypertables with composite primary keys (`c9d8e7f6a5b4`)
+* Six compression policies registered (`d4f5e6a7b8c9`)
+* Eight continuous aggregates with refresh policies (`e5f6a7b8c9d0`)
+* Eleven retention policies registered (`f6a7b8c9d0e1`)
+* Canonical Development Dataset (CDD v1.0.0) for deterministic platform validation
+* `time_bucket()` analytics foundation for AI feature engineering
 
-**Tables prepared for hypertable conversion:**
+**Hypertables implemented:**
 
-These tables were designed with time-based primary query patterns and are now being upgraded for high-performance analytics:
+* `weather_records` — partition key `recorded_at`
+* `sensor_readings` — partition key `recorded_at`
+* `irrigation_events` — partition key `started_at`
+* `yield_records` — partition key `recorded_at`
+* `disease_observations` — partition key `observed_at`
+* `satellite_observations` — partition key `observed_at`
 
-* `weather_records`
-* `sensor_readings`
-* `irrigation_events`
-* `yield_records`
-* `disease_observations`
-* `satellite_observations`
-
-**Business value:**
+**Business value delivered:**
 
 * Enterprise-scale time-series storage
 * High-performance historical analytics
-* Efficient telemetry storage
+* Efficient telemetry storage with columnar compression
 * AI-ready feature engineering foundation
-* Long-term scalability
+* Long-term scalability with governed data lifecycle
 * Foundation for predictive agriculture (Phase 14+)
 
 ---
 
-## Current Agricultural Intelligence Platform (Post Phase 11)
+## Current Agricultural Intelligence Platform (Post Phase 12)
 
 ```text
 Farm
  └── Field
       ├── Crop                ✅ Phase 3
-      │    ├── YieldRecord           ✅ Phase 9 (Harvest Intelligence — mutable, grandchild)
-      │    └── DiseaseObservation    ✅ Phase 10 (Plant Health — mutable, grandchild)
+      │    ├── YieldRecord           ✅ Phase 9 (Harvest Intelligence — TimescaleDB hypertable)
+      │    └── DiseaseObservation    ✅ Phase 10 (Plant Health — TimescaleDB hypertable)
       ├── SoilProfile         ✅ Phase 4
-      ├── WeatherRecord       ✅ Phase 5
-      ├── SensorReading       ✅ Phase 7 (IoT Telemetry — append-only)
-      ├── IrrigationEvent     ✅ Phase 8 (Operational Management Events — mutable)
-      └── SatelliteObservation ✅ Phase 11 (Earth Observation — mutable, field-anchored)
+      ├── WeatherRecord       ✅ Phase 5 (TimescaleDB hypertable)
+      ├── SensorReading       ✅ Phase 7 (IoT Telemetry — TimescaleDB hypertable)
+      ├── IrrigationEvent     ✅ Phase 8 (Operational Events — TimescaleDB hypertable)
+      └── SatelliteObservation ✅ Phase 11 (Earth Observation — TimescaleDB hypertable)
+
+TimescaleDB analytical platform  ✅ Phase 12 (compression · continuous aggregates · retention)
 ```
 
 ### Implemented Domains
@@ -768,13 +765,14 @@ Farm
 | Field | 2 | Field | Farm ↔ Field hierarchy |
 | Crop | 3 | Crop | Lifecycle management |
 | Soil Intelligence | 4 | SoilProfile | 1:1 per Field |
-| Weather Intelligence | 5 | WeatherRecord | Time-series observations |
+| Weather Intelligence | 5 | WeatherRecord | TimescaleDB hypertable |
 | AI Readiness | 6 | (attributes) | Cross-domain AI features |
-| Sensor Telemetry | 7 | SensorReading | Append-only IoT data |
-| Irrigation Management | 8 | IrrigationEvent | Mutable operational events |
-| Yield | 9 | YieldRecord | Mutable, grandchild (Crop-anchored) |
-| Disease Observation | 10 | DiseaseObservation | Mutable, grandchild (Crop-anchored) |
-| Satellite Observation | 11 | SatelliteObservation | Mutable, field-anchored |
+| Sensor Telemetry | 7 | SensorReading | TimescaleDB hypertable |
+| Irrigation Management | 8 | IrrigationEvent | TimescaleDB hypertable |
+| Yield | 9 | YieldRecord | TimescaleDB hypertable |
+| Disease Observation | 10 | DiseaseObservation | TimescaleDB hypertable |
+| Satellite Observation | 11 | SatelliteObservation | TimescaleDB hypertable |
+| TimescaleDB Platform | 12 | (6 hypertables) | Compression, CAs, retention — no API changes |
 
 ## Target Agricultural Intelligence Platform
 
@@ -810,7 +808,7 @@ Telemetry & Observation Platform
 (Phase 7–11)
       ↓
 Time-Series Data Platform
-(Phase 12 — TimescaleDB)
+(Phase 12 — TimescaleDB ✅ Complete)
       ↓
 AI Intelligence Platform
 (Phase 13–15)
@@ -822,14 +820,14 @@ Platform Stabilization & Production Readiness
 (Phase 16)
 ```
 
-Phase 12 exists because the observational domain model (Phases 7–11) generates high-volume time-series data that standard PostgreSQL indexing cannot scale indefinitely. TimescaleDB activation converts six pre-designed tables into hypertables, enabling compression, continuous aggregates, and `time_bucket()` analytics — the data platform required before AI Feature Store and Recommendation Services begin in Phase 13.
+Phase 12 delivered the observational data platform required before AI Feature Store and Recommendation Services begin in Phase 13. TimescaleDB 2.28.1 converted six pre-designed tables into hypertables with compression, eight continuous aggregates, eleven retention policies, and `time_bucket()` analytics — validated via CDD v1.0.0 and the Phase 12 Platform Bootstrap Guide.
 
 ### AI Layer Goals (Phase 13+)
 
-Phase 13 is the first AI implementation phase. AI capabilities depend on the TimescaleDB foundation delivered in Phase 12:
+Phase 13 is the first AI implementation phase. AI capabilities build on the TimescaleDB foundation delivered in Phase 12:
 
 ```text
-TimescaleDB (Phase 12)
+TimescaleDB (Phase 12 ✅)
       ↓
 Continuous Aggregates
       ↓
@@ -850,7 +848,7 @@ Farm Copilot / GaaS (Phase 15)
 * **Irrigation Recommendation Engine** — FAO-56 water balance optimization using IrrigationEvent history and soil moisture telemetry
 * **Disease Recommendation Engine** — risk scoring using DiseaseObservation labels (Phase 10 foundation), sensor telemetry, weather patterns, and satellite NDVI trends
 * **Fertilizer Recommendation Engine** — nutrient management recommendations from soil profiles and crop growth stage
-* **AI Feature Store** — pre-computed feature vectors from TimescaleDB continuous aggregates (Phase 12 foundation)
+* **AI Feature Store** — pre-computed feature vectors from TimescaleDB continuous aggregates (Phase 12 complete)
 * **Recommendation Services** — unified API layer exposing AI inference endpoints to the platform and GaaS
 
 Phase 14 extends recommendation engines into full **Predictive Agriculture** (yield prediction, disease risk prediction, irrigation optimization, fertilizer recommendation). Phase 15 delivers the **Digital Twin**, **Farm Copilot**, and **Generative AI as a Service (GaaS)**.
@@ -859,8 +857,8 @@ Phase 14 extends recommendation engines into full **Predictive Agriculture** (yi
 
 Infrastructure components are ordered by planned implementation sequence:
 
-1. **PostgreSQL 17** — primary relational database for all domain entities, transactional workloads, Alembic migrations, and referential integrity (current — Phases 1–11)
-2. **TimescaleDB (Phase 12)** — PostgreSQL extension for hypertable conversion, compression, continuous aggregates, retention policies, and `time_bucket()` analytics across six time-series tables; establishes the enterprise time-series platform before AI services
+1. **PostgreSQL 17** — primary relational database for all domain entities, transactional workloads, Alembic migrations, and referential integrity (Phases 1–12)
+2. **TimescaleDB 2.28.1 (Phase 12 ✅)** — PostgreSQL extension operational with six hypertables, six compression policies, eight continuous aggregates, eleven retention policies, and `time_bucket()` analytics; enterprise time-series platform validated and ready for AI services
 3. **PostGIS (Phase 14–15)** — field boundary polygon support for precision agriculture, satellite imagery spatial overlay, and variable-rate prescription zones
 4. **Redpanda (Phase 13–14)** — event streaming for real-time Digital Twin state updates, AI pipeline triggers, and decoupled downstream consumers (`SensorReadingCreated`, `DiseaseObservationCreated`, etc.)
 5. **Temporal (Phase 14–15)** — stateful agricultural workflow orchestration (soil moisture alerts, irrigation scheduling, harvest planning, alert escalation)
