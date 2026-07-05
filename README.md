@@ -590,6 +590,17 @@ This staged approach reduces rework while the domain model, TimescaleDB layer, a
 * `field_id` immutable after creation — excluded from update schema
 * SatelliteObservation is mutable — operators can correct records after reprocessing
 
+### Phase 12 – Time-Series Data Platform Rules
+
+* Time-series data is stored in TimescaleDB hypertables; master and reference data remains in standard PostgreSQL tables
+* Only approved time-series domains are hypertables: `sensor_readings`, `weather_records`, `satellite_observations`, `irrigation_events`, `disease_observations`, `yield_records`
+* Historical telemetry automatically transitions through: ingestion → chunking → compression → continuous aggregates → retention
+* Continuous aggregates are the preferred source for analytical dashboards and AI feature generation — not repeated scans of raw telemetry
+* Raw telemetry retention follows approved domain-specific policies
+* `yield_records` are retained permanently — ground-truth agricultural outcomes required for historical analytics and AI model training
+* Reference and master data (`farms`, `fields`, `crops`, `soil_profiles`, etc.) is not governed by TimescaleDB retention policies
+* All Phase 12 persistence behaviour is governed by ADR-001 through ADR-005 — see `docs/adr/` for implementation detail
+
 ---
 
 ## Project Structure
