@@ -1,13 +1,23 @@
 # Database Design
 
-**Last Updated:** Phase 11 — Satellite Observation Domain Complete
-**Migration Head:** `a1b2c3d4e5f6_create_satellite_observations_table`
+**Last Updated:** Phase 12 — TimescaleDB Time-Series Foundation Complete  
+**Migration Head:** `f6a7b8c9d0e1_enable_retention_policies`  
+**Database:** PostgreSQL 17.10 + TimescaleDB 2.28.1 (`timescale/timescaledb:2.28.1-pg17`)
 
 ---
 
 ## Current Schema Overview
 
-AGRIFLOW-AI operates ten PostgreSQL domain tables after Phase 11 completion. All tables inherit the `AuditableModel` mixin (UUID PK, `created_at TIMESTAMPTZ`, `updated_at TIMESTAMPTZ`). All foreign keys to `fields.id` and `crops.id` use `ON DELETE CASCADE` where applicable.
+AGRIFLOW-AI operates ten domain tables plus `alembic_version` after Phase 12 completion. All domain tables inherit the `AuditableModel` mixin (UUID PK, `created_at TIMESTAMPTZ`, `updated_at TIMESTAMPTZ`). All foreign keys to `fields.id` and `crops.id` use `ON DELETE CASCADE` where applicable.
+
+**Storage model (Phase 12):**
+
+| Category | Tables | Engine |
+|---|---|---|
+| **Reference / master data** | `farms`, `fields`, `crops`, `soil_profiles` | Standard PostgreSQL |
+| **Time-series hypertables** | `weather_records`, `sensor_readings`, `irrigation_events`, `yield_records`, `disease_observations`, `satellite_observations` | TimescaleDB hypertables |
+
+Only these six time-series tables are TimescaleDB hypertables. All reference tables remain standard PostgreSQL relations permanently (ADR-002).
 
 ```mermaid
 erDiagram
@@ -29,23 +39,23 @@ erDiagram
 ## Current Domain Hierarchy
 
 ```text
-Farm
-└── Field
-     ├── Crop
-     │    ├── YieldRecord
-     │    └── DiseaseObservation
-     ├── SoilProfile         (1:1)
-     ├── WeatherRecord
-     ├── SensorReading       (append-only)
-     ├── IrrigationEvent     (mutable operational events)
-     └── SatelliteObservation (mutable Earth observation)
+Farm                                         (PostgreSQL — relational)
+└── Field                                    (PostgreSQL — relational)
+     ├── Crop                                (PostgreSQL — relational)
+     │    ├── YieldRecord                   (Hypertable — Phase 12)
+     │    └── DiseaseObservation            (Hypertable — Phase 12)
+     ├── SoilProfile         (1:1)          (PostgreSQL — relational)
+     ├── WeatherRecord                      (Hypertable — Phase 12)
+     ├── SensorReading       (append-only)  (Hypertable — Phase 12)
+     ├── IrrigationEvent     (mutable)      (Hypertable — Phase 12)
+     └── SatelliteObservation (mutable)      (Hypertable — Phase 12)
 ```
 
 ---
 
 ## Current Schema
 
-The production database after Phase 11 comprises **ten domain tables** plus `alembic_version`. All domain entities map to the hierarchy below.
+The production database after Phase 12 comprises **four reference tables**, **six TimescaleDB hypertables**, and `alembic_version`. Reference and master data (`farms`, `fields`, `crops`, `soil_profiles`) remain standard PostgreSQL tables. Operational time-series data for weather, telemetry, irrigation, yield, disease, and satellite domains is stored in TimescaleDB hypertables with composite primary keys `(id, time_column)` — implemented in Phase 12 (ADR-002). Application APIs and repository interfaces are unchanged.
 
 ```text
 Farm
@@ -60,7 +70,9 @@ Farm
      └── SatelliteObservation (mutable Earth observation)
 ```
 
-**Tables:** `farms`, `fields`, `crops`, `soil_profiles`, `weather_records`, `sensor_readings`, `irrigation_events`, `yield_records`, `disease_observations`, `satellite_observations`
+**Reference tables (PostgreSQL):** `farms`, `fields`, `crops`, `soil_profiles`
+
+**Time-series hypertables (TimescaleDB):** `weather_records`, `sensor_readings`, `irrigation_events`, `yield_records`, `disease_observations`, `satellite_observations`
 
 **Relationship summary:**
 
@@ -248,7 +260,7 @@ Represents human-logged irrigation management events for a field. **Mutable — 
 |---|---|---|---|
 | `id` | `UUID` | No | Primary key |
 | `field_id` | `UUID` (FK → fields.id) | No | ON DELETE CASCADE |
-| `started_at` | `TIMESTAMPTZ` | No | Irrigation start; primary time key; TimescaleDB partition candidate |
+| `started_at` | `TIMESTAMPTZ` | No | Irrigation start; hypertable partition key (Phase 12) |
 | `ended_at` | `TIMESTAMPTZ` | Yes | Optional — may be omitted when only duration is known |
 | `duration_minutes` | `NUMERIC(8,2)` | Yes | Duration in minutes; independent of `ended_at` |
 | `water_volume_liters` | `NUMERIC(10,3)` | Yes | Water volume applied; nullable for non-metered systems |
@@ -298,8 +310,8 @@ CREATE TYPE water_source AS ENUM (
 **Mutable vs Immutable:**
 Unlike `SensorReading` (immutable telemetry), `IrrigationEvent` is mutable. Irrigation events are operator-logged actions that may need correction after the fact (e.g., wrong duration entered, method changed post-event).
 
-**`started_at` as TimescaleDB partition key:**
-`started_at TIMESTAMPTZ NOT NULL` satisfies the hypertable partition key requirement. Future activation requires no application code changes:
+**`started_at` as hypertable partition key (Phase 12):**
+`started_at TIMESTAMPTZ NOT NULL` is the approved partition column. Hypertable conversion and chunk interval (`1 month`) were applied in migration `c9d8e7f6a5b4` (ADR-002):
 ```sql
 SELECT create_hypertable('irrigation_events', 'started_at', chunk_time_interval => INTERVAL '1 month');
 ```
@@ -319,7 +331,7 @@ Represents discrete yield observations for a crop cycle. **Mutable — PATCH is 
 | `id` | `UUID` | No | Primary key |
 | `crop_id` | `UUID` (FK → crops.id) | No | ON DELETE CASCADE; primary domain anchor |
 | `field_id` | `UUID` (FK → fields.id) | No | ON DELETE CASCADE; denormalized from crop |
-| `recorded_at` | `TIMESTAMPTZ` | No | Primary time key; TimescaleDB partition candidate |
+| `recorded_at` | `TIMESTAMPTZ` | No | Primary time key; hypertable partition key (Phase 12) |
 | `yield_value_tons_ha` | `NUMERIC(10,4)` | No | Yield measurement |
 | `measurement_method` | `ENUM(yield_measurement_method)` | No | Measurement provenance |
 | `area_harvested_ha` | `NUMERIC(10,4)` | Yes | Harvested sub-field area |
@@ -341,7 +353,7 @@ Represents disease pressure observations for a crop cycle. **Mutable — PATCH i
 | `id` | `UUID` | No | Primary key |
 | `crop_id` | `UUID` (FK → crops.id) | No | ON DELETE CASCADE; primary domain anchor |
 | `field_id` | `UUID` (FK → fields.id) | No | ON DELETE CASCADE; denormalized from crop |
-| `observed_at` | `TIMESTAMPTZ` | No | Primary time key; TimescaleDB partition candidate |
+| `observed_at` | `TIMESTAMPTZ` | No | Primary time key; hypertable partition key (Phase 12) |
 | `disease_name` | `VARCHAR(255)` | No | Free-text disease identifier |
 | `severity` | `ENUM(disease_severity)` | No | LOW, MEDIUM, HIGH, CRITICAL |
 | `affected_area_percent` | `NUMERIC(5,2)` | Yes | Percentage of crop area affected [0, 100] |
@@ -394,6 +406,58 @@ Field (1) → (N) DiseaseObservations  (ON DELETE CASCADE, denormalized FK)
 | `235a51cdf901_create_irrigation_events_table` | irrigation_events table + `irrigation_method` + `water_source` enums + 3 indexes |
 | `b7e2a9f4c8d3_create_yield_records_table` | yield_records table + `yield_measurement_method` enum + 4 indexes |
 | `d3e7b2a9f1c4_create_disease_observations_table` | disease_observations table + `disease_severity` + `diagnosis_method` enums + 6 indexes |
+| `a1b2c3d4e5f6_create_satellite_observations_table` | satellite_observations table + `satellite_provider` + `spectral_index` + `processing_level` enums + 7 indexes |
+| `f1e2d3c4b5a6_enable_timescaledb_extension` | TimescaleDB 2.28.1 extension enabled (ADR-001) |
+| `c9d8e7f6a5b4_convert_time_series_tables_to_hypertables` | Six hypertables; composite PKs `(id, time_column)` (ADR-002) |
+| `d4f5e6a7b8c9_enable_hypertable_compression_policies` | Columnar compression on six hypertables; six compression policies (ADR-003) |
+| `e5f6a7b8c9d0_create_continuous_aggregates` | Eight continuous aggregates + refresh policies (ADR-004) |
+| `f6a7b8c9d0e1_enable_retention_policies` | Eleven retention policies on raw + CA objects (ADR-005) |
+
+## Phase 12 – TimescaleDB Time-Series Foundation
+
+Phase 12 activated TimescaleDB as a PostgreSQL extension and converted six approved time-series tables to hypertables. No business domain or API changes were required. Detail: [ADR-001](adr/ADR-001-timescaledb-extension-enablement.md) through [ADR-005](adr/ADR-005-timescaledb-retention-policy-strategy.md).
+
+| Capability | Status | ADR |
+|---|---|---|
+| TimescaleDB extension | Enabled (`timescaledb` 2.28.1) | ADR-001 |
+| Hypertable conversion | Six tables operational | ADR-002 |
+| Composite primary keys | `(id, time_column)` on all hypertables | ADR-002 |
+| Chunk strategy | Per-table intervals (7 days – 3 months) | ADR-002 |
+| Compression policies | Six policies on hypertables | ADR-003 |
+| Continuous aggregates | Eight CAs + eight refresh policies | ADR-004 |
+| Retention policies | Eleven policies; `yield_records` exempt | ADR-005 |
+
+The Phase 12 stack provides an **AI-ready analytical persistence layer** — raw hypertables remain authoritative; continuous aggregates supply pre-computed rollups for dashboards and the Phase 13 Feature Store.
+
+### Compression (Implemented)
+
+Six compression policies register columnar encoding on closed hypertable chunks (ADR-003). Recent ingested data remains **hot** (uncompressed, fast writes). Aging chunks transition to **warm** then **cold compressed** storage — columnar compression reduces bytes read and storage footprint without application changes. Mutable hypertables use age thresholds that exceed typical PATCH correction windows.
+
+### Continuous Aggregates (Implemented)
+
+Eight continuous aggregates provide incrementally refreshed `time_bucket()` rollups over raw hypertables (ADR-004):
+
+```text
+Raw hypertables (authoritative event store)
+        ↓
+Continuous aggregates (analytical rollups)
+        ↓
+Feature Store (Phase 13)
+        ↓
+Farm Copilot / Prediction Engine (Phases 14–15)
+```
+
+Continuous aggregates are the preferred read path for analytical dashboards and AI feature extraction — not repeated full scans of raw telemetry.
+
+### Retention (Implemented)
+
+Eleven retention policies govern domain-specific lifecycles on five raw hypertables and six continuous aggregate objects (ADR-005):
+
+* Raw telemetry retention follows **approved domain-specific** `drop_after` ages per table
+* **`yield_records` are retained permanently** — irreplaceable ground-truth harvest labels for historical analytics and AI model training
+* **Reference and master data** (`farms`, `fields`, `crops`, `soil_profiles`) is excluded — not governed by TimescaleDB retention policies
+
+Production activation requires archive-before-delete per ADR-005 governance.
 
 ## Crop Status Lifecycle
 
@@ -404,7 +468,10 @@ Field (1) → (N) DiseaseObservations  (ON DELETE CASCADE, denormalized FK)
 
 ## Future Database Evolution
 
-| `a1b2c3d4e5f6_create_satellite_observations_table` | `satellite_observations` table + `satellite_provider` + `spectral_index` + `processing_level` enums + 7 indexes |
+Planned database capabilities beyond Phase 12:
+
+* GIS / PostGIS Support (field boundary polygons)
+* AI Recommendation Engine (inference output tables)
 
 ---
 
@@ -443,7 +510,7 @@ Created via `postgresql.ENUM` with `create_type=False` (ADR-008-01 pattern). Own
 |---|---|---|
 | `id` | `UUID` | Primary key |
 | `field_id` | `UUID` (FK) | References `fields.id` ON DELETE CASCADE — primary domain anchor |
-| `observed_at` | `TIMESTAMPTZ NOT NULL` | Primary time key; TimescaleDB partition key candidate |
+| `observed_at` | `TIMESTAMPTZ NOT NULL` | Primary time key; hypertable partition key (Phase 12) |
 | `satellite_provider` | `satellite_provider` ENUM | Imagery source platform |
 | `processing_level` | `processing_level` ENUM | L1C, L2A, ARD, DERIVED |
 | `spectral_index` | `spectral_index` ENUM | NDVI, EVI, NDWI, SAVI, NDRE, LAI, MSAVI, GNDVI |
@@ -467,70 +534,41 @@ Created via `postgresql.ENUM` with `create_type=False` (ADR-008-01 pattern). Own
 | `ix_satellite_observations_field_id_observed_at` | `(field_id, observed_at)` | Primary field history path |
 | `ix_satellite_observations_spectral_index_observed_at` | `(spectral_index, observed_at)` | Primary AI feature pipeline path |
 
-**TimescaleDB readiness:** `create_hypertable('satellite_observations', 'observed_at')` requires no application code changes.
+**Hypertable (Phase 12):** Converted in migration `c9d8e7f6a5b4` — partition key `observed_at`, chunk interval `7 days` (ADR-002).
 
 ---
-- GIS / PostGIS Support (field boundary polygons)
-- AI Recommendation Engine (inference output tables)
 
-### TimescaleDB Hypertable Promotion
+### TimescaleDB Hypertable Architecture
 
-Both `sensor_readings`, `irrigation_events`, `yield_records`, and `disease_observations` are designed for zero-friction TimescaleDB conversion.
+Six time-series tables were converted to hypertables in Phase 12 (migration `c9d8e7f6a5b4`, ADR-002). Each hypertable uses composite primary key `(id, time_column)`. Reference tables (`farms`, `fields`, `crops`, `soil_profiles`) remain standard PostgreSQL relations.
 
-**sensor_readings:** Partition key `recorded_at TIMESTAMPTZ NOT NULL` (Phase 7)
+| Hypertable | Partition column | Chunk interval | Mutability |
+|---|---|---|---|
+| `sensor_readings` | `recorded_at` | 7 days | Append-only (Phase 7) |
+| `weather_records` | `recorded_at` | 7 days | Mutable |
+| `satellite_observations` | `observed_at` | 7 days | Mutable (Phase 11) |
+| `irrigation_events` | `started_at` | 1 month | Mutable (Phase 8) |
+| `disease_observations` | `observed_at` | 1 month | Mutable (Phase 10) |
+| `yield_records` | `recorded_at` | 3 months | Mutable (Phase 9) |
+
+**Append-only vs mutable:** `sensor_readings` is append-only at the API layer. All other hypertables support PATCH for operator corrections. Compression age thresholds on mutable tables exceed typical correction windows (ADR-003).
+
+**Example — sensor_readings hypertable (implemented):**
 
 ```sql
 SELECT create_hypertable(
     'sensor_readings',
     'recorded_at',
-    chunk_time_interval => INTERVAL '1 week',
+    chunk_time_interval => INTERVAL '7 days',
     migrate_data => TRUE
 );
 ```
 
-**irrigation_events:** Partition key `started_at TIMESTAMPTZ NOT NULL` (Phase 8)
-
-```sql
-SELECT create_hypertable(
-    'irrigation_events',
-    'started_at',
-    chunk_time_interval => INTERVAL '1 month',
-    migrate_data => TRUE
-);
-```
-
-**yield_records:** Partition key `recorded_at TIMESTAMPTZ NOT NULL` (Phase 9)
-
-```sql
-SELECT create_hypertable(
-    'yield_records',
-    'recorded_at',
-    chunk_time_interval => INTERVAL '1 season',
-    migrate_data => TRUE
-);
-```
-
-**disease_observations:** Partition key `observed_at TIMESTAMPTZ NOT NULL` (Phase 10)
-
-```sql
-SELECT create_hypertable(
-    'disease_observations',
-    'observed_at',
-    chunk_time_interval => INTERVAL '1 season',
-    migrate_data => TRUE
-);
-```
-
-Capabilities gained:
-* Automatic time-based chunk partitioning
-* Chunk exclusion for time-range queries
-* Continuous aggregates (hourly/daily rollups per field per sensor type)
-* Columnar compression for cold chunks (20–100× storage reduction)
-* Automatic data retention policies (TTL-based chunk expiry)
+Operational capabilities: chunk exclusion, columnar compression (ADR-003), continuous aggregates (ADR-004), retention policies (ADR-005). See [Phase 12 – TimescaleDB Time-Series Foundation](#phase-12--timescaledb-time-series-foundation) above.
 
 ### Cassandra Migration Path
 
-For deployments exceeding PostgreSQL vertical scaling limits, `sensor_readings` can be migrated to Cassandra using the CQRS pattern:
+For deployments exceeding PostgreSQL/TimescaleDB vertical scaling limits, `sensor_readings` remains a **future scalability option** via Cassandra using the CQRS pattern:
 
 Primary table partition: `field_id` (partition key) + `recorded_at DESC` (clustering key) — matching the existing compound index `ix_sensor_readings_field_id_recorded_at`.
 
@@ -586,7 +624,7 @@ CREATE TABLE yield_records (
 |---|---|---|
 | `crop_id` | UUID FK | Primary domain anchor — yield is per crop cycle (ADR-009-01) |
 | `field_id` | UUID FK | Denormalized from crop for direct field queries (ADR-009-02) |
-| `recorded_at` | TIMESTAMPTZ | TimescaleDB partition key candidate (ADR-009-03) |
+| `recorded_at` | TIMESTAMPTZ | Hypertable partition key (Phase 12; ADR-009-03) |
 | `yield_value_tons_ha` | NUMERIC(10,4) | Non-negative; service validates > 0 context |
 | `measurement_method` | ENUM | Provenance for AI data quality weighting |
 | `area_harvested_ha` | NUMERIC(10,4) | Nullable; service enforces > 0 when supplied (ADR-009-06) |
@@ -621,15 +659,15 @@ Field   (1) → (N) YieldRecords  (ON DELETE CASCADE, denormalized FK)
 **Mutable domain:**
 Unlike `SensorReading`, `YieldRecord` is mutable. Operators may correct measurement values after logging.
 
-### TimescaleDB Readiness
+### TimescaleDB Hypertable (Phase 12)
 
-**yield_records:** Partition key `recorded_at TIMESTAMPTZ NOT NULL` (Phase 9)
+**yield_records:** Partition key `recorded_at`; chunk interval `3 months` (ADR-002). Composite PK `(id, recorded_at)` applied in migration `c9d8e7f6a5b4`.
 
 ```sql
 SELECT create_hypertable(
     'yield_records',
     'recorded_at',
-    chunk_time_interval => INTERVAL '1 season',
+    chunk_time_interval => INTERVAL '3 months',
     migrate_data => TRUE
 );
 ```
@@ -693,7 +731,7 @@ CREATE TABLE disease_observations (
 |---|---|---|
 | `crop_id` | UUID FK | Primary domain anchor — disease pressure is per crop cycle (ADR-010-01) |
 | `field_id` | UUID FK | Denormalized from crop for direct field queries (ADR-010-02) |
-| `observed_at` | TIMESTAMPTZ | TimescaleDB partition key candidate (ADR-010-03) |
+| `observed_at` | TIMESTAMPTZ | Hypertable partition key (Phase 12; ADR-010-03) |
 | `disease_name` | VARCHAR(255) | Free-text disease identifier |
 | `severity` | ENUM | LOW, MEDIUM, HIGH, CRITICAL |
 | `affected_area_percent` | NUMERIC(5,2) | Nullable; Pydantic enforces [0, 100] |
@@ -733,15 +771,15 @@ Field   (1) → (N) DiseaseObservations  (ON DELETE CASCADE, denormalized FK)
 **Shared enum strategy:**
 `DiseaseSeverity` and `DiagnosisMethod` are placed in `app/core/enums.py` for reuse by the Disease Risk Scoring Engine and GaaS PlantHealthAdvisor (ADR-010-06).
 
-### TimescaleDB Readiness
+### TimescaleDB Hypertable (Phase 12)
 
-**disease_observations:** Partition key `observed_at TIMESTAMPTZ NOT NULL` (Phase 10)
+**disease_observations:** Partition key `observed_at`; chunk interval `1 month` (ADR-002). Composite PK `(id, observed_at)` applied in migration `c9d8e7f6a5b4`.
 
 ```sql
 SELECT create_hypertable(
     'disease_observations',
     'observed_at',
-    chunk_time_interval => INTERVAL '1 season',
+    chunk_time_interval => INTERVAL '1 month',
     migrate_data => TRUE
 );
 ```
