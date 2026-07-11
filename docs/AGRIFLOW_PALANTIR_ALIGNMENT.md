@@ -1,9 +1,10 @@
 # AGRIFLOW-AI vs Palantir Foundry Alignment
 
 **Document Type:** Architecture Assessment  
-**Version:** 1.2  
+**Version:** 1.3  
 **Date:** June 2026  
-**Scope:** AGRIFLOW-AI Phase 1–11 vs Palantir Foundry Architecture Principles  
+**Scope:** AGRIFLOW-AI Phase 1–12 vs Palantir Foundry Architecture Principles  
+**Current Phase:** Phase 13 — AI Recommendation Foundation (planned)  
 **Status:** Living Document — Updated at Each Phase Completion  
 **Authors:** Architecture Team
 
@@ -12,14 +13,14 @@
 ## Table of Contents
 
 1. [Executive Summary](#1-executive-summary)
-2. [AGRIFLOW-AI Current Architecture](#2-agriflow-ai-current-architecture-post-phase-11)
+2. [AGRIFLOW-AI Current Architecture](#2-agriflow-ai-current-architecture-post-phase-12)
 3. [Foundry Concepts Mapping](#3-foundry-concepts-mapping)
 4. [Phase-by-Phase Architectural Evolution](#4-phase-by-phase-architectural-evolution)
 5. [System Architecture Diagram](#5-system-architecture-diagram)
 6. [Foundry Ontology Comparison](#6-foundry-ontology-comparison)
 7. [What We Have Already Achieved](#7-what-we-have-already-achieved)
 8. [Gaps vs Foundry](#8-gaps-vs-foundry)
-9. [Future Alignment Roadmap](#9-future-alignment-roadmap-phase-12)
+9. [Future Alignment Roadmap](#9-future-alignment-roadmap-phase-13)
 10. [Alignment Scorecard](#10-alignment-scorecard)
 11. [Conclusion](#11-conclusion)
 
@@ -27,9 +28,9 @@
 
 ## 1. Executive Summary
 
-### Foundry Alignment Score: **48%**
+### Foundry Alignment Score: **52%**
 
-> AGRIFLOW-AI has completed 11 development phases and established a production-grade precision agriculture data platform with a governed ontology, typed domain models, structured API surface, AI-readiness attributes, IoT telemetry, operational event management, yield intelligence, plant health observation, and Earth observation domains. Phase 10 delivered `DiseaseObservation` — structured disease severity labels, diagnosis method provenance, and crop-cycle observation workflows that supply primary training labels for the Phase 13 Disease Recommendation Engine. Phase 11 delivered `SatelliteObservation` — a field-anchored remote sensing object type with multi-provider satellite abstraction, spectral index storage (NDVI/EVI/NDWI and six additional indices), and Earth observation foundation for geospatial analytics. The platform now captures data across physical farm structure, soil intelligence, weather intelligence, IoT telemetry, operational management, yield observations, disease observations, and satellite observations — completing the observational layer required before enterprise AI implementation. The platform is architecturally designed for Foundry-style evolution but has not yet implemented the capabilities that define Foundry's differentiated value: TimescaleDB activation, event streaming, workflow orchestration, digital twin state management, and AI decision intelligence layers.
+> AGRIFLOW-AI has completed 12 development phases and established a production-grade precision agriculture data platform with a governed ontology, typed domain models, structured API surface, AI-readiness attributes, IoT telemetry, operational event management, yield intelligence, plant health observation, Earth observation domains, and an operational enterprise time-series platform. Phase 12 delivered TimescaleDB 2.28.1 as a PostgreSQL extension — six hypertables with composite primary keys, six compression policies, eight continuous aggregates, eleven retention policies, and governed chunk lifecycle management — with zero API breaking changes. The platform now captures data across physical farm structure, soil intelligence, weather intelligence, IoT telemetry, operational management, yield observations, disease observations, and satellite observations, with enterprise-scale analytical storage operational beneath the repository layer. The platform is architecturally designed for Foundry-style evolution; remaining gaps are event streaming, workflow orchestration, digital twin state management, AI Feature Store, and AI decision intelligence layers (Phases 13–15).
 
 ### Assessment Basis
 
@@ -41,62 +42,65 @@ Palantir Foundry's architecture is evaluated across 10 core capability dimension
 | Object Types & Relationships | 12% | 92% | 11.04% |
 | API-First Architecture | 10% | 93% | 9.30% |
 | Actions / Write Operations | 10% | 82% | 8.20% |
-| Time Series & Telemetry | 10% | 55% | 5.50% |
+| Time Series & Telemetry | 10% | 72% | 7.20% |
 | Data Lineage & Provenance | 8% | 34% | 2.72% |
 | Operational Workflows | 10% | 10% | 1.00% |
 | Event Streams | 8% | 10% | 0.80% |
-| Digital Twin Readiness | 10% | 22% | 2.20% |
-| AI Readiness / Decision Intelligence | 7% | 18% | 1.26% |
-| **Total** | **100%** | | **≈ 56% raw / 48% adjusted** |
+| Digital Twin Readiness | 10% | 24% | 2.40% |
+| AI Readiness / Decision Intelligence | 7% | 22% | 1.54% |
+| **Total** | **100%** | | **≈ 58% raw / 52% adjusted** |
 
-> **Scoring adjustment:** Raw capability scores are adjusted downward to reflect that Foundry's primary value proposition is in the AI Agent, Decision Intelligence, and Ontology Management layers — dimensions where AGRIFLOW-AI is architecturally prepared but not yet delivering. A platform aligned with Foundry in its data model but without its intelligence layer is at best 45–50% aligned with Foundry's actual value delivery.
+> **Scoring adjustment:** Raw capability scores are adjusted downward to reflect that Foundry's primary value proposition is in the AI Agent, Decision Intelligence, and Ontology Management layers — dimensions where AGRIFLOW-AI is architecturally prepared but not yet delivering. A platform aligned with Foundry in its data model and analytical storage but without its intelligence layer is at best 50–55% aligned with Foundry's actual value delivery.
 >
-> **Phase 10–11 score movement:** Ontology/Domain Model (+4% — observational layer complete), Object Types (+7% — DiseaseObservation + SatelliteObservation; remote sensing Object Type now implemented), Actions/Write Operations (+4%), Time Series & Telemetry (+7% — six TimescaleDB-ready hypertable candidates), Digital Twin Readiness (+7% — full field state inputs available), AI Readiness (+10% — disease labels + remote sensing features; no inference services yet).
+> **Phase 12 score movement:** Time Series & Telemetry (+17% — TimescaleDB extension, six hypertables, compression, continuous aggregates, retention operational), AI Readiness (+4% — analytical persistence foundation for Feature Store), Digital Twin Readiness (+2% — scalable time-series history for field state reconstruction). Ontology, API, and Actions unchanged.
 
 ### Strategic Assessment
 
-AGRIFLOW-AI has completed its operational and observational domain model. The domain hierarchy, Clean Architecture, AI-readiness schema design, telemetry patterns, yield measurement records, plant health observations, and remote sensing objects established through Phases 1–11 closely mirror the data model philosophy Foundry demands. Phases 10–11 are particularly significant: `DiseaseObservation` and `SatelliteObservation` complete the observational intelligence layer — the structured event and Earth observation object types that enterprise precision agriculture platforms require before AI decision engines are deployed.
+AGRIFLOW-AI has completed its operational and observational domain model and its enterprise analytical storage platform. The domain hierarchy, Clean Architecture, AI-readiness schema design, telemetry patterns, yield measurement records, plant health observations, remote sensing objects, and TimescaleDB time-series foundation established through Phases 1–12 closely mirror the data model and analytical storage philosophy Foundry demands.
 
-The remaining gap is no longer ontology modelling. AGRIFLOW-AI now models nearly every agricultural object type expected within an enterprise precision agriculture platform: Field, Crop, Weather, Sensor, Disease, Satellite, Yield, and Operational Events (Irrigation). The principal remaining gaps are infrastructure and intelligence layers:
+The remaining gap is no longer ontology modelling or analytical persistence. AGRIFLOW-AI now models nearly every agricultural object type expected within an enterprise precision agriculture platform and stores time-series data in an operational TimescaleDB platform. The principal remaining gaps are intelligence and event-driven infrastructure layers:
 
-* TimescaleDB activation (Phase 12)
-* Event streaming (Redpanda)
-* Digital Twin state management
-* Temporal workflow orchestration
+* Event Streaming (Redpanda)
+* CQRS read/write separation
+* AI Feature Store (Phase 13)
 * AI Recommendation Layer (Phase 13)
 * Predictive Intelligence (Phase 14)
-* Farm Copilot (Phase 15)
+* Digital Twin state management (Phase 15)
+* Temporal workflow orchestration (Phase 14–15)
+* Farm Copilot / GaaS (Phase 15)
 
-This gap is neither structural nor accidental. It is the planned evolution captured in the AGRIFLOW-AI roadmap Phases 12–16. The architecture has been designed from Phase 1 to accommodate exactly these integrations.
+This gap is neither structural nor accidental. It is the planned evolution captured in the AGRIFLOW-AI roadmap Phases 13–16. The architecture has been designed from Phase 1 to accommodate exactly these integrations.
 
-**Projected alignment after Phase 12 (TimescaleDB):** ~58%  
-**Projected alignment after Phase 13 (AI Recommendation Foundation):** ~68%  
+**Current alignment (Phase 12 complete):** ~52%  
+**Projected alignment after Phase 13 (AI Recommendation Foundation):** ~62%  
 **Projected alignment after Phase 15 (Digital Twin + GaaS):** ~82%
 
 ---
 
-## 2. AGRIFLOW-AI Current Architecture (Post Phase 11)
+## 2. AGRIFLOW-AI Current Architecture (Post Phase 12)
 
 ### Platform Description
 
-AGRIFLOW-AI is an Agricultural Intelligence Platform implementing a five-layer Clean Architecture across ten distinct domain verticals. After Phase 11, the platform manages the complete agronomic data hierarchy from farm-level identity through crop-level yield and disease measurement records and field-level Earth observation records, providing a production-ready REST API backed by PostgreSQL with full schema migration history. Phases 10–11 completed the observational intelligence layer: `DiseaseObservation` (crop-anchored plant health events) and `SatelliteObservation` (field-anchored remote sensing) supply the structured labels and geospatial features required before AI recommendation engines are deployed in Phase 13.
+AGRIFLOW-AI is an Agricultural Intelligence Platform implementing a five-layer Clean Architecture across ten distinct domain verticals. After Phase 12, the platform manages the complete agronomic data hierarchy from farm-level identity through crop-level yield and disease measurement records and field-level Earth observation records, providing a production-ready REST API backed by PostgreSQL 17.10 + TimescaleDB 2.28.1 with full schema migration history. Phase 12 completed the enterprise analytical storage layer: six time-series tables are operational hypertables with compression, continuous aggregates, and retention policies — transparent to API consumers. Phases 10–11 completed the observational intelligence layer; Phase 13 will deliver AI recommendation services on this foundation.
 
-### Domain Hierarchy (Post Phase 11)
+### Domain Hierarchy (Post Phase 12)
 
 ```
-Farm
-└── Field
-     ├── Crop                  (1:N — lifecycle management, PLANNED→HARVESTED)
-     │    ├── YieldRecord      (1:N — harvest intelligence, mutable)  ← Phase 9
-     │    └── DiseaseObservation (1:N — plant health events, mutable)  ← Phase 10
-     ├── SoilProfile           (1:1 — soil intelligence, laboratory measurements)
-     ├── WeatherRecord         (1:N — climate time-series, field-level observations)
-     ├── SensorReading         (1:N — IoT telemetry, append-only, immutable)
-     ├── IrrigationEvent       (1:N — operational management actions, mutable)  ← Phase 8
-     └── SatelliteObservation  (1:N — Earth observation, mutable, field-anchored)  ← Phase 11
+Farm                                         (PostgreSQL — relational)
+└── Field                                    (PostgreSQL — relational)
+     ├── Crop                                (PostgreSQL — relational)
+     │    ├── YieldRecord                   (TimescaleDB hypertable)  ← Phase 9 / 12
+     │    └── DiseaseObservation            (TimescaleDB hypertable)  ← Phase 10 / 12
+     ├── SoilProfile           (1:1)        (PostgreSQL — relational)
+     ├── WeatherRecord                      (TimescaleDB hypertable)  ← Phase 5 / 12
+     ├── SensorReading         (append-only) (TimescaleDB hypertable)  ← Phase 7 / 12
+     ├── IrrigationEvent       (mutable)      (TimescaleDB hypertable)  ← Phase 8 / 12
+     └── SatelliteObservation  (mutable)      (TimescaleDB hypertable)  ← Phase 11 / 12
+
+TimescaleDB analytical platform  ✅ Phase 12 (compression · continuous aggregates · retention)
 ```
 
-`DiseaseObservation` and `SatelliteObservation` complete the observational layer required for AI. Together with yield records, sensor telemetry, weather intelligence, and operational events, the platform now captures the full precision agriculture data spectrum before TimescaleDB activation (Phase 12) and AI recommendation services (Phase 13).
+The observational and analytical persistence layers are complete. AI recommendation services (Phase 13) build on TimescaleDB continuous aggregates and governed time-series history without persistence-layer redesign.
 
 ### Architecture Layers
 
@@ -110,11 +114,12 @@ Farm
 ├─────────────────────────────────────────────────────────────┤
 │  Model Layer      ORM Models + AuditableModel mixin          │
 ├─────────────────────────────────────────────────────────────┤
-│  Database         PostgreSQL 17 + Alembic Migrations         │
+│  Database         PostgreSQL 17.10 + TimescaleDB 2.28.1       │
+│                   (4 reference tables + 6 hypertables)         │
 └─────────────────────────────────────────────────────────────┘
 ```
 
-### Domain Inventory (Post Phase 11)
+### Domain Inventory (Post Phase 12)
 
 #### Farm Domain
 - **Type:** Root Aggregate Object
@@ -154,7 +159,7 @@ Farm
 - **Key attributes:** `recorded_at` (TIMESTAMPTZ), `temperature_c`, `humidity_percent`, `rainfall_mm`, `wind_speed_kmh`, `data_source`, `solar_radiation_wm2` (P1 AI), `temperature_min_c` (P1 AI), `temperature_max_c` (P1 AI)
 - **Relationships:** `Field → WeatherRecord (1:N)`
 - **API coverage:** Full CRUD with pagination
-- **Status:** Complete
+- **Status:** Complete; implemented TimescaleDB hypertable (Phase 12)
 
 #### SensorReading Domain
 - **Type:** IoT Telemetry Object (Append-Only)
@@ -163,7 +168,7 @@ Farm
 - **Immutability contract:** No PATCH, no PUT; administrative DELETE only (ADR-007-32)
 - **Index strategy:** 5 indexes including 2 compound indexes on `(field_id, recorded_at)` and `(sensor_type, recorded_at)`
 - **API coverage:** POST, GET list, GET single, DELETE
-- **Status:** Complete; TimescaleDB Phase 12 hypertable candidate
+- **Status:** Complete; implemented TimescaleDB hypertable (Phase 12)
 
 #### IrrigationEvent Domain (Phase 8)
 - **Type:** Operational Management Event Object
@@ -171,7 +176,7 @@ Farm
 - **Key attributes:** `started_at` (TIMESTAMPTZ), `ended_at` (TIMESTAMPTZ, optional), `duration_minutes`, `water_volume_liters`, `irrigation_method` (DRIP/SPRINKLER/FLOOD/FURROW/CENTER_PIVOT/SUBSURFACE/MANUAL/AUTOMATED), `water_source` (GROUNDWATER/SURFACE_WATER/RAINWATER/MUNICIPAL/RECYCLED_WATER)
 - **Validation:** `started_at` not future; `ended_at ≥ started_at` with cross-field sparse-PATCH guard
 - **API coverage:** Full CRUD with pagination
-- **Status:** Complete
+- **Status:** Complete; implemented TimescaleDB hypertable (Phase 12)
 
 #### YieldRecord Domain (Phase 9)
 - **Type:** Harvest Intelligence Object — Grandchild Domain
@@ -182,7 +187,7 @@ Farm
 - **Validation:** `recorded_at` not future; `area_harvested_ha > 0` when supplied; `test_weight_kg_hl > 0` when supplied; `moisture_content_percent` in [0,100]; `crop_id` immutable after creation
 - **Index strategy:** 4 indexes — individual (`crop_id`, `field_id`, `recorded_at`) + compound (`crop_id, recorded_at`) as primary AI feature pipeline path
 - **API coverage:** Full CRUD with pagination; list by crop + list by field
-- **Status:** Complete; TimescaleDB Phase 12 hypertable candidate
+- **Status:** Complete; implemented TimescaleDB hypertable (Phase 12)
 
 #### DiseaseObservation Domain (Phase 10)
 - **Type:** Plant Health Event Object — Grandchild Domain
@@ -196,7 +201,7 @@ Farm
 - **Foundry comparison:** Equivalent to Foundry Plant Health Event Object Types — structured severity labels with provenance metadata
 - **API coverage:** Full CRUD with pagination; list by crop + list by field
 - **Status:** ✅ Implementation complete | ⏳ Validation deferred | ⏳ Testing deferred
-- **TimescaleDB readiness:** `observed_at TIMESTAMPTZ NOT NULL`; compound index `(crop_id, observed_at)` — Phase 12 hypertable candidate
+- **TimescaleDB:** Implemented hypertable — partition key `observed_at`; compound index `(crop_id, observed_at)`
 
 #### SatelliteObservation Domain (Phase 11)
 - **Type:** Remote Sensing / Earth Observation Object — Field-Anchored
@@ -209,9 +214,9 @@ Farm
 - **Foundry comparison:** Analogous to enterprise remote sensing Object Types in Foundry geospatial solutions — spectral index properties with provider provenance and scene-level lineage
 - **API coverage:** Full CRUD with AI-oriented query endpoints (date range, latest by spectral index, filter by provider/processing level)
 - **Status:** ✅ Implementation complete | ⏳ Validation deferred | ⏳ Testing deferred
-- **TimescaleDB readiness:** `observed_at TIMESTAMPTZ NOT NULL`; compound indexes `(field_id, observed_at)` and `(spectral_index, observed_at)` — Phase 12 hypertable candidate
+- **TimescaleDB:** Implemented hypertable — partition key `observed_at`; compound indexes `(field_id, observed_at)` and `(spectral_index, observed_at)`
 
-### Complete API Surface (Post Phase 11)
+### Complete API Surface (Post Phase 12)
 
 | Domain | Endpoints | Methods |
 |---|---|---|
@@ -247,11 +252,11 @@ Farm
 | **Datasets / Pipelines** | None (raw API write path only) | No ETL or data pipeline infrastructure | 5% |
 | **Operational Workflows** | Business rules in service layer; no orchestration engine | Domain invariants enforced; no multi-step durable workflows | 15% |
 | **Event Streams** | Service layer extension points (ADR-007-26, ADR-009-10); no Redpanda yet | Architectural boundaries established across 3 domains; no actual event streaming | 10% |
-| **Time Series** | `WeatherRecord`, `SensorReading`, `IrrigationEvent`, `YieldRecord`, `DiseaseObservation`, `SatelliteObservation` — TIMESTAMPTZ ordered by primary time key | Six TIMESTAMPTZ domains; all Phase 12 TimescaleDB hypertable candidates; extension not yet activated | 55% |
-| **AI Agents (AIP)** | Future GaaS / Farm Copilot (Phase 15; architecturally designed) | Not implemented; API surface is GaaS-ready; data foundation complete | 12% |
-| **Digital Twin** | Architecturally designed in handbook sections 18–19 | Not implemented; full field state inputs now available from 10 Object Types | 22% |
-| **Decision Intelligence** | AI Recommendation Layer (Phase 13+) | Data foundation complete (yield labels, disease labels, remote sensing features); no inference services | 18% |
-| **Semantic / Metrics Layer** | None | Not planned in current roadmap | 0% |
+| **Time Series** | `WeatherRecord`, `SensorReading`, `IrrigationEvent`, `YieldRecord`, `DiseaseObservation`, `SatelliteObservation` — TIMESTAMPTZ ordered by primary time key | Six operational TimescaleDB hypertables; compression, continuous aggregates, retention (ADR-001–005) | 72% |
+| **AI Agents (AIP)** | Future GaaS / Farm Copilot (Phase 15; architecturally designed) | Not implemented; API surface is GaaS-ready; analytical persistence foundation complete | 12% |
+| **Digital Twin** | Architecturally designed in handbook sections 18–19 | Not implemented; full field state inputs and scalable time-series history available | 24% |
+| **Decision Intelligence** | AI Recommendation Layer (Phase 13+) | Data and analytical persistence complete; no inference services yet | 22% |
+| **Semantic / Metrics Layer** | Continuous aggregates (8 rollups); no business metrics definitions | Pre-computed `time_bucket()` rollups operational; no Quiver-equivalent semantic layer | 15% |
 | **Workshop / Applications** | Future React frontend (deferred in roadmap) | Not implemented | 5% |
 | **Audit & Governance** | `AuditableModel` mixin (`created_at`, `updated_at`, UUID PKs) | Partial — audit timestamps universal; no change history log | 35% |
 | **Multi-Tenancy / Permissions** | Not implemented | `is_active` soft-delete on Farm only; no RBAC | 5% |
@@ -510,9 +515,35 @@ With Phase 11 complete, AGRIFLOW-AI captures data from physical farm structure, 
 
 ---
 
+### Phase 12 — Enterprise Time-Series Foundation (✅ Complete)
+
+**Foundry Parallel:** Enterprise Time-Series Platform; analytical storage layer; governed data lifecycle; pre-computed rollups for AI feature extraction.
+
+**Architectural Significance:**
+Phase 12 is an infrastructure and data-platform phase — not a business domain phase. It delivered TimescaleDB 2.28.1 as a PostgreSQL extension and converted six time-series tables to operational hypertables with composite primary keys `(id, time_column)`, preserving UUID-based API lookups and repository transparency.
+
+Key deliverables:
+1. **TimescaleDB Extension (ADR-001)** — `timescaledb` 2.28.1 enabled via Alembic migration `f1e2d3c4b5a6`; single database engine, single connection pool.
+2. **Hypertable Conversion (ADR-002)** — six tables converted with per-table chunk intervals and chunk exclusion for time-range queries.
+3. **Compression Policies (ADR-003)** — six columnar compression policies on cold hypertable chunks; storage scalability without application changes.
+4. **Continuous Aggregates (ADR-004)** — eight incrementally refreshed `time_bucket()` rollups as the preferred analytical read path for dashboards and AI feature extraction.
+5. **Retention Policies (ADR-005)** — eleven domain-tiered lifecycle policies; `yield_records` permanently retained as irreplaceable harvest labels.
+6. **Chunk Management** — automatic time-based partitioning with governed hot/warm/cold data lifecycle.
+7. **Enterprise Analytics Foundation** — twenty-seven background jobs; CDD v1.0.0 validation; zero API breaking changes.
+
+**Foundry Alignment Delivered:**
+- Enterprise Time-Series Platform operational ✓
+- Hypertable storage for six TIMESTAMPTZ Object Types ✓
+- Compression and governed data lifecycle ✓
+- Pre-computed analytical rollups (continuous aggregates) ✓
+- AI Feature Store persistence foundation ✓
+- Repository abstraction preserved — zero service/API changes ✓
+
+---
+
 ## 5. System Architecture Diagram
 
-### Current State: Domain Hierarchy & Service Topology (Post Phase 11)
+### Current State: Domain Hierarchy & Service Topology (Post Phase 12)
 
 ```mermaid
 graph TB
@@ -560,21 +591,21 @@ graph TB
         SORepo["SatelliteObservationRepository"]
     end
 
-    subgraph DB["PostgreSQL 17"]
-        farms[("farms")]
-        fields[("fields")]
-        crops[("crops")]
-        soil_profiles[("soil_profiles")]
-        weather_records[("weather_records\n[Phase 12 hypertable]")]
-        sensor_readings[("sensor_readings\n[Phase 12 hypertable]")]
-        irrigation_events[("irrigation_events\n[Phase 12 hypertable]")]
-        yield_records[("yield_records\n[Phase 12 hypertable]")]
-        disease_observations[("disease_observations\n[Phase 12 hypertable]")]
-        satellite_observations[("satellite_observations\n[Phase 12 hypertable]")]
+    subgraph DB["PostgreSQL 17.10 + TimescaleDB 2.28.1"]
+        farms[("farms\n[PostgreSQL]")]
+        fields[("fields\n[PostgreSQL]")]
+        crops[("crops\n[PostgreSQL]")]
+        soil_profiles[("soil_profiles\n[PostgreSQL]")]
+        weather_records[("weather_records\n[hypertable ✅]")]
+        sensor_readings[("sensor_readings\n[hypertable ✅]")]
+        irrigation_events[("irrigation_events\n[hypertable ✅]")]
+        yield_records[("yield_records\n[hypertable ✅]")]
+        disease_observations[("disease_observations\n[hypertable ✅]")]
+        satellite_observations[("satellite_observations\n[hypertable ✅]")]
+        TS_LAYER["TimescaleDB Platform ✅\n• Compression (6)\n• Continuous Aggregates (8)\n• Retention (11)"]
     end
 
-    subgraph FUTURE["Future Intelligence Layer (Phase 12+)"]
-        TSDB["TimescaleDB\nPhase 12 Implementation"]
+    subgraph FUTURE["Future Intelligence Layer (Phase 13+)"]
         RP["Redpanda\nEvent Streaming"]
         DT["Digital Twin\nField State (Redis)"]
         AI["AI Recommendation Engine\nPhase 13+"]
@@ -643,7 +674,7 @@ graph TB
     fields -.->|"denormalized FK"| yield_records
     fields -.->|"denormalized FK"| disease_observations
 
-    weather_records & sensor_readings & irrigation_events & yield_records & disease_observations & satellite_observations -.-> TSDB
+    weather_records & sensor_readings & irrigation_events & yield_records & disease_observations & satellite_observations --- TS_LAYER
     SRS -.->|"Extension Point\nADR-007-26"| RP
     IES -.->|"Extension Point"| RP
     YRS -.->|"Extension Point\nADR-009-10"| RP
@@ -651,7 +682,7 @@ graph TB
     RP -.-> DT
     RP -.-> AI
     RP -.-> TW
-    TSDB -.-> AI
+    TS_LAYER -.-> AI
     DT -.-> GaaS
     AI -.-> GaaS
 ```
@@ -851,7 +882,13 @@ Foundry Action Types are typed, validated operations that modify Object Type pro
 
 ## 7. What We Have Already Achieved
 
-The following Foundry-equivalent capabilities are fully implemented and production-ready after Phase 11.
+The following Foundry-equivalent capabilities are fully implemented and production-ready after Phase 12.
+
+---
+
+**✅ Enterprise Time-Series Platform (Phase 12)**
+
+TimescaleDB 2.28.1 operational as a PostgreSQL extension with six hypertables, six compression policies, eight continuous aggregates, eleven retention policies, and governed chunk lifecycle management. Time-series Object Types (`WeatherRecord`, `SensorReading`, `IrrigationEvent`, `YieldRecord`, `DiseaseObservation`, `SatelliteObservation`) are stored in chunk-partitioned hypertables with composite primary keys — equivalent to Foundry's enterprise time-series analytical storage layer. Repository transparency maintained; zero API breaking changes.
 
 ---
 
@@ -941,7 +978,7 @@ Spectral index time-series with cloud cover filtering, scene provenance, and AI-
 
 **✅ AI-Ready Agricultural Data Platform**
 
-AGRIFLOW-AI now contains nearly all foundational datasets required before enterprise AI implementation: physical farm structure, soil intelligence, weather intelligence, IoT telemetry, operational management, yield observations, disease observations, and satellite observations. The remaining work is infrastructure activation (TimescaleDB Phase 12) and intelligence layer deployment (Phase 13+).
+AGRIFLOW-AI now contains the foundational datasets and analytical persistence layer required before enterprise AI implementation: physical farm structure, soil intelligence, weather intelligence, IoT telemetry, operational management, yield observations, disease observations, satellite observations, and TimescaleDB continuous aggregates. The remaining work is intelligence layer deployment (Phase 13+).
 
 ---
 
@@ -1043,15 +1080,15 @@ Foundry manages data access at the ontology level through markings, security lab
 
 ---
 
-**✗ TimescaleDB (Phase 12 — Not Yet Activated)**
+**✅ Enterprise Time-Series Platform (Phase 12 — Operational)**
 
-Six tables — `weather_records`, `sensor_readings`, `irrigation_events`, `yield_records`, `disease_observations`, and `satellite_observations` — are 100% ready for TimescaleDB hypertable promotion (partition key requirements satisfied on all six). Phase 12 will install TimescaleDB, enable the extension, and convert these tables to hypertables with compression, continuous aggregates, and retention policies. The Cassandra migration path is documented but not activated.
+TimescaleDB 2.28.1 is active as a PostgreSQL extension. Six time-series tables — `weather_records`, `sensor_readings`, `irrigation_events`, `yield_records`, `disease_observations`, `satellite_observations` — are operational hypertables with compression policies, eight continuous aggregates, eleven retention policies, and chunk management. This mirrors the analytical storage layer Foundry deployments establish before AI model onboarding. The Cassandra horizontal-scaling path remains documented for future CQRS projection.
 
-*Impact: Time-series query performance at IoT scale and agricultural data volume is not yet realized. Phase 12 implementation requires DDL calls and repository-layer analytics support — no API breaking changes.*
+*Impact: Enterprise-scale time-series query performance and governed data lifecycle are now operational. AI Feature Store (Phase 13) builds on continuous aggregates without persistence redesign.*
 
 ---
 
-## 9. Future Alignment Roadmap (Phase 12+)
+## 9. Future Alignment Roadmap (Phase 13+)
 
 ### Revised Strategic Sequence
 
@@ -1060,7 +1097,7 @@ Completed: Operational Agricultural Platform (Phases 1–9)
       ↓
 Completed: Precision Agriculture Observation Platform (Phases 10–11)
       ↓
-Phase 12: Enterprise Time-Series Platform (TimescaleDB)
+Completed: Enterprise Time-Series Platform (Phase 12 — TimescaleDB ✅)
       ↓
 Phase 13: Recommendation Intelligence (AI Recommendation Foundation)
       ↓
@@ -1077,43 +1114,22 @@ This sequencing closely mirrors how enterprise data platforms — including Pala
 
 ---
 
-### TimescaleDB — Phase 12 Implementation
+### TimescaleDB — Phase 12 Complete ✅
 
 **Foundry Gap Closed:** Time Series performance at enterprise scale
 
-Phase 12 is an infrastructure and data-platform phase — not a business domain phase. It implements TimescaleDB before AI services begin in Phase 13. There are no business domain changes and no API breaking changes.
+Phase 12 delivered the enterprise analytical storage platform. TimescaleDB 2.28.1 operates as a PostgreSQL extension with six hypertables, compression, continuous aggregates, and retention — zero API breaking changes.
 
-**Tables converted to hypertables in Phase 12:**
+**Implemented capabilities:**
 
-* `weather_records`
-* `sensor_readings`
-* `irrigation_events`
-* `yield_records`
-* `disease_observations`
-* `satellite_observations`
+* Six operational hypertables with composite PKs and chunk partitioning
+* Six compression policies on cold data
+* Eight continuous aggregates with automated refresh
+* Eleven retention policies with domain-tiered lifecycles
+* Chunk management and `time_bucket()` analytics foundation
+* AI Feature Store persistence foundation for Phase 13
 
-These tables were designed with time-based primary query patterns during Phases 5–11 and are now upgraded for high-performance analytics.
-
-**Phase 12 deliverables:**
-
-* Hypertables with automatic chunk partitioning
-* Compression policies for cold data
-* Continuous aggregates (hourly/daily rollups)
-* Retention policies for telemetry lifecycle management
-* Chunk management and `time_bucket()` based analytics
-* Repository support for optimized time-series queries
-* AI feature engineering foundation for Phase 13 Feature Store
-
-```sql
-SELECT create_hypertable('weather_records', 'recorded_at', chunk_time_interval => INTERVAL '1 week');
-SELECT create_hypertable('sensor_readings', 'recorded_at', chunk_time_interval => INTERVAL '1 week');
-SELECT create_hypertable('irrigation_events', 'started_at', chunk_time_interval => INTERVAL '1 month');
-SELECT create_hypertable('yield_records', 'recorded_at', chunk_time_interval => INTERVAL '1 season');
-SELECT create_hypertable('disease_observations', 'observed_at', chunk_time_interval => INTERVAL '1 month');
-SELECT create_hypertable('satellite_observations', 'observed_at', chunk_time_interval => INTERVAL '1 month');
-```
-
-**Alignment improvement:** Time Series: 55% → 78%
+**Alignment delivered:** Time Series: 55% → 72%
 
 ---
 
@@ -1228,25 +1244,25 @@ Field boundary polygons stored as PostGIS `GEOMETRY` columns enable precision ag
 
 ### Current vs Target Alignment by Category
 
-| Category | Post Phase 9 | Post Phase 11 | Target (Phase 12) | Target (Phase 13) | Target (Phase 15) | Priority |
+| Category | Post Phase 9 | Post Phase 11 | Post Phase 12 | Target (Phase 13) | Target (Phase 15) | Priority |
 |---|---|---|---|---|---|---|
 | **Ontology / Domain Model** | 70% | 92% | 92% | 92% | 95% | Low (complete) |
 | **Object Types & Properties** | 85% | 92% | 92% | 93% | 95% | Low (nearly complete) |
 | **Object Links & Relationships** | 88% | 92% | 92% | 93% | 95% | Low |
 | **API-First Architecture** | 92% | 93% | 93% | 94% | 95% | Low |
 | **Action Types / Write Operations** | 78% | 82% | 82% | 85% | 88% | Medium |
-| **Time Series** | 48% | 55% | 78% | 80% | 88% | High (TimescaleDB Phase 12) |
-| **Data Lineage & Provenance** | 32% | 34% | 40% | 47% | 65% | Medium |
-| **Operational Workflows** | 15% | 10% | 15% | 40% | 85% | Critical (Temporal Phase 14–15) |
-| **Event Streams** | 10% | 10% | 15% | 70% | 85% | Critical (Redpanda Phase 13–14) |
-| **Digital Twin Readiness** | 15% | 22% | 30% | 55% | 85% | Critical (Phase 15) |
-| **AI Decision Intelligence** | 8% | 18% | 25% | 65% | 85% | Critical (Phase 13+) |
-| **AI Agent Framework (AIP)** | 10% | 12% | 15% | 40% | 75% | High (Phase 15 GaaS) |
-| **Semantic / Metrics Layer** | 0% | 0% | 20% | 30% | 45% | Low |
-| **Multi-Tenancy / RBAC** | 5% | 5% | 10% | 30% | 60% | Medium |
+| **Time Series** | 48% | 55% | 72% | 80% | 88% | Medium (Phase 12 complete) |
+| **Data Lineage & Provenance** | 32% | 34% | 34% | 47% | 65% | Medium |
+| **Operational Workflows** | 15% | 10% | 10% | 40% | 85% | Critical (Temporal Phase 14–15) |
+| **Event Streams** | 10% | 10% | 10% | 70% | 85% | Critical (Redpanda Phase 13–14) |
+| **Digital Twin Readiness** | 15% | 22% | 24% | 55% | 85% | Critical (Phase 15) |
+| **AI Decision Intelligence** | 8% | 18% | 22% | 65% | 85% | Critical (Phase 13+) |
+| **AI Agent Framework (AIP)** | 10% | 12% | 12% | 40% | 75% | High (Phase 15 GaaS) |
+| **Semantic / Metrics Layer** | 0% | 0% | 15% | 30% | 45% | Low |
+| **Multi-Tenancy / RBAC** | 5% | 5% | 5% | 30% | 60% | Medium |
 | **Schema Governance** | 72% | 78% | 80% | 82% | 85% | Low |
-| **Audit & Data Lineage** | 36% | 38% | 45% | 52% | 70% | Medium |
-| **Overall** | **42%** | **48%** | **~58%** | **~68%** | **~82%** | |
+| **Audit & Data Lineage** | 36% | 38% | 40% | 52% | 70% | Medium |
+| **Overall** | **42%** | **48%** | **52%** | **~62%** | **~82%** | |
 
 ---
 
@@ -1257,8 +1273,8 @@ xychart-beta
     title "AGRIFLOW-AI Foundry Alignment % by Phase"
     x-axis [Phase1, Phase2, Phase3, Phase4, Phase5, Phase6, Phase7, Phase8, Phase9, Phase10, Phase11, Phase12, Phase13, Phase15]
     y-axis "Alignment %" 0 --> 100
-    bar  [5, 10, 15, 20, 25, 30, 35, 38, 42, 44, 48, 58, 68, 82]
-    line [5, 10, 15, 20, 25, 30, 35, 38, 42, 44, 48, 58, 68, 82]
+    bar  [5, 10, 15, 20, 25, 30, 35, 38, 42, 44, 48, 52, 62, 82]
+    line [5, 10, 15, 20, 25, 30, 35, 38, 42, 44, 48, 52, 62, 82]
 ```
 
 ---
@@ -1272,20 +1288,20 @@ Completed: Operational Agricultural Platform (Phases 1–9)
       ↓
 Completed: Precision Agriculture Observation Platform (Phases 10–11)
       ↓
-Phase 12: Enterprise Time-Series Platform (TimescaleDB)        → +10 points
+Completed: Enterprise Time-Series Platform (Phase 12 — TimescaleDB ✅)  → +4 points
       ↓
 Phase 13: Recommendation Intelligence (AI Recommendation)      → +10 points
       ↓
 Phase 14–15: Digital Twin + Temporal + GaaS Farm Copilot       → +14 points
 ```
 
-The three capabilities that will deliver the most alignment improvement from the current 48% baseline are, in order of priority:
+The three capabilities that will deliver the most alignment improvement from the current 52% baseline are, in order of priority:
 
-1. **TimescaleDB Phase 12 Implementation** — Activates enterprise-scale time-series storage for six hypertable candidates, enables continuous aggregates and `time_bucket()` analytics, and establishes the AI Feature Store foundation. Estimated alignment gain: +10 points.
+1. **AI Recommendation Layer (Phase 13)** — Delivers the decision intelligence that defines Foundry's value. Yield, disease, irrigation, and fertilizer recommendation engines at **90–100% data coverage** can now be trained on TimescaleDB continuous aggregates without further domain modelling or persistence redesign. Estimated alignment gain: +10 points.
 
-2. **AI Recommendation Layer (Phase 13)** — Delivers the decision intelligence that defines Foundry's value. Yield, disease, irrigation, and fertilizer recommendation engines at **90–100% data coverage** can now be trained without further domain modelling. Estimated alignment gain: +10 points.
+2. **Event Streaming + CQRS (Phase 13–14)** — Redpanda event publishing and read/write separation activate the extension points reserved in Phases 7–9. Enables Digital Twin updates, AI pipeline triggers, and real-time alerting. Estimated alignment gain: +8 points.
 
-3. **Digital Twin + Temporal Workflows + GaaS (Phases 14–15)** — Transforms the platform from a data store into an operational intelligence system with real-time field state, durable workflows, and natural language decision support. Estimated combined alignment gain: +14 points.
+3. **Digital Twin + Temporal Workflows + GaaS (Phases 14–15)** — Transforms the platform from a data store into an operational intelligence system with real-time field state, durable workflows, and natural language decision support. Estimated combined alignment gain: +12 points.
 
 ---
 
@@ -1293,9 +1309,9 @@ The three capabilities that will deliver the most alignment improvement from the
 
 ### From Data Collection to Decision Intelligence
 
-AGRIFLOW-AI began Phase 1 as a well-architected farm management application: a PostgreSQL-backed REST API for recording farms, fields, and crops. Eleven phases later, it has completed its entire operational and observational domain model and is transitioning from **Data Collection** to **Data Intelligence** — and subsequently to **Decision Intelligence**.
+AGRIFLOW-AI began Phase 1 as a well-architected farm management application: a PostgreSQL-backed REST API for recording farms, fields, and crops. Twelve phases later, it has completed its entire operational and observational domain model, established an enterprise time-series analytical platform, and is transitioning from **Data Collection** to **Decision Intelligence**.
 
-The journey from Phase 1 to Phase 11 traces a deliberate progression:
+The journey from Phase 1 to Phase 12 traces a deliberate progression:
 
 | Phase | Transformation |
 |---|---|
@@ -1307,6 +1323,7 @@ The journey from Phase 1 to Phase 11 traces a deliberate progression:
 | Phase 9 | Harvest intelligence (grandchild domain, dual-FK design, measurement provenance) |
 | Phase 10 | Plant health intelligence (DiseaseObservation, severity classification, AI disease labels) |
 | Phase 11 | Earth observation (SatelliteObservation, remote sensing, NDVI/EVI/NDWI readiness) |
+| Phase 12 | Enterprise time-series platform (TimescaleDB hypertables, compression, continuous aggregates, retention) |
 
 The platform now models:
 
@@ -1314,15 +1331,15 @@ The platform now models:
 * Sensor telemetry, Irrigation operational events
 * Yield, Disease, and Satellite observations
 
-Phase 12 is no longer about adding another business domain. It begins transformation into an enterprise-scale time-series intelligence platform using TimescaleDB — hypertables, compression, continuous aggregates, and `time_bucket()` analytics across six time-series tables.
+And stores all six time-series Object Types in an operational TimescaleDB platform with governed data lifecycle management.
 
 ### The Foundry Comparison
 
 Palantir Foundry's commercial success is built on four integrated capabilities that AGRIFLOW-AI's roadmap explicitly targets:
 
-1. **Structured Ontology** — AGRIFLOW has this. Ten typed Object Types — including grandchild types (`YieldRecord`, `DiseaseObservation`) and field-anchored remote sensing (`SatelliteObservation`) — with relationships, properties, and validation rules are production-ready. The remaining gap is no longer ontology modelling.
+1. **Structured Ontology** — AGRIFLOW has this. Ten typed Object Types — including grandchild types (`YieldRecord`, `DiseaseObservation`) and field-anchored remote sensing (`SatelliteObservation`) — with relationships, properties, and validation rules are production-ready.
 
-2. **Enterprise Time-Series Platform** — Phase 12 activates TimescaleDB for six hypertable candidates designed during Phases 5–11. This mirrors the analytical storage layer that Foundry deployments typically establish before AI model onboarding.
+2. **Enterprise Time-Series Platform** — AGRIFLOW has this. Phase 12 delivered TimescaleDB 2.28.1 with six operational hypertables, compression policies, eight continuous aggregates, and eleven retention policies — the analytical storage layer Foundry deployments typically establish before AI model onboarding.
 
 3. **Event-Driven Real-Time Intelligence** — Redpanda publishing, Temporal workflows, and Digital Twin state management (Phases 13–15) are the missing bridge between the data platform and the intelligence platform.
 
@@ -1332,15 +1349,15 @@ Palantir Foundry's commercial success is built on four integrated capabilities t
 
 AGRIFLOW-AI's most important achievement is not the number of endpoints or database tables — it is the **quality of the architectural decisions made at each phase**. UUID primary keys designed for distributed systems. Compound telemetry indexes designed for TimescaleDB and Cassandra migration. Service layer extension points designed for Redpanda integration. Shared enum registry designed for Digital Twin reuse. AI-readiness attributes selected through formal coverage analysis. Grandchild and field-anchored domain patterns establishing observational intelligence without compromising query efficiency.
 
-Every decision was made with the end state in mind. The **48%** current Foundry alignment score does not reflect 48% of the work done — it reflects approximately 48% of the *value delivered* against Foundry's full capability surface. The ontology and observational data foundation is substantially complete; the remaining gap is infrastructure activation (TimescaleDB) and intelligence layer deployment (Phases 13–15).
+Every decision was made with the end state in mind. The **52%** current Foundry alignment score does not reflect 52% of the work done — it reflects approximately 52% of the *value delivered* against Foundry's full capability surface. The ontology, observational data foundation, and enterprise analytical storage platform are substantially complete; the remaining gap is intelligence layer deployment (Phases 13–15).
 
-Phases 10–11 completed the **precision agriculture observation layer**. With `DiseaseObservation` and `SatelliteObservation` in place, disease prediction data coverage reaches 90% and the platform captures the full spectrum of precision agriculture inputs. Phase 12 establishes the enterprise time-series platform. Phase 13 delivers recommendation intelligence. This sequencing closely mirrors how enterprise data platforms — including Palantir Foundry deployments — are typically implemented.
+Phases 10–11 completed the **precision agriculture observation layer**. Phase 12 completed the **enterprise time-series platform**. Phase 13 delivers **AI Decision Intelligence** as the next architectural milestone. This sequencing closely mirrors how enterprise data platforms — including Palantir Foundry deployments — are typically implemented.
 
 > AGRIFLOW-AI is not trying to replicate Foundry. It is building an agricultural-domain intelligence platform with the same architectural principles that make Foundry powerful: a governed ontology, structured actions, event-driven intelligence, and AI-powered decision support. The difference is that AGRIFLOW-AI is purpose-built for agriculture, where the domain semantics — FAO-56 water coefficients, CropStatus lifecycle, DiseaseSeverity classification, spectral index provenance, sensor ADC precision — are first-class architectural concerns, not generic enterprise data model afterthoughts.
 
-**The observational domain model is complete. Phase 12 begins the transition from Data Collection to Data Intelligence.**
+**AGRIFLOW-AI now possesses an enterprise ontology and an enterprise time-series platform. AI Decision Intelligence is the next architectural milestone.**
 
 ---
 
-*Last updated: Phase 11 completion — June 2026*  
-*Next scheduled update: Phase 12 completion*
+*Last updated: Phase 12 completion — June 2026*  
+*Next scheduled update: Phase 13 completion*
