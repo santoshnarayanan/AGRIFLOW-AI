@@ -548,43 +548,45 @@ Business Value:
 
 # Phase 12 – TimescaleDB Time-Series Foundation
 
-Status: 🔜 Planned (Current Phase)
+Status: ✅ Complete
 
-Phase 12 is an **infrastructure and data-platform phase** — not a business domain phase. It upgrades the existing PostgreSQL time-series tables to TimescaleDB hypertables before AI services begin. There are **no business domain changes** and **no API breaking changes**.
+Phase 12 is an **infrastructure and data-platform phase** — not a business domain phase. It upgraded the existing PostgreSQL time-series tables to TimescaleDB hypertables before AI services begin. There were **no business domain changes** and **no API breaking changes**.
 
-## Objectives
+## Delivered Implementation
 
-* Install TimescaleDB
-* Enable TimescaleDB extension
-* Convert eligible PostgreSQL tables into hypertables
-* Configure automatic chunking
-* Configure compression policies
-* Configure retention policies
-* Implement continuous aggregates
-* Introduce `time_bucket()` based analytics
-* Build repository support for optimized time-series queries
-* Prepare the platform for AI feature engineering
+* TimescaleDB 2.28.1 extension enabled via Alembic (`f1e2d3c4b5a6`) — [ADR-001](adr/ADR-001-timescaledb-extension-enablement.md)
+* Six tables converted to hypertables with composite primary keys `(id, time_column)` — [ADR-002](adr/ADR-002-hypertable-primary-key-conversion-strategy.md)
+* Six compression policies registered on hypertables — [ADR-003](adr/ADR-003-timescaledb-compression-policy-strategy.md)
+* Eight continuous aggregates with refresh policies — [ADR-004](adr/ADR-004-timescaledb-continuous-aggregate-strategy.md)
+* Eleven retention policies registered (five raw hypertables + six continuous aggregate objects) — [ADR-005](adr/ADR-005-timescaledb-retention-policy-strategy.md)
+* Chunk management implemented — per-table chunk intervals with chunk exclusion for time-range queries
+* Repository transparency maintained — zero changes to repository interfaces, service layer, or API contracts
+* Zero API breaking changes — all Phase 1–11 endpoints, request models, and response models preserved
+* Production-ready time-series foundation completed — validated via CDD v1.0.0 (458,645 rows) at Steps 2C, 3C, and 4C
+* `time_bucket()` analytics foundation for AI feature engineering
+* Canonical Development Dataset (CDD v1.0.0) for deterministic platform validation
+* Twenty-seven automated background jobs (compression, CA refresh, retention)
 
-## Tables Prepared for Hypertable Conversion
+## Hypertables Implemented
 
-The following tables were designed with time-based primary query patterns and compound indexes. Phase 12 converts them for high-performance analytics:
+The following six time-series tables were converted to TimescaleDB hypertables. Each already carried a `NOT NULL TIMESTAMPTZ` partition key column and compound `(parent_id, time_key)` indexes established in Phases 5–11:
 
-* `weather_records`
-* `sensor_readings`
-* `irrigation_events`
-* `yield_records`
-* `disease_observations`
-* `satellite_observations`
+* `weather_records` — partition key `recorded_at`
+* `sensor_readings` — partition key `recorded_at`
+* `irrigation_events` — partition key `started_at`
+* `yield_records` — partition key `recorded_at`
+* `disease_observations` — partition key `observed_at`
+* `satellite_observations` — partition key `observed_at`
 
-Each table already carries a `NOT NULL TIMESTAMPTZ` partition key column (`recorded_at`, `started_at`, or `observed_at`) and compound `(parent_id, time_key)` indexes established in Phases 5–11.
+Reference tables (`farms`, `fields`, `crops`, `soil_profiles`) remain standard PostgreSQL relations.
 
 ## Business Value
 
 * Enterprise-scale time-series storage
 * High-performance historical analytics
-* Efficient telemetry storage
+* Efficient telemetry storage with columnar compression
 * AI-ready feature engineering foundation
-* Long-term scalability
+* Long-term scalability with governed data lifecycle
 * Foundation for predictive agriculture (Phase 14+)
 
 ## Platform Evolution Context
@@ -593,10 +595,13 @@ Each table already carries a `NOT NULL TIMESTAMPTZ` partition key column (`recor
 Reactive Farming
       ↓
 Data-Driven Farming
-(Phase 1–6)
+(Phase 1–6) ✅
       ↓
 Time-Series Intelligence
-(Phase 7–12)
+(Phase 7–12) ✅ Complete
+      ↓
+AI Foundation
+(Phase 13+) 🔜 Current
       ↓
 Intelligent Farming
 (Phase 13–15)
@@ -605,7 +610,7 @@ Autonomous Agriculture
 (Phase 15+)
 ```
 
-TimescaleDB implementation in Phase 12 completes the Time-Series Intelligence era before AI Recommendation services begin in Phase 13.
+Phase 12 completed the Time-Series Intelligence era. The platform now enters the AI Foundation phase with Phase 13 — AI Recommendation Foundation.
 
 ## Phase 12 Implementation Progress (Appendix)
 
@@ -615,9 +620,9 @@ TimescaleDB implementation in Phase 12 completes the Time-Series Intelligence er
 | Step 1E-B | Hypertable conversion (ADR-002) | ✅ Complete | 2026-06-29 |
 | Step 2A | Compression architecture assessment | ✅ Complete | 2026-06-29 |
 | Step 2B | Compression policies (ADR-003) — migration `d4f5e6a7b8c9` | ✅ Complete | 2026-06-29 |
-| Step 2C | Compression validation (synthetic data, ratio benchmarks) | ⏳ Pending | — |
-| Step 3 | Continuous aggregates (P12-D012) | ⏳ Pending | — |
-| Step 4 | Retention policies (P12-D011) | ⏳ Pending | — |
+| Step 2C | Compression validation (CDD v1.0.0, ratio benchmarks) | ✅ Complete | 2026-06-29 |
+| Step 3 | Continuous aggregates (ADR-004) — migration `e5f6a7b8c9d0` | ✅ Complete | 2026-06-30 |
+| Step 4 | Retention policies (ADR-005) — migration `f6a7b8c9d0e1` | ✅ Complete | 2026-06-30 |
 
 ---
 
@@ -648,10 +653,19 @@ Implemented:
 * YieldRecord Domain
 * Disease Observation Domain
 * Satellite Observation Domain
+* TimescaleDB 2.28.1 Extension (Phase 12) — PostgreSQL 17.10 + TimescaleDB analytical platform
+* Hypertables (Phase 12) — six time-series tables with composite primary keys and per-table chunk intervals
+* Compression Policies (Phase 12) — six columnar compression policies on hypertable chunks
+* Continuous Aggregates (Phase 12) — eight incrementally refreshed `time_bucket()` rollups
+* Retention Policies (Phase 12) — eleven domain-tiered lifecycle policies; `yield_records` permanently retained
+* Chunk Management (Phase 12) — automatic time-based partitioning with chunk exclusion for time-range queries
+* `time_bucket()` Analytics (Phase 12) — pre-computed rollups for dashboard and AI feature extraction
+* Automated Background Jobs (Phase 12) — 27 platform jobs (compression, CA refresh, retention)
+* Repository Transparency (Phase 12) — persistence upgrades with zero API, service, or repository interface changes
+* Canonical Development Dataset (CDD v1.0.0) — deterministic validation corpus (458,645 rows)
 
-Near-Term (Phases 12–15):
+Near-Term (Phases 13–15):
 
-* TimescaleDB Phase 12 Implementation — hypertables, compression, continuous aggregates, retention policies, chunk management, and `time_bucket()` analytics for `weather_records`, `sensor_readings`, `irrigation_events`, `yield_records`, `disease_observations`, and `satellite_observations`
 * AI Recommendation Foundation (Phase 13) — Yield, Irrigation, Disease, and Fertilizer Recommendation Engines; AI Feature Store; Recommendation Services
 * Predictive Agriculture (Phase 14)
 * Digital Twin & Farm Copilot (Phase 15)
@@ -673,19 +687,23 @@ Future:
 
 ---
 
-# Current Domain Hierarchy (Post Phase 11)
+# Current Domain Hierarchy (Post Phase 12)
+
+Six time-series domains are now backed by TimescaleDB hypertables. Master and reference tables (`farms`, `fields`, `crops`, `soil_profiles`) remain standard PostgreSQL relations.
 
 ```text
-Farm
-└── Field
-     ├── Crop
-     │    ├── YieldRecord
-     │    └── DiseaseObservation
-     ├── SoilProfile
-     ├── WeatherRecord
-     ├── SensorReading       (append-only)
-     ├── IrrigationEvent     (mutable operational events)
-     └── SatelliteObservation (mutable Earth observation)
+Farm                                         (PostgreSQL — relational)
+└── Field                                    (PostgreSQL — relational)
+     ├── Crop                                (PostgreSQL — relational)
+     │    ├── YieldRecord                   (Hypertable — Phase 12)
+     │    └── DiseaseObservation            (Hypertable — Phase 12)
+     ├── SoilProfile         (1:1)          (PostgreSQL — relational)
+     ├── WeatherRecord                      (Hypertable — Phase 12)
+     ├── SensorReading       (append-only)  (Hypertable — Phase 12)
+     ├── IrrigationEvent     (mutable)      (Hypertable — Phase 12)
+     └── SatelliteObservation (mutable)      (Hypertable — Phase 12)
+
+TimescaleDB analytical platform  ✅ Phase 12 (compression · continuous aggregates · retention)
 ```
 
 # Target Domain Hierarchy (Long-Term)
@@ -740,12 +758,11 @@ AGRIFLOW-AI evolves from a farm management system into a comprehensive Agricultu
 ✅ Phase 9  – Yield Domain
 ✅ Phase 10 – Disease Observation Domain
 ✅ Phase 11 – Satellite Observation Domain
+✅ Phase 12 – TimescaleDB Time-Series Foundation
 
 ## Upcoming Phases
 
-🔜 Phase 12 – TimescaleDB Time-Series Foundation
-
-🔜 Phase 13 – AI Recommendation Foundation
+🔜 Phase 13 – AI Recommendation Foundation (Current Phase)
 
 🔜 Phase 14 – Predictive Agriculture
 
@@ -769,13 +786,13 @@ AGRIFLOW-AI evolves from a farm management system into a comprehensive Agricultu
 
 # Future Architecture Roadmap
 
-## TimescaleDB — Phase 12 Implementation
+## TimescaleDB — Implemented Platform Capability (Phase 12 ✅)
 
-Phase 12 implements TimescaleDB as the platform's time-series analytics engine. This work is completed **before AI services begin** in Phase 13.
+Phase 12 delivered TimescaleDB 2.28.1 as the platform's operational time-series analytics engine on PostgreSQL 17.10. This work is **complete** and provides the persistence foundation for AI services beginning in Phase 13.
 
-The following tables were designed for zero-friction TimescaleDB promotion during Phases 5–11. Phase 12 converts each to a time-partitioned hypertable via `create_hypertable(...)`. No application code changes or API breaking changes are required.
+The following six tables were designed for zero-friction TimescaleDB promotion during Phases 5–11 and converted to time-partitioned hypertables via `create_hypertable(...)`. No application code changes or API breaking changes were required.
 
-**Tables converted in Phase 12:**
+**Hypertables operational:**
 
 * `weather_records`
 * `sensor_readings`
@@ -784,23 +801,24 @@ The following tables were designed for zero-friction TimescaleDB promotion durin
 * `disease_observations`
 * `satellite_observations`
 
-**Phase 12 deliverables:**
+**Implemented capabilities:**
 
-* **Hypertables** — automatic time-based chunk partitioning on each table's primary time key
-* **Compression** — columnar compression for cold data (20–100× storage reduction)
-* **Continuous Aggregates** — hourly/daily rollups per sensor type, field, and spectral index
-* **Retention Policies** — automatic data lifecycle management for telemetry and observation history
-* **Chunk Management** — configurable chunk intervals and chunk exclusion for time-range queries
-* **Time-Series Analytics** — `time_bucket()` based queries for trend analysis and anomaly detection
-* **Performance Optimization** — repository-layer support for optimized time-series query patterns
-* **AI Feature Engineering Foundation** — pre-computed aggregate tables feeding the Phase 13 AI Feature Store
+* **Hypertables operational** — automatic time-based chunk partitioning on each table's primary time key; composite PKs `(id, time_column)` per ADR-002
+* **Compression operational** — six columnar compression policies on cold hypertable chunks (ADR-003)
+* **Continuous Aggregates operational** — eight incrementally refreshed hourly/daily/weekly rollups per sensor type, field, and spectral index (ADR-004)
+* **Retention operational** — eleven domain-tiered lifecycle policies; `yield_records` permanently retained as irreplaceable harvest labels (ADR-005)
+* **Chunk Management operational** — per-table chunk intervals with chunk exclusion for time-range queries
+* **Time-Series Analytics operational** — `time_bucket()` based rollups via continuous aggregates for trend analysis and AI feature extraction
+* **Repository abstraction preserved** — persistence upgrades transparent to API consumers; zero service or repository interface changes
+* **Foundation ready for Feature Store and AI pipelines** — pre-computed aggregate tables and governed data lifecycle prepare Phase 13 AI Feature Store materialisation
 
-Capabilities unlocked:
-* Automatic weekly chunk partitioning on primary time keys (`recorded_at`, `started_at`, `observed_at`)
+Capabilities delivered:
+* Automatic chunk partitioning on primary time keys (`recorded_at`, `started_at`, `observed_at`)
 * Chunk exclusion for time-range queries (skip irrelevant chunks entirely)
-* Continuous aggregates: hourly/daily average per sensor type per field
-* Columnar compression for cold data (20–100× storage reduction)
-* Automatic data retention policies
+* Eight continuous aggregates with automated refresh policies
+* Columnar compression for cold data on all six hypertables
+* Eleven retention policies governing raw and aggregate data lifecycle
+* Twenty-seven automated background jobs (compression, CA refresh, retention)
 
 ## Apache Cassandra
 
