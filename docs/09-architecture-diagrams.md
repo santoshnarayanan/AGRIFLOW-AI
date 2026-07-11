@@ -1,9 +1,10 @@
 # AGRIFLOW-AI Architecture Diagrams
 
 **Document:** Architecture Diagrams Reference  
-**Version:** 1.1  
+**Version:** 1.2  
 **Date:** June 2026  
-**Scope:** Current State (Phase 11) and Target State (Phase 15) — visual architecture reference  
+**Scope:** Current State (Phase 12) and Target State (Phase 15) — visual architecture reference  
+**Current Phase:** Phase 12 — TimescaleDB Time-Series Foundation (Complete)  
 **Status:** Living Document  
 **Author:** AGRIFLOW-AI Principal Enterprise Architecture
 
@@ -21,7 +22,7 @@
 8. [Future Precision Agriculture Architecture](#8-future-precision-agriculture-architecture)
 9. [Future Event-Driven Architecture](#9-future-event-driven-architecture)
 10. [Future CQRS Architecture](#10-future-cqrs-architecture)
-11. [Future TimescaleDB Architecture](#11-future-timescaledb-architecture)
+11. [Current (Implemented) TimescaleDB Architecture](#11-current-implemented-timescaledb-architecture)
 12. [Future Cassandra Architecture](#12-future-cassandra-architecture)
 13. [Future Temporal Workflow Architecture](#13-future-temporal-workflow-architecture)
 14. [Future Digital Twin Architecture](#14-future-digital-twin-architecture)
@@ -33,17 +34,17 @@
 ## 1. AGRIFLOW Platform Evolution
 
 ### Title
-AGRIFLOW-AI Platform Evolution — Phase 1 through Phase 11
+AGRIFLOW-AI Platform Evolution — Phase 1 through Phase 12
 
 ### Purpose
-Illustrate how each completed phase expanded the AGRIFLOW-AI platform from an empty backend foundation into a multi-domain, AI-ready agricultural intelligence system. This diagram captures the strategic trajectory: each phase added a new domain, new infrastructure, or a critical capability layer that unlocked the next phase.
+Illustrate how each completed phase expanded the AGRIFLOW-AI platform from an empty backend foundation into a multi-domain, AI-ready agricultural intelligence system with an operational TimescaleDB analytical persistence layer. This diagram captures the strategic trajectory: each phase added a new domain, new infrastructure, or a critical capability layer that unlocked the next phase.
 
 ### Explanation
-The platform began with zero capability in Phase 1. By Phase 11, it operates a fully layered Clean Architecture with ten domain models, eleven database migrations, an AI readiness attribute set, append-only IoT telemetry, mutable operational event domains, two grandchild crop-cycle observation domains, and one field-anchored Earth observation domain (`SatelliteObservation`). Each vertical column in the diagram represents a phase boundary. Capabilities are cumulative — nothing is removed; each phase builds on all prior phases.
+The platform began with zero capability in Phase 1. By Phase 12, it operates a fully layered Clean Architecture with ten domain models, sixteen database migrations, an AI readiness attribute set, append-only IoT telemetry, mutable operational event domains, two grandchild crop-cycle observation domains, one field-anchored Earth observation domain (`SatelliteObservation`), and a complete TimescaleDB time-series foundation (hypertables, compression, continuous aggregates, retention). Each vertical column in the diagram represents a phase boundary. Capabilities are cumulative — nothing is removed; each phase builds on all prior phases.
 
 ```mermaid
 timeline
-    title AGRIFLOW-AI Platform Evolution — Phase 1 to Phase 11
+    title AGRIFLOW-AI Platform Evolution — Phase 1 to Phase 12
     Phase 1 : FastAPI Foundation
             : PostgreSQL Integration
             : Alembic Migration Framework
@@ -100,6 +101,14 @@ timeline
             : Field-Anchored Earth Observation
             : NDVI / EVI / LAI Index Storage
             : Mutable Reprocessing Corrections (PATCH)
+    Phase 12 : TimescaleDB Time-Series Foundation
+            : TimescaleDB 2.28.1 Extension (ADR-001)
+            : Six Hypertables (ADR-002)
+            : Chunk Partitioning
+            : Compression Policies (ADR-003)
+            : Continuous Aggregates (ADR-004)
+            : Retention Policies (ADR-005)
+            : Zero API Breaking Changes
 ```
 
 ### Key Architectural Observations
@@ -108,10 +117,11 @@ timeline
 - **Phase 2** created the five-layer architecture pattern (`Model → Schema → Repository → Service → Router`) that became the immutable template for all future domain additions.
 - **Phase 6** was the only phase that did not add a new domain — instead it performed a systematic AI data gap analysis and backfilled the minimum P1 attribute set. This was the most strategically important phase for future AI model training.
 - **Phase 7** introduced the first qualitatively different domain: append-only telemetry. The decision to make `SensorReading` immutable and to mark the service layer as the future Redpanda/Digital Twin/Temporal boundary was the platform's first explicit forward-architecture design.
-- **Phase 8** introduced the first mutable operational event domain (`IrrigationEvent`) and the authoritative PostgreSQL ENUM lifecycle pattern (`postgresql.ENUM` with `create_type=False`). Both `sensor_readings` and `irrigation_events` are now TimescaleDB-ready.
+- **Phase 8** introduced the first mutable operational event domain (`IrrigationEvent`) and the authoritative PostgreSQL ENUM lifecycle pattern (`postgresql.ENUM` with `create_type=False`). Both `sensor_readings` and `irrigation_events` were designed TimescaleDB-ready and converted to hypertables in Phase 12.
 - **Phase 9** introduced the first grandchild domain (`YieldRecord`), establishing crop-cycle anchoring with denormalized `field_id` for direct field-scoped analytics and time-series yield tracking.
 - **Phase 10** extended the grandchild pattern to crop health (`DiseaseObservation`), adding structured disease severity labels and diagnosis method provenance — the primary training label source for the future Disease Risk Scoring Engine.
 - **Phase 11** introduced the first field-anchored Earth observation domain (`SatelliteObservation`), storing spectral index values (`SpectralIndex`), satellite provider provenance (`SatelliteProvider`), and processing level metadata (`ProcessingLevel`). Unlike grandchild domains, `SatelliteObservation` anchors directly on `Field` — enabling geospatial analytics without crop-cycle coupling. PATCH is permitted for reprocessing corrections; `field_id` is immutable after creation.
+- **Phase 12** completed the analytical persistence layer. TimescaleDB 2.28.1 was enabled as a PostgreSQL extension; six time-series tables were converted to hypertables with composite primary keys; compression, continuous aggregates, and retention policies were activated — all via Alembic migrations with zero changes to API, service, or repository interfaces.
 
 ---
 
@@ -165,7 +175,7 @@ graph TD
 
 - `Farm → Field → {Crop, SoilProfile, WeatherRecord, SensorReading, IrrigationEvent, SatelliteObservation}` is the stable aggregate hierarchy. `YieldRecord` and `DiseaseObservation` introduce grandchild paths: `Farm → Field → Crop → {YieldRecord, DiseaseObservation}`.
 - `SoilProfile` is the only 1:1 entity. Its uniqueness is enforced at two levels: `UNIQUE` constraint in PostgreSQL and `DuplicateSoilProfileError` at the service layer.
-- `WeatherRecord`, `SensorReading`, `IrrigationEvent`, `YieldRecord`, `DiseaseObservation`, and `SatelliteObservation` are all time-keyed domains with `TIMESTAMPTZ`. All six are TimescaleDB hypertable candidates.
+- `WeatherRecord`, `SensorReading`, `IrrigationEvent`, `YieldRecord`, `DiseaseObservation`, and `SatelliteObservation` are all time-keyed domains with `TIMESTAMPTZ`. All six are operational TimescaleDB hypertables (Phase 12, ADR-002). Reference tables (`farms`, `fields`, `crops`, `soil_profiles`) remain standard PostgreSQL relations.
 - `SensorReading` is immutable (no PATCH, no UPDATE); `IrrigationEvent`, `YieldRecord`, `DiseaseObservation`, and `SatelliteObservation` are mutable (full CRUD). This contrast reflects the fundamental difference between sensor telemetry (immutable physical fact) and operational management records (correctible human actions or reprocessed observations).
 - `YieldRecord` and `DiseaseObservation` are the first entities to carry two parent FKs (`crop_id` primary anchor, `field_id` denormalized). `SatelliteObservation` is field-anchored only — no crop FK — enabling Earth observation analytics independent of crop lifecycle state.
 - All ten domain tables carry `created_at` and `updated_at` via `AuditableModel`.
@@ -374,13 +384,15 @@ sequenceDiagram
 ## 5. Current Database Architecture
 
 ### Title
-AGRIFLOW-AI Current Database Architecture — Tables, Relationships, and Migration Strategy
+AGRIFLOW-AI Current Database Architecture — Tables, Relationships, and Migration Strategy (Post Phase 12)
 
 ### Purpose
-Show the complete current database schema including all ten domain tables, their foreign key relationships, primary index strategy, and the Alembic migration chain that produced them. This diagram is the DBA reference view of the platform.
+Show the complete current database schema including all ten domain tables, their foreign key relationships, primary index strategy, and the Alembic migration chain that produced them. This diagram is the DBA reference view of the platform after Phase 12 TimescaleDB implementation.
 
 ### Explanation
 All tables use UUID v4 primary keys generated server-side. Foreign keys establish the `Farm → Field → {Crop, SoilProfile, WeatherRecord, SensorReading, IrrigationEvent, SatelliteObservation}` hierarchy, with grandchild domains `YieldRecord` and `DiseaseObservation` anchoring on `Crop` and carrying denormalized `field_id`. PostgreSQL ENUM types are created in separate calls before their owning tables to enable independent lifecycle management. Starting from Phase 8, `postgresql.ENUM` with `create_type=False` is the authoritative enum lifecycle pattern. Alembic migrations are linear and sequential.
+
+Phase 12 introduced TimescaleDB 2.28.1 as a PostgreSQL extension. Six time-series tables are operational hypertables with composite primary keys `(id, time_column)`. Four reference tables remain standard PostgreSQL relations. Compression policies, eight continuous aggregates, and eleven retention policies operate as database background jobs — transparent to application code.
 
 ```mermaid
 erDiagram
@@ -563,14 +575,30 @@ graph LR
     M9["b7e2a9f4c8d3\ncreate_yield_records_table\nyield_measurement_method ENUM\n4 indexes incl. compound"]
     M10["d3e7b2a9f1c4\ncreate_disease_observations_table\ndisease_severity ENUM\ndiagnosis_method ENUM\n6 indexes incl. compound"]
     M11["a1b2c3d4e5f6\ncreate_satellite_observations_table\nsatellite_provider ENUM\nspectral_index ENUM\nprocessing_level ENUM\n7 indexes incl. compound"]
+    M12["f1e2d3c4b5a6\nenable_timescaledb_extension\nTimescaleDB 2.28.1\nADR-001"]
+    M13["c9d8e7f6a5b4\nconvert_to_hypertables\n6 hypertables\ncomposite PKs\nADR-002"]
+    M14["d4f5e6a7b8c9\ncompression_policies\n6 policies\nADR-003"]
+    M15["e5f6a7b8c9d0\ncontinuous_aggregates\n8 CAs + refresh\nADR-004"]
+    M16["f6a7b8c9d0e1\nretention_policies\n11 policies\nADR-005"]
 
     M1 --> M2 --> M3 --> M4 --> M5 --> M6 --> M7 --> M8 --> M9 --> M10 --> M11
-    M11 --> HEAD["HEAD\na1b2c3d4e5f6\n(current)"]
+    M11 --> M12 --> M13 --> M14 --> M15 --> M16
+    M16 --> HEAD["HEAD\nf6a7b8c9d0e1\n(current)"]
 ```
+
+### Storage Model (Phase 12)
+
+| Category | Tables | Engine |
+|---|---|---|
+| **Reference / master data** | `farms`, `fields`, `crops`, `soil_profiles` | Standard PostgreSQL |
+| **Time-series hypertables** | `weather_records`, `sensor_readings`, `irrigation_events`, `yield_records`, `disease_observations`, `satellite_observations` | TimescaleDB hypertables |
+| **Analytical rollups** | Eight continuous aggregates (`ca_*`) | TimescaleDB (derived) |
 
 ### Key Architectural Observations
 
 - **All time-series tables index their primary time key.** `weather_records`, `sensor_readings`, `irrigation_events`, `yield_records`, `disease_observations`, and `satellite_observations` each have individual time indexes. `sensor_readings`, `irrigation_events`, `yield_records`, `disease_observations`, and `satellite_observations` add compound `(parent_id, time_key)` or `(spectral_index, observed_at)` indexes — the primary AI feature pipeline access pattern.
+- **Six time-series tables are operational hypertables (Phase 12).** Composite PKs `(id, time_column)` satisfy TimescaleDB partitioning constraints while preserving UUID-based `get_by_id` lookups. Chunk exclusion accelerates time-window queries as history grows.
+- **Compression, continuous aggregates, and retention are persistence-layer capabilities.** Six compression policies, eight continuous aggregates with refresh policies, and eleven retention policies operate as TimescaleDB background jobs — zero changes to repository interfaces or API contracts.
 - **`soil_profiles.field_id` carries a `UNIQUE` constraint**, not a `UNIQUE INDEX`. The `UNIQUE` constraint is supplemented by a `UNIQUE INDEX` for explicit index naming.
 - **Migration 005 used `ADD COLUMN` with no server defaults.** Adding nullable columns to existing tables with large row counts is instantaneous on PostgreSQL 11+ (metadata-only operation). This is the only safe strategy for live production schema evolution.
 - **All Field children use `ON DELETE CASCADE`.** Deleting a `Field` atomically removes all its children at the database level.
@@ -581,13 +609,13 @@ graph LR
 ## 6. Current Sensor Telemetry Architecture
 
 ### Title
-AGRIFLOW-AI Sensor Telemetry Architecture — Phase 7 IoT Data Ingestion Pipeline
+AGRIFLOW-AI Sensor Telemetry Architecture — Phase 7 IoT Data Ingestion with TimescaleDB Storage (Phase 12)
 
 ### Purpose
-Show how sensor data flows from IoT field devices through the ingestion API into immutable PostgreSQL storage, and illustrate the extension points where future event-driven components will be wired.
+Show how sensor data flows from IoT field devices through the ingestion API into immutable TimescaleDB hypertable storage, and illustrate the extension points where future event-driven components will be wired.
 
 ### Explanation
-Phase 7 introduced the first real-time telemetry capability. IoT gateways submit sensor readings via REST. The API layer validates, the service layer enforces immutability rules (timezone-awareness, no future timestamps), and the repository persists to `sensor_readings`. The service contains a documented extension point (ADR-007-26) marking where Redpanda publishing, Digital Twin updates, and Temporal triggers will connect in future phases — without modifying the current business logic.
+Phase 7 introduced the first real-time telemetry capability. IoT gateways submit sensor readings via REST. The API layer validates, the service layer enforces immutability rules (timezone-awareness, no future timestamps), and the repository persists to `sensor_readings`. Phase 12 converted `sensor_readings` to a TimescaleDB hypertable with compression, continuous aggregates, and retention policies — with zero changes to the ingestion path. The service contains a documented extension point (ADR-007-26) marking where Redpanda publishing, Digital Twin updates, and Temporal triggers will connect in future phases — without modifying the current business logic.
 
 ```mermaid
 graph TB
@@ -614,14 +642,12 @@ graph TB
         REPO["SensorReadingRepository\n• create()\n• list_by_field() → ORDER BY recorded_at DESC\n• get_by_id()\n• delete()\n⚠ NO update() exposed"]
     end
 
-    subgraph "Storage Layer"
-        PG[("PostgreSQL 17\nsensor_readings\n• DOUBLE PRECISION sensor_value\n• TIMESTAMPTZ recorded_at\n• ON DELETE CASCADE\n• 5 indexes")]
-        IDX["Indexes:\n• ix_field_id\n• ix_sensor_type\n• ix_recorded_at\n• ix_(field_id, recorded_at)\n• ix_(sensor_type, recorded_at)"]
-    end
-
-    subgraph "Future Storage Upgrade"
-        TS[("TimescaleDB\nHypertable\n(zero code changes)")]
-        COMP["Weekly Chunks\n+ Columnar Compression\n+ Continuous Aggregates"]
+    subgraph "Storage Layer — PostgreSQL + TimescaleDB"
+        PG[("PostgreSQL 17.10\n+ TimescaleDB 2.28.1\nsensor_readings hypertable\n• DOUBLE PRECISION sensor_value\n• TIMESTAMPTZ recorded_at\n• Composite PK (id, recorded_at)\n• ON DELETE CASCADE\n• 5 indexes")]
+        CHUNK["Chunk Partitioning\n• Per-table chunk intervals\n• Chunk exclusion on time-range queries"]
+        COMP["Compression Policies\n• Columnar encoding on cold chunks\n• 6 hypertable policies"]
+        CA["Continuous Aggregates\n• 8 platform rollups\n• Incremental refresh jobs"]
+        RET["Retention Policies\n• Domain-tiered lifecycle\n• Background chunk expiry"]
     end
 
     GW -->|"HTTP POST\nJSON payload"| EP
@@ -630,9 +656,10 @@ graph TB
     SVC -->|"After persistence"| EXT
     SVC --> REPO
     REPO -->|"INSERT"| PG
-    PG --- IDX
-    PG -.->|"Future: create_hypertable()"| TS
-    TS --- COMP
+    PG --- CHUNK
+    PG --- COMP
+    PG --- CA
+    PG --- RET
 ```
 
 ### Key Architectural Observations
@@ -640,7 +667,7 @@ graph TB
 - **Immutability is the defining characteristic of `SensorReading`.** No `PATCH` or `PUT` endpoint exists. The API router module docstring explicitly references ADR-007-32. Corrections to erroneous readings are expressed as new readings, not modifications.
 - **`DOUBLE PRECISION` was chosen deliberately over `NUMERIC`.** Sensor ADC outputs and physical unit measurements (mV, µS/cm, lux) require IEEE 754 64-bit floating-point precision. Fixed-scale `NUMERIC` would silently truncate high-resolution readings.
 - **The extension point is a zero-cost future capability.** Adding Redpanda publishing requires no changes to validation logic, field existence checks, or timestamp validation. The extension point is below all business logic.
-- **TimescaleDB promotion requires zero application changes.** The `sensor_readings` table satisfies TimescaleDB's only structural requirement: a `NOT NULL TIMESTAMPTZ` partition column (`recorded_at`). `create_hypertable()` is a single SQL call.
+- **TimescaleDB hypertable conversion is complete (Phase 12).** `sensor_readings` is an operational hypertable partitioned on `recorded_at`. Compression, continuous aggregates, and retention policies operate transparently below the repository layer. No application code changes were required.
 
 ---
 
@@ -912,76 +939,107 @@ graph TB
 
 ---
 
-## 11. Future TimescaleDB Architecture
+## 11. Current (Implemented) TimescaleDB Architecture
 
 ### Title
-AGRIFLOW-AI Future TimescaleDB Architecture — High-Frequency Sensor Time-Series Storage
+AGRIFLOW-AI Implemented TimescaleDB Architecture — Operational Time-Series Analytical Platform (Phase 12)
 
 ### Purpose
-Show how the existing `sensor_readings` PostgreSQL table will be promoted to a TimescaleDB hypertable, enabling automatic time-partitioned storage, continuous aggregates, and columnar compression — with zero application code changes.
+Document the implemented TimescaleDB analytical persistence platform: extension enablement, hypertable conversion, chunk management, compression, continuous aggregates, and retention — integrated with PostgreSQL and the existing Clean Architecture stack with zero API breaking changes.
 
 ### Explanation
-TimescaleDB is a PostgreSQL extension that transparently partitions tables by time into "chunks." Each chunk maps to a time interval (e.g. one week). Queries with time-range predicates skip irrelevant chunks entirely. Continuous aggregates are materialised views that auto-update as new data arrives. Columnar compression reduces cold chunk storage by 20–100×. The AGRIFLOW-AI `sensor_readings` table was designed from day one to satisfy TimescaleDB's only structural requirement: a `NOT NULL TIMESTAMPTZ` partition key.
+Phase 12 delivered TimescaleDB 2.28.1 as a PostgreSQL extension on PostgreSQL 17.10. Six time-series tables were converted to hypertables via forward-only Alembic migrations. Compression policies, eight continuous aggregates, and eleven retention policies complete the four-tier analytical stack. All capabilities operate below the repository layer — application code, service interfaces, and REST contracts are unchanged.
+
+**Migration strategy:** Five Alembic migrations (`f1e2d3c4b5a6` → `f6a7b8c9d0e1`) delivered the complete stack in governance-first sequence: extension → hypertables → compression → continuous aggregates → retention. Each step was authorised by an ADR before implementation.
+
+**PostgreSQL compatibility:** TimescaleDB extends PostgreSQL — it does not replace it. One `agriflow` database, one connection pool, one transaction boundary. Hypertables appear as standard PostgreSQL tables to SQLAlchemy ORM and repository queries. Reference tables (`farms`, `fields`, `crops`, `soil_profiles`) remain standard PostgreSQL relations permanently.
 
 ```mermaid
 graph TB
     subgraph "Application Layer (Unchanged)"
-        APP["AGRIFLOW-AI FastAPI\nSensorReadingRepository\nSensorReadingService\n(Zero code changes required)"]
+        APP["AGRIFLOW-AI FastAPI\nAll Domain Repositories\nAll Domain Services\n(Zero code changes)"]
     end
 
-    subgraph "TimescaleDB Hypertable Layer"
-        HT["sensor_readings\n(Hypertable)\nPartition key: recorded_at\nChunk interval: 1 week"]
+    subgraph "PostgreSQL 17.10 + TimescaleDB 2.28.1"
+        EXT["TimescaleDB Extension\nADR-001\nf1e2d3c4b5a6"]
 
-        subgraph "Active Chunks (Hot Data)"
-            C1["Chunk: 2026-W25\n(current week)\nB-tree indexed\nFull write throughput"]
-            C2["Chunk: 2026-W24\n(last week)\nB-tree indexed\nRead-optimized"]
+        subgraph "Hypertables — Six Time-Series Tables (ADR-002)"
+            HT_WX["weather_records\nPK: (id, recorded_at)"]
+            HT_SR["sensor_readings\nPK: (id, recorded_at)"]
+            HT_IR["irrigation_events\nPK: (id, started_at)"]
+            HT_YR["yield_records\nPK: (id, recorded_at)\npermanently retained"]
+            HT_DO["disease_observations\nPK: (id, observed_at)"]
+            HT_SO["satellite_observations\nPK: (id, observed_at)"]
         end
 
-        subgraph "Warm Chunks (Recent Data)"
-            C3["Chunk: 2026-W20\n(1 month ago)\nB-tree indexed"]
-            C4["Chunk: 2026-W16\n(2 months ago)\nB-tree indexed"]
+        subgraph "Chunk Management"
+            HOT["Hot Chunks\nRecent data\nFull write throughput\nB-tree indexed"]
+            WARM["Warm Chunks\nAging data\nChunk exclusion active"]
+            COLD["Cold Chunks\nColumnar compressed\nADR-003"]
         end
 
-        subgraph "Cold Chunks (Historical Data)"
-            C5["Chunk: 2025-W52\nColumnar compressed\n20–100× storage reduction"]
-            CN["Chunk: 2025-WN\nColumnar compressed\nAuto-retained per policy"]
+        subgraph "Continuous Aggregates (ADR-004)"
+            CA["8 Continuous Aggregates\n• time_bucket() rollups\n• Incremental refresh (T1–T4)\n• e5f6a7b8c9d0"]
         end
+
+        subgraph "Retention Policies (ADR-005)"
+            RET["11 Retention Policies\n• 5 raw hypertables\n• 6 CA objects\n• yield_records exempt\n• f6a7b8c9d0e1"]
+        end
+
+        REF["Reference Tables (PostgreSQL)\nfarms · fields · crops · soil_profiles"]
     end
 
-    subgraph "Continuous Aggregates Layer"
-        CA_HOURLY["sensor_readings_hourly\n(Continuous Aggregate)\n• time_bucket('1 hour', recorded_at)\n• AVG / MIN / MAX / COUNT\n• Per field_id + sensor_type\n• Auto-refreshed on new data"]
-        CA_DAILY["sensor_readings_daily\n(Continuous Aggregate)\n• time_bucket('1 day', recorded_at)\n• AVG / MIN / MAX / COUNT\n• GDD accumulation inputs\n• ET₀ calculation inputs"]
+    subgraph "Analytical Consumers (Phase 13+)"
+        FE["AI Feature Store\n(Phase 13)"]
+        DASH["Dashboard Analytics"]
+        DT["Digital Twin\n(Phase 15)"]
     end
 
-    subgraph "Analytics & AI Layer"
-        AGG_REPO["SensorAggregationRepository\n• hourly_avg_by_field()\n• daily_stats_by_type()\n• rolling_30d_window()"]
-        AI_FE["AI Feature Engineering\n• GDD calculation\n• Vapor Pressure Deficit\n• Soil Water Balance\n• Rolling anomaly windows"]
-        DASHBOARD["Dashboard Analytics\n• Sensor trend charts\n• Aggregated time-series\n• Field comparison views"]
-    end
-
-    subgraph "Data Retention"
-        POLICY["Retention Policy\n• Hot: 90 days full resolution\n• Warm: 1 year compressed\n• Archive: Azure Blob / S3"]
-    end
-
-    APP --> HT
-    HT --- C1 & C2
-    HT --- C3 & C4
-    HT --- C5 & CN
-    HT -->|"Auto-populates"| CA_HOURLY
-    HT -->|"Auto-populates"| CA_DAILY
-    CA_HOURLY --> AGG_REPO
-    CA_DAILY --> AGG_REPO
-    AGG_REPO --> AI_FE
-    AGG_REPO --> DASHBOARD
-    CN --- POLICY
+    APP --> EXT
+    EXT --> HT_WX & HT_SR & HT_IR & HT_YR & HT_DO & HT_SO
+    HT_SR --- HOT & WARM & COLD
+    HT_WX & HT_SR & HT_IR & HT_YR & HT_DO & HT_SO -->|"Refresh jobs"| CA
+    HT_WX & HT_SR & HT_IR & HT_DO & HT_SO & CA --> RET
+    APP --> REF
+    CA --> FE & DASH & DT
 ```
+
+### Implemented Capabilities
+
+| Capability | Status | ADR | Migration |
+|---|---|---|---|
+| TimescaleDB extension | ✅ Operational | ADR-001 | `f1e2d3c4b5a6` |
+| Six hypertables | ✅ Operational | ADR-002 | `c9d8e7f6a5b4` |
+| Composite primary keys | ✅ Operational | ADR-002 | `c9d8e7f6a5b4` |
+| Chunk partitioning | ✅ Operational | ADR-002 | Per-table intervals |
+| Compression policies | ✅ Operational | ADR-003 | `d4f5e6a7b8c9` |
+| Continuous aggregates | ✅ Operational (8) | ADR-004 | `e5f6a7b8c9d0` |
+| Retention policies | ✅ Operational (11) | ADR-005 | `f6a7b8c9d0e1` |
+| Background jobs | ✅ Operational (27) | ADR-003–005 | Platform-managed |
+
+### Architectural Benefits
+
+- **Chunk exclusion** — time-range queries skip irrelevant chunks, accelerating analytical reads as history grows
+- **Columnar compression** — cold chunk encoding reduces storage footprint and I/O without application changes
+- **Continuous aggregates** — pre-computed `time_bucket()` rollups eliminate repeated full hypertable scans for dashboards and AI feature extraction
+- **Governed retention** — domain-tiered lifecycle policies cap storage growth while preserving AI signal in continuous aggregates; `yield_records` permanently retained
+- **Repository transparency** — composite PKs preserve UUID-based `get_by_id` lookups; zero changes to service or API contracts
+- **AI readiness** — bounded-cardinality analytical reads prepare Phase 13 Feature Store materialisation
+
+### Future Extensibility
+
+- **Feature Store (Phase 13)** — consumes validated continuous aggregates as feature extraction sources
+- **CQRS read path** — analytical queries can target continuous aggregates while write repositories continue using raw hypertables
+- **Cassandra projection** — compound indexes `(field_id, recorded_at)` map to Cassandra partition/clustering keys for horizontal scaling beyond single-instance limits
+- **Archive-before-delete** — ADR-005 mandates cold chunk export to Azure Blob Storage before retention policies execute in production
 
 ### Key Architectural Observations
 
-- **Chunk exclusion is the performance multiplier.** A query for "last 7 days of soil moisture for field X" touches only 1–2 chunks out of potentially hundreds. Without TimescaleDB, the same query must scan the entire `sensor_readings` table.
-- **Continuous aggregates eliminate repeated full-scan analytics.** Instead of computing "average hourly soil moisture" from raw data on every dashboard request, the continuous aggregate materialises the result incrementally.
-- **Migration is non-destructive.** `create_hypertable('sensor_readings', 'recorded_at', migrate_data => TRUE)` converts the existing table in-place. Existing data is distributed across initial chunks. No export/re-import cycle is required.
-- **Columnar compression is segment-aware.** TimescaleDB's native columnar compression is especially effective for sensor data because readings from the same field and sensor type have high temporal correlation — ideal for run-length and delta encoding.
+- **Chunk exclusion is the query performance multiplier.** A query for "last 7 days of soil moisture for field X" touches only 1–2 chunks out of potentially hundreds.
+- **Continuous aggregates eliminate redundant analytics.** Dashboard and AI workloads read pre-computed `time_bucket()` rollups instead of scanning raw telemetry on every request.
+- **Migration was governance-first and non-destructive.** Five forward-only Alembic migrations converted existing tables in-place. Phases 5–11 foresight (`NOT NULL TIMESTAMPTZ` partition keys) enabled zero application changes.
+- **Raw hypertables remain authoritative.** APIs and audit retain raw event access. Continuous aggregates are the preferred read path for analytical and AI workloads.
+- **Columnar compression is segment-aware.** Sensor, weather, and satellite data exhibit high temporal correlation within chunks — ideal for TimescaleDB's native encoding.
 
 ---
 
@@ -1382,8 +1440,8 @@ graph TB
     end
 
     subgraph "Primary Storage Layer"
-        PG["PostgreSQL 17\n(Operational Store)\n• farms / fields / crops\n• soil_profiles\n• weather_records\n• domain entities"]
-        TSDB["TimescaleDB\n(Time-Series Store)\n• sensor_readings hypertable\n• Continuous aggregates\n• Columnar compression"]
+        PG["PostgreSQL 17\n(Reference Store)\n• farms / fields / crops\n• soil_profiles"]
+        TSDB["TimescaleDB 2.28.1 ✅\n(Time-Series Store — Phase 12)\n• 6 hypertables operational\n• 8 continuous aggregates\n• 6 compression policies\n• 11 retention policies"]
         CASSANDRA["Apache Cassandra\n(Scale-Out Store)\n• Billions of sensor readings\n• Partition: field_id\n• Clustering: recorded_at DESC"]
     end
 
@@ -1410,7 +1468,7 @@ graph TB
     GATEWAY --> CORE_APIS & EXT_APIS & AI_APIS & GAAS_API
 
     CORE_APIS & EXT_APIS -->|"Writes"| PG
-    CORE_APIS -->|"Sensor writes"| TSDB
+    CORE_APIS & EXT_APIS -->|"Time-series writes"| TSDB
     CORE_APIS -->|"Publish events"| REDPANDA
 
     REDPANDA -->|"Triggers workflows"| TEMPORAL
@@ -1451,16 +1509,17 @@ graph LR
         P2["Phase 3–5\nData-Driven Farming\n• Crop lifecycle tracking\n• Soil intelligence\n• Weather observation"]
         P3["Phase 6–7\nPredictive Foundation\n• AI-ready attributes\n• IoT telemetry\n• Immutable sensor data"]
         P4["Phase 8–11\nPredictive Farming\n• Irrigation tracking ✅\n• Yield records ✅\n• Disease observation ✅\n• Satellite observation ✅"]
-        P5["Phase 12–14\nIntelligent Farming\n• AI yield prediction\n• Disease risk scoring\n• Irrigation optimization\n• Digital Twin v1"]
+        P4B["Phase 12\nTime-Series Foundation ✅\n• TimescaleDB hypertables\n• Compression + CAs\n• Retention policies"]
+        P5["Phase 13–14\nIntelligent Farming\n• AI yield prediction\n• Disease risk scoring\n• Irrigation optimization\n• Digital Twin v1"]
         P6["Phase 15+\nAutonomous Agriculture\n• Full Digital Twin\n• GaaS Farm Copilot\n• Event-driven platform\n• Autonomous actions"]
     end
 
-    P1 --> P2 --> P3 --> P4 --> P5 --> P6
+    P1 --> P2 --> P3 --> P4 --> P4B --> P5 --> P6
 ```
 
 ### Key Architectural Observations
 
-- **Every component traces to a Phase 1–10 architectural decision.** The UUID primary key strategy enables Digital Twin state keys. The `AuditableModel` timestamps enable time-series analytics. The `app/core/enums.py` shared enum module enables Digital Twin sensor state mapping and disease severity classification. No foundational refactoring is required at Phase 15.
+- **Every component traces to a Phase 1–12 architectural decision.** The UUID primary key strategy enables Digital Twin state keys. The `AuditableModel` timestamps enable time-series analytics. The `app/core/enums.py` shared enum module enables Digital Twin sensor state mapping and disease severity classification. Phase 12 delivered the TimescaleDB analytical persistence layer that AI services in Phase 13+ will consume. No foundational refactoring is required at Phase 15.
 - **Redpanda is the central integration fabric.** Every major platform capability — Digital Twin, AI Feature Store, CQRS, Temporal, Alert Engine — connects to the platform via Redpanda topics. This ensures the core domain APIs remain stable as new consumers are added.
 - **The five-layer Clean Architecture scales to Phase 15 without modification.** Completed domains (Irrigation ✅, Yield ✅, Disease Observation ✅, Satellite Observation ✅) follow the same `Model → Schema → Repository → Service → Router` pattern established in Phase 2. The only additions are Redpanda publishing in the service layer and Temporal workflow triggering at the extension point.
 - **Azure is the preferred infrastructure platform** for enterprise and cooperative deployments due to Azure OpenAI Service data sovereignty, Azure Kubernetes Service (AKS) orchestration, Azure API Management gateway, and Azure AI Search vector capabilities — all available within a single Azure tenancy.
@@ -1479,7 +1538,7 @@ graph LR
 
 **Living Document:** This document should be updated at the completion of each phase to reflect new domain additions, architectural decisions, and technology adoptions.
 
-**Last Updated:** Phase 11 completion — June 2026
+**Last Updated:** Phase 12 completion — June 2026
 
 ---
 
