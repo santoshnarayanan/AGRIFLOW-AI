@@ -652,16 +652,16 @@ backend/
 | Document | Description |
 | --- | --- |
 | `docs/01-vision.md` | Product Vision & Strategic Direction |
-| `docs/02-architecture.md` | Technical Architecture (Phase 1–11 complete) |
+| `docs/02-architecture.md` | Technical Architecture (Phase 1–12 complete) |
 | `docs/03-database.md` | Database Design & Schema Reference |
 | `docs/04-api-design.md` | API Design & Endpoint Catalog |
 | `docs/05-local-setup.md` | Local Development Setup |
-| `docs/06-roadmap.md` | Product Roadmap (Phase 1–11 complete) |
+| `docs/06-roadmap.md` | Product Roadmap (Phase 1–12 complete) |
 | `docs/07-phase-history.md` | Phase-by-Phase Implementation History |
 | `docs/08-phase-architecture-handbook.md` | Phase Architecture Handbook (authoritative ADR reference) |
-| `docs/09-architecture-diagrams.md` | Architecture Diagrams (current and target state, Mermaid) |
+| `docs/09-architecture-diagrams.md` | Architecture Diagrams (Phase 12 current state and Phase 15 target, Mermaid) |
 | `docs/plan/AI_DATA_READINESS_ASSESSMENT.md` | AI Data Readiness Assessment (Phase 6) |
-| `docs/AGRIFLOW_PALANTIR_ALIGNMENT.md` | Palantir Foundry Alignment Assessment (Phases 1–11) |
+| `docs/AGRIFLOW_PALANTIR_ALIGNMENT.md` | Palantir Foundry Alignment Assessment (Phases 1–12) |
 | `docs/plan/phase_9_yield_domain_93352ec2.plan.md` | Phase 9 Yield Domain — Implementation Plan |
 
 ---
@@ -689,21 +689,18 @@ backend/
 
 ### Planned Phases
 
-🔜 **Phase 13 – AI Feature Store & Recommendation Services**
+🔜 **Phase 13 – AI Recommendation Foundation** *(current)*
 
-* Yield Recommendation Engine
-* Irrigation Recommendation Engine
-* Disease Recommendation Engine
-* Fertilizer Recommendation Engine
-* AI Feature Store
+* AI Feature Store — versioned feature vectors from TimescaleDB continuous aggregates
+* Yield, Irrigation, Disease, and Fertilizer Recommendation Engines
 * Unified Recommendation Services API layer
 
 🔜 **Phase 14 – Predictive Agriculture**
 
-* Yield Prediction
-* Disease Risk Prediction
-* Irrigation Optimization
-* Fertilizer Recommendation
+* Yield Prediction Engine
+* Disease Risk Scoring Engine
+* Irrigation Optimization Engine
+* Fertilizer Recommendation Engine
 
 🔜 **Phase 15 – Digital Twin & Farm Copilot**
 
@@ -713,7 +710,7 @@ backend/
 
 ⏳ **Phase 16 – Platform Stabilization & Quality Engineering**
 
-* Complete test suite, CI/CD quality gates, production readiness
+* Complete test suite, CI/CD quality gates, production readiness validation
 
 For the detailed roadmap see `docs/06-roadmap.md`
 
@@ -800,11 +797,13 @@ Farm
       └── SatelliteObservation       ✅ Phase 11 Complete
 ```
 
+Phase 12 established the operational TimescaleDB analytical foundation — hypertables, compression, continuous aggregates, and retention policies — on which future AI (Feature Store, Recommendation Engines), Digital Twin, CQRS, Redpanda event streaming, and GaaS capabilities will build. Upcoming phases add intelligence and delivery layers without requiring persistence-layer redesign.
+
 ---
 
 ## Long-Term Goals
 
-AGRIFLOW-AI seeks to become the operating system for modern agriculture by combining operational data, environmental intelligence, predictive analytics, and artificial intelligence into a single platform that helps agricultural organizations improve productivity, sustainability, and decision-making.
+AGRIFLOW-AI seeks to become the operating system for modern agriculture by combining operational data, environmental intelligence, predictive analytics, and artificial intelligence into a single platform that helps agricultural organizations improve productivity, sustainability, and decision-making. Phase 12 completed the analytical persistence layer; Phases 13–16 will deliver AI intelligence, predictive models, Digital Twin, Farm Copilot, and production-grade platform quality — with future infrastructure (CQRS, Redpanda, Temporal, Cassandra) introduced incrementally per the approved roadmap.
 
 ### Platform Evolution
 
