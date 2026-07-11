@@ -25,7 +25,7 @@
 13. [Phase 10 – Disease Observation Domain Architecture](#phase-10--disease-observation-domain-architecture)
 14. [Phase 11 – Satellite Observation Domain Architecture](#phase-11--satellite-observation-domain-architecture)
 15. [Current Domain Architecture (Post Phase 11)](#15-current-domain-architecture-post-phase-11)
-15. [Future Architecture: TimescaleDB](#14-future-architecture-timescaledb)
+15. [Implemented Architecture: TimescaleDB](#14-implemented-architecture-timescaledb)
 16. [Future Architecture: Apache Cassandra](#15-future-architecture-apache-cassandra)
 17. [Future Architecture: CQRS](#16-future-architecture-cqrs)
 18. [Future Architecture: Redpanda / Kafka](#17-future-architecture-redpanda--kafka)
@@ -1779,89 +1779,137 @@ Satellite Observations (Phase 11 — mutable, field-anchored)
 
 ---
 
-## 14. Future Architecture: TimescaleDB
+## 14. Implemented Architecture: TimescaleDB
+
+**Status:** ✅ Complete (Phase 12)  
+**Platform:** PostgreSQL 17.10 + TimescaleDB 2.28.1 (`timescale/timescaledb:2.28.1-pg17`)  
+**Alembic head:** `f6a7b8c9d0e1_enable_retention_policies`  
+**Governance:** [ADR-001](adr/ADR-001-timescaledb-extension-enablement.md) through [ADR-005](adr/ADR-005-timescaledb-retention-policy-strategy.md)
 
 ### Problem Statement
 
-As IoT networks scale to hundreds of sensors per field, `sensor_readings` will accumulate millions of rows per week. Standard B-tree indexes on `recorded_at` degrade under continuous time-series append loads. Analytical queries (e.g. "average soil moisture per hour over 90 days") require full table scans that PostgreSQL cannot optimize beyond sequential scan.
+As IoT networks scale to hundreds of sensors per field, time-series tables accumulate millions of rows per week. Standard B-tree indexes on `recorded_at` degrade under continuous append loads. Analytical queries — average soil moisture per hour over 90 days, seasonal NDVI trends, irrigation volume rollups — require repeated full scans that standard PostgreSQL cannot optimise at enterprise scale.
 
-### What TimescaleDB Provides
+Phase 12 resolved this by implementing TimescaleDB as a PostgreSQL extension beneath the existing Clean Architecture stack, delivering chunk-partitioned storage, columnar compression, pre-computed rollups, and governed data lifecycle — with zero API breaking changes.
 
-TimescaleDB is a PostgreSQL extension that transparently partitions tables by time using **hypertables**. A hypertable appears to the application as a standard PostgreSQL table but internally stores data in time-ordered chunks, each of which can be independently indexed, compressed, and queried.
+### What Was Implemented
 
-Key capabilities:
-- **Automatic partitioning** by `recorded_at` into configurable chunk intervals (e.g. 1 week)
-- **Chunk exclusion**: queries with `WHERE recorded_at BETWEEN` skip irrelevant chunks entirely
-- **Continuous aggregates**: materialised views that auto-update as new data arrives
-- **Data retention policies**: automatic chunk expiry after configurable TTL
-- **Columnar compression**: 20–100× storage reduction for cold data
+Phase 12 delivered a four-tier analytical persistence platform in five forward-only Alembic migrations:
 
-### Migration Path
+| Layer | Capability | Migration | ADR |
+|---|---|---|---|
+| Extension | TimescaleDB 2.28.1 enabled in `agriflow` database | `f1e2d3c4b5a6` | ADR-001 |
+| Hypertables | Six time-series tables converted with composite PKs `(id, time_column)` | `c9d8e7f6a5b4` | ADR-002 |
+| Compression | Six columnar compression policies on hypertable chunks | `d4f5e6a7b8c9` | ADR-003 |
+| Continuous Aggregates | Eight `time_bucket()` rollups with refresh policies | `e5f6a7b8c9d0` | ADR-004 |
+| Retention | Eleven lifecycle policies (five raw + six CA objects) | `f6a7b8c9d0e1` | ADR-005 |
 
-The AGRIFLOW-AI `sensor_readings` table was intentionally designed for TimescaleDB promotion:
+**Hypertables operational:**
 
-```sql
--- Step 1: Install TimescaleDB extension
-CREATE EXTENSION IF NOT EXISTS timescaledb;
+| Table | Partition Key | Engine |
+|---|---|---|
+| `weather_records` | `recorded_at` | TimescaleDB hypertable |
+| `sensor_readings` | `recorded_at` | TimescaleDB hypertable |
+| `irrigation_events` | `started_at` | TimescaleDB hypertable |
+| `yield_records` | `recorded_at` | TimescaleDB hypertable |
+| `disease_observations` | `observed_at` | TimescaleDB hypertable |
+| `satellite_observations` | `observed_at` | TimescaleDB hypertable |
 
--- Step 2: Convert sensor_readings to a hypertable
--- The partition key maps directly to our existing recorded_at column
-SELECT create_hypertable(
-    'sensor_readings',
-    'recorded_at',
-    chunk_time_interval => INTERVAL '1 week',
-    migrate_data => TRUE
-);
+**Reference tables unchanged:** `farms`, `fields`, `crops`, `soil_profiles` remain standard PostgreSQL relations.
+
+Twenty-seven automated background jobs (compression, continuous aggregate refresh, retention) operate entirely within the database. The Canonical Development Dataset (CDD v1.0.0) validated the complete stack end-to-end.
+
+### Why Architectural Decisions Were Made
+
+Phase 12 decisions followed a governance-first sequence: assessment → ADR → implementation → validation. Each ADR resolved a distinct scalability concern without altering application contracts.
+
+| ADR | Decision Rationale |
+|---|---|
+| **ADR-001** | TimescaleDB is a PostgreSQL extension, not a separate database. Enabling it via Alembic preserves infrastructure-as-code and keeps a single connection pool, transaction boundary, and migration workflow. |
+| **ADR-002** | Only six tables exhibit unbounded time-series growth. Composite PKs `(id, time_column)` satisfy TimescaleDB partitioning constraints while preserving UUID-based `get_by_id` lookups. Reference data stays relational permanently. |
+| **ADR-003** | Chunk exclusion solves query scalability; compression solves storage scalability. Columnar encoding on cold chunks reduces disk footprint and I/O for historical reads without changing repository methods. |
+| **ADR-004** | Dashboards, Feature Store pipelines, and AI consumers repeatedly query identical time windows. Continuous aggregates compute `time_bucket()` rollups once and refresh incrementally — eliminating redundant full hypertable scans. |
+| **ADR-005** | Unbounded storage growth is unsustainable at production scale. Domain-tiered retention policies cap raw data lifecycles while preserving AI signal in continuous aggregates; `yield_records` is permanently retained as irreplaceable harvest labels. |
+
+Phases 5–11 deliberately designed time-series tables with `NOT NULL TIMESTAMPTZ` partition keys and compound `(parent_id, time_key)` indexes. This foresight allowed hypertable conversion without repository, service, or API changes.
+
+### Benefits
+
+* **Enterprise-scale telemetry** — chunk partitioning and chunk exclusion accelerate time-window queries as history grows
+* **Storage efficiency** — columnar compression on cold data reduces long-term storage cost
+* **Analytical performance** — eight continuous aggregates serve dashboard and AI workloads without repeated raw scans
+* **Governed lifecycle** — retention policies convert linear growth into predictable plateau storage
+* **Application transparency** — zero changes to REST endpoints, request/response schemas, service interfaces, or repository contracts
+* **AI readiness** — bounded-cardinality analytical reads and multi-season summary retention prepare Phase 13 Feature Store materialisation
+
+### Integration with PostgreSQL
+
+TimescaleDB extends PostgreSQL — it does not replace it.
+
+```text
+PostgreSQL 17.10
+├── Standard relations          farms, fields, crops, soil_profiles
+├── TimescaleDB extension       timescaledb 2.28.1
+├── Hypertables (6)             chunk-partitioned time-series storage
+├── Compression policies (6)      columnar encoding on cold chunks
+├── Continuous aggregates (8)   incrementally refreshed rollups
+└── Retention policies (11)     domain-tiered chunk lifecycle
 ```
 
-**Zero application code changes required.** The ORM model, repository, service, and API layers remain completely unchanged. `list_by_field` with `ORDER BY recorded_at DESC` naturally aligns with the hypertable scan direction.
+* **Single database engine** — one `agriflow` database, one Alembic migration chain, one `AsyncSession` connection pool
+* **Transparent SQL access** — hypertables appear as standard PostgreSQL tables to SQLAlchemy ORM and repository queries
+* **Transactional consistency** — reference data joins and time-series writes share the same ACID boundary
+* **Unified operations** — backups, monitoring, and schema evolution follow existing PostgreSQL workflows
 
-Similarly, `irrigation_events.started_at TIMESTAMPTZ NOT NULL` (Phase 8) is the second TimescaleDB-ready table:
+### Integration with Existing AGRIFLOW-AI Architecture
 
-```sql
-SELECT create_hypertable(
-    'irrigation_events',
-    'started_at',
-    chunk_time_interval => INTERVAL '1 month',
-    migrate_data => TRUE
-);
-```
-
-### Continuous Aggregates (Future)
-
-```sql
--- Example: hourly average soil moisture per field
-CREATE MATERIALIZED VIEW sensor_readings_hourly
-WITH (timescaledb.continuous) AS
-SELECT
-    field_id,
-    sensor_type,
-    time_bucket('1 hour', recorded_at) AS bucket,
-    AVG(sensor_value)                  AS avg_value,
-    MIN(sensor_value)                  AS min_value,
-    MAX(sensor_value)                  AS max_value,
-    COUNT(*)                           AS reading_count
-FROM sensor_readings
-GROUP BY field_id, sensor_type, bucket;
-```
-
-This aggregate would be queried by a future `SensorAggregationRepository` without touching the `SensorReadingRepository`.
-
-### Architecture Impact
+TimescaleDB capabilities sit entirely below the repository layer. The Clean Architecture boundary established in Phases 1–11 is preserved.
 
 ```mermaid
-graph LR
-    App["Application Layer\n(unchanged)"] --> SensorReadingRepo["SensorReadingRepository\n(unchanged)"]
-    SensorReadingRepo --> HT["sensor_readings\n(TimescaleDB hypertable)"]
-    HT --> Chunk1["Chunk: 2026-W01"]
-    HT --> Chunk2["Chunk: 2026-W02"]
-    HT --> ChunkN["Chunk: 2026-WN"]
-    CA["SensorAggregationRepository\n(new)"] --> AGG["sensor_readings_hourly\n(continuous aggregate)"]
+graph TB
+    Client["Client / IoT / Operator"] --> API["FastAPI Router\n(unchanged)"]
+    API --> SVC["Service Layer\n(unchanged)"]
+    SVC --> REPO["Repository Layer\n(unchanged interfaces)"]
+    REPO --> PG["PostgreSQL 17.10"]
+    PG --> TS["TimescaleDB 2.28.1"]
+    TS --> HT["Hypertables (6)\nchunk-partitioned raw events"]
+    TS --> COMP["Compression Policies (6)\ncold chunk encoding"]
+    TS --> CA["Continuous Aggregates (8)\npre-computed rollups"]
+    TS --> RET["Retention Policies (11)\nlifecycle governance"]
+    HT --> REF["Reference Tables (4)\nstandard PostgreSQL"]
 ```
 
-### Readiness Assessment
+**What changed:** Docker image, database extension, hypertable storage, composite PKs on six ORM models, compression/CA/retention policies, background job ecosystem.
 
-`sensor_readings` is **100% ready** for TimescaleDB promotion as designed. The only structural requirement — a `NOT NULL TIMESTAMPTZ` partition key — is already satisfied by `recorded_at`.
+**What did not change:** API routes, service interfaces, repository method signatures, Pydantic schemas, validation rules, dependency injection, and exception mapping.
+
+Repository `get_by_id` queries use `WHERE id = :id` — a predicate filter unaffected by composite primary keys at the database layer. Existing `list_by_field` methods with `ORDER BY time_key DESC` align naturally with hypertable scan direction.
+
+### Future Extensibility
+
+Phase 12 establishes the persistence foundation for subsequent platform capabilities without requiring persistence-layer redesign:
+
+```text
+Raw Hypertables (Phase 12 ✅)
+        ↓
+Continuous Aggregates (Phase 12 ✅)
+        ↓
+AI Feature Store (Phase 13)
+        ↓
+Recommendation Engines (Phase 13)
+        ↓
+Digital Twin (Phase 15)
+        ↓
+Farm Copilot / GaaS (Phase 15)
+```
+
+* **Feature Store (Phase 13)** — consumes validated continuous aggregates as bounded-cardinality feature extraction sources
+* **CQRS read path** — analytical consumers can read from continuous aggregates while write repositories continue targeting raw hypertables; service layer remains the split boundary
+* **Cassandra horizontal scaling** — compound indexes `(field_id, recorded_at)` established in Phases 7–11 map directly to Cassandra partition/clustering keys for future CQRS projection
+* **Redpanda event streaming** — service extension points (ADR-007-26) remain the publishing boundary; TimescaleDB handles durable storage independently
+* **Archive-before-delete** — ADR-005 mandates cold chunk export to Azure Blob Storage before retention policies execute in production
+
+Raw hypertables remain the authoritative event store for API point-in-time detail. Continuous aggregates are the preferred read path for analytical and AI workloads. This dual-path model scales from development through enterprise deployment without breaking existing client integrations.
 
 ---
 
