@@ -1,5 +1,52 @@
 # API Design
 
+**Last Updated:** Phase 12 — TimescaleDB Time-Series Foundation Complete  
+**Current Implementation Version:** Phases 1–11 domain APIs (unchanged) + Phase 12 persistence-layer enhancements  
+**Alembic Head:** `f6a7b8c9d0e1_enable_retention_policies`
+
+---
+
+## API Architecture Overview
+
+Phase 12 upgraded the persistence tier beneath the existing Clean Architecture stack. REST endpoints, service contracts, and repository interfaces are unchanged; repository implementations transparently manage TimescaleDB access for time-series domains.
+
+```text
+Client
+↓
+FastAPI
+↓
+Service Layer
+↓
+Repository Layer          ← transparent TimescaleDB access for hypertable domains
+↓
+PostgreSQL + TimescaleDB
+↓
+Hypertables               ← six time-series tables (ADR-002)
+↓
+Continuous Aggregates     ← eight pre-computed rollups (ADR-004)
+```
+
+Reference tables (`farms`, `fields`, `crops`, `soil_profiles`) remain standard PostgreSQL relations. Time-series data for weather, sensor, irrigation, yield, disease, and satellite domains is stored in TimescaleDB hypertables. See [03-database.md](03-database.md) and [ADR-001](adr/ADR-001-timescaledb-extension-enablement.md) through [ADR-005](adr/ADR-005-timescaledb-retention-policy-strategy.md).
+
+---
+
+## API Design Principles
+
+AGRIFLOW-AI APIs follow Clean Architecture: routers validate and serialize; services enforce business rules; repositories own persistence. Phase 12 did not alter this boundary.
+
+### Phase 12 Persistence Transparency
+
+Phase 12 introduced persistence-layer enhancements only. The external contract visible to API clients is fully backward compatible:
+
+* **REST contracts unchanged** — all Phase 1–11 endpoint paths, HTTP verbs, status codes, and payload shapes remain identical.
+* **Repository abstraction unchanged** — repository interfaces and method signatures are the same; implementations route time-series reads and writes to hypertables without exposing TimescaleDB semantics to callers.
+* **Service layer unchanged** — business rules, validation, and orchestration logic are unaffected.
+* **Internal persistence upgraded to TimescaleDB** — hypertables, compression, continuous aggregates, and retention policies operate entirely below the repository layer.
+
+Clients require no changes. Existing integrations continue to function without modification.
+
+---
+
 ## Existing Endpoints
 
 ### Health
@@ -291,15 +338,17 @@ Query parameter: `spectral_index`
 
 Request Flow:
 
-API Router
+Client
+→ API Router
 → Schema Validation
 → Service Layer
-→ Repository Layer
-→ PostgreSQL
+→ Repository Layer          (transparent TimescaleDB access)
+→ PostgreSQL + TimescaleDB
+→ Hypertables / Continuous Aggregates
 
 Response Flow:
 
-PostgreSQL
+PostgreSQL + TimescaleDB
 → Repository Layer
 → Service Layer
 → Schema Serialization
@@ -314,7 +363,7 @@ FastAPI Router
 → Service Layer
 → Repository Layer
 → AsyncSession
-→ PostgreSQL
+→ PostgreSQL + TimescaleDB
 
 ---
 
@@ -648,10 +697,54 @@ Field
 
 ---
 
+## Analytical APIs
+
+Phase 12 delivered **implemented persistence support** for time-series analytics. Eight continuous aggregates (ADR-004) provide incrementally refreshed `time_bucket()` rollups over raw hypertables. Dashboard and analytical services should prefer these pre-computed rollups over repeated full scans of raw telemetry.
+
+No new REST endpoints were introduced in Phase 12. Existing list and detail APIs continue to read authoritative raw hypertable rows through unchanged repository methods. Analytical rollups are consumed internally by services and future AI pipelines — not exposed as separate public aggregation endpoints.
+
+**Future Feature Store APIs remain Phase 13.** The Feature Store will materialise versioned feature vectors from validated continuous aggregates; that consumption layer is out of scope for Phase 12.
+
+---
+
+## Continuous Aggregates
+
+Continuous aggregates are the preferred read path for dashboard summaries and analytical workloads that aggregate time-series data across buckets (hourly, daily, weekly). They eliminate redundant `time_bucket()` computation on every request.
+
+* Raw hypertables remain the authoritative event store for API point-in-time detail reads.
+* Continuous aggregates supply pre-computed rollups for analytical and AI feature extraction.
+* Refresh policies run as TimescaleDB background jobs — transparent to REST clients.
+
+See [ADR-004](adr/ADR-004-timescaledb-continuous-aggregate-strategy.md) for the approved aggregate catalogue and refresh tiers.
+
+---
+
+## Retention
+
+Retention policies govern the lifecycle of raw hypertable chunks and continuous aggregate materialisations entirely within the database (ADR-005). Domain-specific `drop_after` horizons apply to five raw hypertables; `yield_records` is permanently retained as irreplaceable harvest labels.
+
+REST APIs are unaffected. Clients observe only the data present at query time; chunk expiry and archive-before-delete execute as persistence-layer background jobs with no endpoint, schema, or status-code changes.
+
+See [ADR-005](adr/ADR-005-timescaledb-retention-policy-strategy.md) for retention horizons and governance.
+
+---
+
+## API Compatibility
+
+### Backward Compatibility
+
+Phase 12 introduces **zero breaking API changes**. All Phase 1–11 domain endpoints, request models, response models, authentication flows, and validation rules are preserved.
+
+* Existing clients continue to function without modification.
+* Persistence improvements — hypertables, compression, continuous aggregates, retention — are transparent to API consumers.
+* No OpenAPI contract changes, no new required fields, and no deprecated endpoints.
+
+---
+
 ## Future API Evolution
 
-* AI Recommendation APIs (Phase 12+)
-* Sensor Aggregation APIs (TimescaleDB continuous aggregates)
+* AI Recommendation APIs (Phase 13+)
+* Feature Store APIs (Phase 13)
 * Digital Twin State API
 * GaaS / Farm Copilot API
 
