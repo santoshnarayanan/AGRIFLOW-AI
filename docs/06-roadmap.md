@@ -723,20 +723,117 @@ Farm
 
 ---
 
-# Phase 16 – Platform Stabilization & Quality Engineering (Future)
+# Phase 13 – Enterprise Decision & Recommendation Platform
+
+Status: 🔜 Planned (Current Phase)
+
+## Primary Objective
+
+Build the operational intelligence layer that transforms AGRIFLOW-AI from a data platform into a decision-support platform.
+
+## Major Deliverables
+
+* Enterprise Ontology
+* Recommendation Domain
+* Alert Domain
+* Task Domain
+* Decision Services
+* Operational Timeline
+* Recommendation APIs
+* Recommendation persistence
+* Business Event Catalog
+* AI-ready semantic layer
+
+## Business Outcome
+
+The platform evolves from storing agricultural data to producing actionable recommendations and operational decisions.
+
+---
+
+# Phase 14 – Event-Driven Enterprise Platform
+
+Status: 🔜 Planned
+
+## Primary Objective
+
+Introduce enterprise event-driven architecture for scalable real-time processing.
+
+## Major Deliverables
+
+* Redpanda integration
+* Domain Events
+* Event Contracts
+* Outbox Pattern
+* Event Catalog
+* Event Consumers
+* Event publishing foundation
+
+## Business Outcome
+
+Operational events become first-class enterprise assets supporting analytics, AI, and future distributed services.
+
+---
+
+# Phase 15 – Enterprise Intelligence Platform
+
+Status: 🔜 Planned
+
+## Primary Objective
+
+Provide optimized operational intelligence for dashboards, AI, and Digital Twin.
+
+## Major Deliverables
+
+* CQRS
+* Read Models
+* Dashboard Projections
+* Feature Store
+* AI Feature Registry
+* Digital Twin Foundation
+* AI-ready Query Services
+
+## Business Outcome
+
+The platform supports high-performance operational analytics, AI feature engineering, and Digital Twin synchronization.
+
+---
+
+# Phase 16 – Enterprise AI Platform & Production Readiness
 
 Status: ⏳ Planned
 
-Comprehensive testing and production readiness validation deferred until Phase 16 to avoid rewriting large test suites while the domain model continues to expand.
+## Primary Objective
 
-Expected deliverables:
+Complete the transformation into an enterprise-grade AI platform ready for production deployment.
 
-* Complete API validation across all domains
-* Full unit test suite (Repository, Service, Schema layers)
-* Integration tests and end-to-end workflow validation
-* Performance benchmarking and security review
-* CI/CD quality gates and code coverage reporting
-* Production readiness validation and documentation review
+## Major Deliverables
+
+### Enterprise AI
+
+* Temporal Workflows
+* Generative AI as a Service (GaaS)
+* Farm Copilot
+* MCP (Model Context Protocol) evaluation
+* Enterprise AI Platform
+
+### Production Readiness
+
+* Platform Stabilization
+* Full Regression Testing
+* Performance Benchmarking
+* Security Hardening
+* Reliability Engineering
+* Observability
+* CI/CD Maturity
+* Infrastructure Automation
+* Disaster Recovery Validation
+* Architecture Review
+* ADR Consolidation
+* Documentation Completion
+
+## Business Outcome
+
+AGRIFLOW-AI becomes a production-ready enterprise agricultural intelligence platform capable of supporting advanced AI assistants, enterprise workflows, and intelligent decision support.
 
 ---
 
@@ -747,40 +844,62 @@ AGRIFLOW-AI evolves from a farm management system into a comprehensive Agricultu
 
 # Updated Strategic Roadmap
 
-✅ Phase 1  – Foundation
-✅ Phase 2  – Field Domain
-✅ Phase 3  – Crop Domain
-✅ Phase 4  – Soil Intelligence Domain
-✅ Phase 5  – Weather Intelligence Domain
-✅ Phase 6  – AI Readiness Foundation
-✅ Phase 7  – SensorReading Domain
-✅ Phase 8  – Irrigation Management Domain
-✅ Phase 9  – Yield Domain
-✅ Phase 10 – Disease Observation Domain
-✅ Phase 11 – Satellite Observation Domain
+## Completed
+
+✅ Phase 1 – Foundation
+
+✅ Phase 2 – Field Domain
+
+✅ Phase 3 – Crop Domain
+
+✅ Phase 4 – Soil Intelligence Domain
+
+✅ Phase 5 – Weather Intelligence Domain
+
+✅ Phase 6 – AI Readiness Foundation
+
+✅ Phase 7 – Sensor Telemetry
+
+✅ Phase 8 – Irrigation Management
+
+✅ Phase 9 – Yield Intelligence
+
+✅ Phase 10 – Disease Observation
+
+✅ Phase 11 – Satellite Observation
+
 ✅ Phase 12 – TimescaleDB Time-Series Foundation
 
-## Upcoming Phases
+## Upcoming
 
-🔜 Phase 13 – AI Recommendation Foundation (Current Phase)
+🔜 Phase 13 – Enterprise Decision & Recommendation Platform
 
-🔜 Phase 14 – Predictive Agriculture
+🔜 Phase 14 – Event-Driven Enterprise Platform
 
-🔜 Phase 15 – Digital Twin & Farm Copilot
+🔜 Phase 15 – Enterprise Intelligence Platform
 
-## Future Phase
+## Future
 
-⏳ Phase 16 – Platform Stabilization & Quality Engineering
+⏳ Phase 16 – Enterprise AI Platform & Production Readiness
 
-## AI Layer (Post Phase 13 — First AI Implementation Phase)
+---
 
-* Yield Recommendation Engine
-* Irrigation Recommendation Engine
-* Disease Recommendation Engine
-* Fertilizer Recommendation Engine
-* AI Feature Store
-* Recommendation Services
-* Farm Intelligence Platform (Phase 15 — Digital Twin + GaaS)
+# Enterprise Capability Roadmap
+
+| Phase | Business Capability | Enterprise Technologies |
+|--------|---------------------|--------------------------|
+| **13** | Decision Intelligence | Enterprise Ontology, Recommendation Engine, Recommendation APIs, Decision Services, Operational Timeline |
+| **14** | Event-Driven Operations | Redpanda, Domain Events, Event Contracts, Outbox Pattern, Event Catalog |
+| **15** | Operational Intelligence | CQRS, Read Models, Feature Store, Digital Twin Foundation, AI-ready Query Services |
+| **16** | Enterprise AI Platform | Temporal Workflows, GaaS, Farm Copilot, MCP Evaluation, Production Readiness, Observability, Security, Quality Engineering |
+
+## Capability-Driven Evolution
+
+The roadmap is now **capability-driven** rather than technology-driven. Each remaining phase delivers a complete enterprise capability instead of introducing isolated technologies.
+
+Every capability builds upon the architectural foundations established in previous phases — from the governed domain ontology (Phases 1–11) and enterprise time-series platform (Phase 12) through decision intelligence, event-driven operations, operational intelligence, and enterprise AI.
+
+This sequencing minimizes architectural debt while maximizing long-term scalability and AI readiness. Technologies such as Redpanda, CQRS, Temporal, and GaaS are introduced when the business capability they enable is ready to be delivered — not as standalone infrastructure experiments.
 
 ---
 

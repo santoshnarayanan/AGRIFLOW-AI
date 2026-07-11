@@ -1,9 +1,9 @@
 # AGRIFLOW-AI Phase Architecture Handbook
 
 **Document:** Architecture Reference & Implementation History  
-**Version:** 1.1  
+**Version:** 1.2  
 **Date:** June 2026  
-**Scope:** Phase 1 through Phase 11 — complete implementation record and future architecture guide  
+**Scope:** Phase 1 through Phase 12 — complete implementation record; Phases 13–16 — enterprise capability architecture  
 **Status:** Living Document
 
 ---
@@ -25,15 +25,18 @@
 13. [Phase 10 – Disease Observation Domain Architecture](#phase-10--disease-observation-domain-architecture)
 14. [Phase 11 – Satellite Observation Domain Architecture](#phase-11--satellite-observation-domain-architecture)
 15. [Current Domain Architecture (Post Phase 11)](#15-current-domain-architecture-post-phase-11)
-15. [Implemented Architecture: TimescaleDB](#14-implemented-architecture-timescaledb)
-16. [Future Architecture: Apache Cassandra](#15-future-architecture-apache-cassandra)
-17. [Future Architecture: CQRS](#16-future-architecture-cqrs)
-18. [Future Architecture: Redpanda / Kafka](#17-future-architecture-redpanda--kafka)
-19. [Future Architecture: Temporal Workflows](#18-future-architecture-temporal-workflows)
-20. [Future Architecture: Digital Twin](#19-future-architecture-digital-twin)
-21. [Future Architecture: Generative-As-A-Service (GaaS)](#20-future-architecture-generative-as-a-service-gaas)
-22. [Architecture Decision Register](#21-architecture-decision-register)
-23. [Technology Evolution Roadmap](#22-technology-evolution-roadmap)
+16. [Implemented Architecture: TimescaleDB](#14-implemented-architecture-timescaledb)
+17. [Enterprise Capability Roadmap](#enterprise-capability-roadmap)
+18. [Enterprise Capability Maturity Model](#enterprise-capability-maturity-model)
+19. [Technology Implementation Reference](#technology-implementation-reference)
+20. [Future Architecture: Apache Cassandra](#15-future-architecture-apache-cassandra)
+21. [Future Architecture: CQRS](#16-future-architecture-cqrs)
+22. [Future Architecture: Redpanda / Kafka](#17-future-architecture-redpanda--kafka)
+23. [Future Architecture: Temporal Workflows](#18-future-architecture-temporal-workflows)
+24. [Future Architecture: Digital Twin](#19-future-architecture-digital-twin)
+25. [Future Architecture: Generative-As-A-Service (GaaS)](#20-future-architecture-generative-as-a-service-gaas)
+26. [Architecture Decision Register](#21-architecture-decision-register)
+27. [Technology & Capability Evolution Roadmaps](#22-technology--capability-evolution-roadmaps)
 
 ---
 
@@ -44,16 +47,20 @@ AGRIFLOW-AI is an Agricultural Intelligence Platform designed to evolve from ope
 The platform's strategic trajectory:
 
 ```
-Reactive Farming
+Operational Platform           (Phases 1–6)   ✅
       ↓
-Data-Driven Farming        (Phases 1–6)
+Data Intelligence Platform     (Phases 7–12)  ✅
       ↓
-Predictive Farming         (Phases 7–11)
+Decision Intelligence Platform (Phase 13)     🔜
       ↓
-Intelligent Farming        (Phases 12–14)
+Enterprise Event Platform      (Phase 14)     🔜
       ↓
-Autonomous Agriculture     (Phase 15+)
+Operational Intelligence Platform (Phase 15)  🔜
+      ↓
+Enterprise AI Platform         (Phase 16)     ⏳
 ```
+
+This capability-driven evolution mirrors enterprise data platform patterns: establish governed operations, build analytical persistence, deliver decision intelligence, activate event-driven processing, optimize operational read paths, and complete with production-grade AI agents and workflows.
 
 ### Platform Goals
 
@@ -1894,26 +1901,348 @@ Raw Hypertables (Phase 12 ✅)
         ↓
 Continuous Aggregates (Phase 12 ✅)
         ↓
-AI Feature Store (Phase 13)
+Decision Intelligence Platform (Phase 13)
         ↓
-Recommendation Engines (Phase 13)
+Enterprise Event Platform (Phase 14)
         ↓
-Digital Twin (Phase 15)
+Operational Intelligence Platform (Phase 15)
         ↓
-Farm Copilot / GaaS (Phase 15)
+Enterprise AI Platform (Phase 16)
 ```
 
-* **Feature Store (Phase 13)** — consumes validated continuous aggregates as bounded-cardinality feature extraction sources
-* **CQRS read path** — analytical consumers can read from continuous aggregates while write repositories continue targeting raw hypertables; service layer remains the split boundary
-* **Cassandra horizontal scaling** — compound indexes `(field_id, recorded_at)` established in Phases 7–11 map directly to Cassandra partition/clustering keys for future CQRS projection
-* **Redpanda event streaming** — service extension points (ADR-007-26) remain the publishing boundary; TimescaleDB handles durable storage independently
-* **Archive-before-delete** — ADR-005 mandates cold chunk export to Azure Blob Storage before retention policies execute in production
+* **Decision Services (Phase 13)** — consume TimescaleDB continuous aggregates as bounded-cardinality feature sources for recommendation engines
+* **Feature Store (Phase 13 foundation; Phase 15 maturation)** — materialises pre-computed rollups and engineered features for AI training and inference
+* **CQRS read path (Phase 15)** — analytical consumers read from projections and continuous aggregates while write repositories continue targeting raw hypertables; service layer remains the split boundary
+* **Cassandra horizontal scaling (Phase 15+)** — compound indexes `(field_id, recorded_at)` established in Phases 7–11 map directly to Cassandra partition/clustering keys for future CQRS projection
+* **Redpanda event streaming (Phase 14)** — service extension points (ADR-007-26, ADR-009-10) remain the publishing boundary; TimescaleDB handles durable storage independently
+* **Archive-before-delete** — ADR-005 mandates cold chunk export to object storage before retention policies execute in production
 
 Raw hypertables remain the authoritative event store for API point-in-time detail. Continuous aggregates are the preferred read path for analytical and AI workloads. This dual-path model scales from development through enterprise deployment without breaking existing client integrations.
 
 ---
 
+# Enterprise Capability Roadmap
+
+AGRIFLOW-AI evolves from a technology stack into an **enterprise capability platform**. Technologies — TimescaleDB, Redpanda, CQRS, Temporal, Digital Twin, GaaS — are implementation mechanisms supporting defined business capabilities, not standalone adoption goals.
+
+The roadmap aligns with enterprise data platform principles: governed ontology, decision intelligence, event-driven architecture, operational read optimisation, and AI-first delivery — without prescribing proprietary tooling.
+
+```text
+Operational Platform           (Phases 1–6)   ✅ Complete
+      ↓
+Data Intelligence Platform     (Phases 7–12)  ✅ Complete
+      ↓
+Decision Intelligence Platform (Phase 13)     🔜 Current
+      ↓
+Enterprise Event Platform      (Phase 14)     🔜 Planned
+      ↓
+Operational Intelligence Platform (Phase 15)  🔜 Planned
+      ↓
+Enterprise AI Platform         (Phase 16)     ⏳ Planned
+```
+
+---
+
+## Phases 1–6: Operational Foundation (✅ Complete)
+
+**Business Objective:** Establish a governed farm management platform with typed domain models, relational integrity, and API-first access patterns.
+
+**Enterprise Capability:** Operational Platform — farmers and agronomists record farms, fields, crops, soil profiles, weather observations, and AI-readiness attributes through a production REST API.
+
+**Architectural Components:**
+
+* Clean Architecture layers (API → Service → Repository → Model)
+* PostgreSQL relational store with Alembic migration governance
+* Domain entities: Farm, Field, Crop, SoilProfile, WeatherRecord
+* Shared enum registry and formal AI coverage assessment (Phase 6)
+
+**How Existing Technologies Fit:**
+
+* **PostgreSQL** — authoritative transactional store for master and reference data
+* **FastAPI + Pydantic** — typed API surface and validation contracts
+* **Alembic** — schema evolution as code; reproducible environments
+
+**Expected Platform Outcome:** A disciplined operational backbone where every future capability inherits UUID identity, audit fields, repository abstraction, and dependency injection.
+
+---
+
+## Phases 7–12: Data Intelligence Platform (✅ Complete)
+
+**Business Objective:** Capture the full precision agriculture data spectrum — telemetry, operational events, yield measurements, plant health observations, and Earth observation — with enterprise-scale analytical persistence.
+
+**Enterprise Capability:** Data Intelligence Platform — unified ingestion of IoT telemetry, human-logged operations, harvest intelligence, disease observations, and satellite indices backed by governed time-series storage.
+
+**Architectural Components:**
+
+* SensorReading (append-only telemetry), IrrigationEvent, YieldRecord, DiseaseObservation, SatelliteObservation
+* Compound time-series indexes and service-layer extension points (ADR-007-26, ADR-009-10)
+* TimescaleDB hypertables, compression, continuous aggregates, retention (ADR-001 through ADR-005)
+* Grandchild and field-anchored domain patterns with denormalized FK query paths
+
+**How Existing Technologies Fit:**
+
+* **PostgreSQL** — master data and transactional writes
+* **TimescaleDB 2.28.1** — chunk-partitioned hypertables, columnar compression, incrementally refreshed rollups, governed retention
+* **Repository transparency** — persistence upgrades with zero API, service, or repository interface changes
+
+**Expected Platform Outcome:** A complete agricultural data platform with enterprise analytical storage. Raw hypertables hold authoritative events; continuous aggregates serve dashboard and AI feature extraction workloads.
+
+---
+
+## Phase 13: Decision Intelligence Platform (🔜 Current)
+
+**Business Objective:** Transform AGRIFLOW-AI from a data platform into a **decision-support platform** that produces actionable recommendations and operational decisions from governed agricultural data.
+
+**Enterprise Capability:** Decision Intelligence — structured recommendations, alerts, tasks, and decision services grounded in a semantic ontology and pre-computed analytical features.
+
+**Architectural Components:**
+
+| Component | Role |
+|---|---|
+| **Enterprise Ontology** | Extends the Phase 1–11 domain model with recommendation, alert, and task Object Types; governed relationships and validation rules |
+| **Ontology Layer** | Formalises agricultural concepts — crop cycles, severity scales, measurement provenance — as first-class semantic objects |
+| **Semantic Knowledge Layer** | Business metrics, KPI definitions, and agronomic rules expressed once and reused across services and agents |
+| **Feature Store** | Materialises feature vectors from TimescaleDB continuous aggregates and domain attributes for training and inference |
+| **AI Feature Engineering** | Transforms time-series rollups, soil intelligence, and observation labels into bounded-cardinality model inputs |
+| **Decision Services** | Orchestrate feature retrieval, model invocation, and recommendation persistence behind a unified service boundary |
+| **Recommendation Engine** | Reusable domain engines — yield, irrigation, disease, fertilizer — consuming feature vectors and producing scored recommendations |
+| **Recommendation APIs** | REST endpoints exposing recommendations, alerts, operational timelines, and decision audit trails |
+| **Operational Timeline** | Chronological decision history per field, crop, and farm for operator review and compliance |
+
+**How Existing Technologies Fit:**
+
+* **TimescaleDB Continuous Aggregates** — become primary **feature sources**; hourly/daily/weekly rollups eliminate redundant raw hypertable scans for model input
+* **PostgreSQL** — stores recommendation records, alert state, task assignments, and decision provenance alongside domain master data
+* **Existing REST APIs** — remain the write path; Decision Services read from repositories and continuous aggregate views without breaking client contracts
+* **Service layer extension points** — reserved boundaries for future event publication when Phase 14 activates
+
+**Data Flow:**
+
+```text
+Continuous Aggregates (Phase 12)
+        ↓
+Feature Store materialisation
+        ↓
+Decision Services (feature vector assembly)
+        ↓
+Recommendation Engines (domain inference)
+        ↓
+Recommendation APIs + Operational Timeline
+        ↓
+Digital Twin decision-state inputs (Phase 15 foundation)
+```
+
+**Expected Platform Outcome:** The platform evolves from storing agricultural data to **producing actionable recommendations**. Recommendation engines become reusable services. Decision Services consume feature vectors derived from TimescaleDB rollups. Digital Twin begins consuming decision outputs as structured state inputs in Phase 15.
+
+---
+
+## Phase 14: Enterprise Event Platform (🔜 Planned)
+
+**Business Objective:** Introduce enterprise event-driven architecture so operational state changes propagate asynchronously to analytics, AI, and distributed consumers without coupling the synchronous write path.
+
+**Enterprise Capability:** Event-Driven Operations — domain events as first-class enterprise assets with governed contracts, catalogued schemas, and replayable history.
+
+**Architectural Components:**
+
+| Component | Role |
+|---|---|
+| **Domain Events** | Typed, immutable records of business-significant state changes |
+| **Event Contracts** | Versioned schemas defining payload structure, required fields, and compatibility rules |
+| **Event Catalog** | Central registry of event types, topics, producers, and consumers |
+| **Outbox Pattern** | Transactional event publication — events written atomically with domain persistence |
+| **Redpanda** | Durable, high-throughput event streaming backbone |
+| **Event Consumers** | Independent services reacting to events (projections, alerts, AI pipelines) |
+| **Event Replay** | Reprocess historical events for recovery, backfill, and model retraining |
+| **Event Versioning** | Schema evolution with backward-compatible consumer contracts |
+
+**Domain Event Catalogue (Illustrative):**
+
+Every domain can publish governed events without changing existing API contracts:
+
+| Domain | Event | Trigger |
+|---|---|---|
+| Sensor | `SensorReadingCreated` | New telemetry appended |
+| Yield | `YieldRecorded` | Harvest measurement logged |
+| Disease | `DiseaseObserved` | Plant health observation recorded |
+| Satellite | `SatelliteObserved` | Remote sensing index ingested |
+| Irrigation | `IrrigationCompleted` | Irrigation event closed |
+| Crop | `CropLifecycleChanged` | Status transition (PLANTED → GROWING → HARVESTED) |
+| Weather | `WeatherRecordCreated` | Climate observation recorded |
+
+**How Existing Technologies Fit:**
+
+* **Service layer extension points (ADR-007-26, ADR-009-10)** — become the event publishing boundary; synchronous CRUD APIs unchanged
+* **PostgreSQL + Outbox table** — guarantees at-least-once delivery without dual-write inconsistency
+* **Redpanda** — replaces point-to-point synchronous callbacks with decoupled pub/sub
+* **TimescaleDB** — remains authoritative durable store; events carry references, not duplicate payloads
+
+**Architectural Principle:** Synchronous CRUD becomes **event-driven without changing API contracts**. Clients continue POST/GET/PATCH/DELETE; downstream systems react through the event stream.
+
+**Expected Platform Outcome:** Operational events become reusable enterprise assets supporting analytics pipelines, AI feature refresh, Digital Twin updates, and future distributed services.
+
+---
+
+## Phase 15: Operational Intelligence Platform (🔜 Planned)
+
+**Business Objective:** Deliver optimised operational intelligence for dashboards, AI inference, and Digital Twin synchronisation through separated read/write paths and materialised operational state.
+
+**Enterprise Capability:** Operational Intelligence — high-performance read models, real-time field state, and AI-ready query services built on projections rather than raw hypertable scans.
+
+**Architectural Components:**
+
+| Component | Role |
+|---|---|
+| **CQRS** | Command Query Responsibility Segregation — write model for mutations, read model for queries |
+| **Write Model** | Existing repositories and services — authoritative mutations through Clean Architecture |
+| **Read Model** | Denormalised, query-optimised views for dashboards, AI, and Digital Twin |
+| **Projection Services** | Consume domain events and materialise read models asynchronously |
+| **Materialized Views** | Pre-computed field, crop, and farm state snapshots |
+| **Dashboard Projections** | Aggregated KPIs — yield trends, disease pressure, water use efficiency |
+| **Digital Twin Foundation** | Continuously updated virtual field model mirroring physical state |
+| **Current Farm State** | Latest sensor values, crop lifecycle, active recommendations per field |
+| **Operational Dashboards** | Real-time monitoring surfaces for operators and agronomists |
+| **Real-time Monitoring** | Alert thresholds, anomaly windows, and trend deviation detection |
+| **Feature Store (maturation)** | Production-grade feature registry with versioning and lineage |
+| **AI-ready Query Services** | Bounded-latency read APIs optimised for inference and agent tool calls |
+
+**How Existing Technologies Fit:**
+
+* **Write model** — unchanged Phase 1–12 repositories; mutations remain ACID within PostgreSQL
+* **Read model** — TimescaleDB continuous aggregates, CQRS projections, and optional Cassandra/Cassandra read replicas
+* **Projection** — Redpanda consumers (Phase 14) update read models from domain events
+* **Digital Twin synchronisation** — `SensorReadingCreated`, `YieldRecorded`, `DiseaseObserved`, and recommendation events update field state
+* **Feature Store integration** — reads from continuous aggregates and projection tables; serves Phase 13 recommendation engines and Phase 16 agents
+* **Continuous Aggregates integration** — preferred analytical read path; raw hypertables reserved for point-in-time detail
+
+```mermaid
+graph LR
+    subgraph Write Model
+        API["REST API\n(unchanged contracts)"] --> SVC["Service Layer"]
+        SVC --> WR["Write Repositories"]
+        WR --> PG[(PostgreSQL / Hypertables)]
+        SVC --> OUT["Outbox → Redpanda"]
+    end
+
+    subgraph Read Model
+        OUT --> PROJ["Projection Services"]
+        PROJ --> RM["Read Models / Materialized Views"]
+        PROJ --> DT["Digital Twin Store"]
+        CA["Continuous Aggregates"] --> FS["Feature Store"]
+        RM --> DASH["Dashboards"]
+        DT --> MON["Real-time Monitoring"]
+        FS --> AI["AI Query Services"]
+    end
+```
+
+**Expected Platform Outcome:** The platform supports high-performance operational analytics, AI feature engineering at scale, and Digital Twin synchronisation — without compromising the write path established in Phases 1–12.
+
+---
+
+## Phase 16: Enterprise AI Platform (⏳ Planned)
+
+**Business Objective:** Complete the transformation into an enterprise-grade AI platform ready for production deployment — combining intelligent agents, durable workflows, and production engineering discipline.
+
+**Enterprise Capability:** Enterprise AI — conversational decision support, automated workflow orchestration, and production-ready platform operations.
+
+**Architectural Components:**
+
+### Enterprise AI
+
+| Component | Role |
+|---|---|
+| **Farm Copilot** | Natural-language agricultural assistant for operators and agronomists |
+| **Generative AI as a Service (GaaS)** | Governed LLM orchestration layer with tool calling and context assembly |
+| **Temporal Workflows** | Durable, stateful multi-step processes — alert evaluation, escalation, harvest planning |
+| **LLM Orchestration** | Model routing, prompt governance, token budgeting, and response validation |
+| **Tool Calling** | REST APIs, Digital Twin queries, and recommendation services exposed as agent tools |
+| **Planning & Reasoning** | Multi-step agronomic reasoning chains with structured intermediate outputs |
+| **Enterprise AI Agents** | Domain-specialised agents — irrigation advisor, disease scout, yield analyst |
+| **Decision Automation** | Closed-loop recommendations with operator approval gates |
+| **Human-in-the-loop** | Explicit escalation, override, and audit for high-impact decisions |
+| **Knowledge Retrieval** | Semantic search over ontology, recommendations, and operational history |
+| **MCP Evaluation** | Model Context Protocol assessment for standardised agent-to-platform integration |
+
+### Production Readiness
+
+Platform stabilisation, full regression testing, performance benchmarking, security hardening, reliability engineering, observability, CI/CD maturity, infrastructure automation, disaster recovery validation, architecture review, ADR consolidation, and documentation completion.
+
+**How Every Previous Phase Supports Phase 16:**
+
+| Prior Phase | Contribution to Enterprise AI |
+|---|---|
+| **Phases 1–6 (Operational)** | Governed ontology, typed APIs, and domain validation — agent tools with structured schemas |
+| **Phases 7–12 (Data Intelligence)** | Complete observational data and TimescaleDB analytics — authoritative context for reasoning |
+| **Phase 13 (Decision Intelligence)** | Recommendation engines and Feature Store — scored decisions agents can explain and act on |
+| **Phase 14 (Enterprise Events)** | Event stream — real-time triggers for workflows and agent notifications |
+| **Phase 15 (Operational Intelligence)** | Digital Twin, read models, dashboards — current field state without raw time-series queries |
+
+```text
+Ontology + Data (Phases 1–12)
+        ↓
+Recommendations + Features (Phase 13)
+        ↓
+Events + Projections (Phases 14–15)
+        ↓
+Agents + Workflows + Production Engineering (Phase 16)
+        ↓
+Enterprise Agricultural Intelligence Platform
+```
+
+**Expected Platform Outcome:** AGRIFLOW-AI becomes a production-ready enterprise agricultural intelligence platform capable of supporting advanced AI assistants, enterprise workflows, and intelligent decision support with full operational confidence.
+
+---
+
+# Enterprise Capability Maturity Model
+
+The maturity model maps each phase to platform evolution, enterprise capability delivery, and measurable business outcome.
+
+| Phase | Platform Maturity | Enterprise Capability | Business Outcome |
+|---|---|---|---|
+| **1–6** | Operational Platform | Farm, field, crop, soil, and weather management; AI-readiness foundation | Farmers record and manage agricultural operations through a governed REST API |
+| **7–12** | Data Intelligence Platform | IoT telemetry, operational events, yield, disease, satellite observations; TimescaleDB analytics | Complete precision agriculture data capture with enterprise-scale time-series storage |
+| **13** | Decision Intelligence Platform | Recommendations, alerts, tasks, decision services, semantic layer, Feature Store foundation | Platform produces actionable recommendations from governed agricultural data |
+| **14** | Enterprise Event Platform | Domain events, event contracts, streaming, outbox, event catalog | Operational changes propagate asynchronously to analytics, AI, and distributed consumers |
+| **15** | Operational Intelligence Platform | CQRS, read models, Digital Twin, dashboards, Feature Store maturation | High-performance operational analytics and real-time field state synchronisation |
+| **16** | Enterprise AI Platform | GaaS, Farm Copilot, Temporal workflows, production readiness, observability | Production-grade AI-assisted decision support with enterprise operational confidence |
+
+**Maturity progression:**
+
+```text
+Operational Platform
+      ↓
+Data Intelligence Platform
+      ↓
+Decision Intelligence Platform
+      ↓
+Enterprise Event Platform
+      ↓
+Operational Intelligence Platform
+      ↓
+Enterprise AI Platform
+```
+
+Each maturity level builds on the prior — architectural debt is minimised because capabilities are sequenced before the technologies that implement them at scale.
+
+---
+
+# Technology Implementation Reference
+
+The sections below document specific enterprise technologies that implement the capabilities defined in Phases 14–16. They preserve integration boundaries, data models, and extension points established during Phases 1–12. Technologies are **means**, not **ends** — each maps to a capability in the [Enterprise Capability Roadmap](#enterprise-capability-roadmap).
+
+| Technology | Capability Phase | Enterprise Capability Supported |
+|---|---|---|
+| Apache Cassandra | Phase 15+ | Horizontal read scaling for telemetry at agricultural enterprise scale |
+| CQRS | Phase 15 | Operational Intelligence — separated read/write paths |
+| Redpanda / Kafka | Phase 14 | Enterprise Event Platform — domain event streaming |
+| Temporal | Phase 16 | Enterprise AI — durable workflow orchestration |
+| Digital Twin | Phase 15 | Operational Intelligence — current field state |
+| GaaS / Farm Copilot | Phase 16 | Enterprise AI — conversational decision support |
+
+---
+
 ## 15. Future Architecture: Apache Cassandra
+
+**Capability Phase:** 15 — Operational Intelligence Platform (horizontal read scaling)
 
 ### Problem Statement
 
@@ -1954,7 +2283,7 @@ CREATE TABLE sensor_readings_by_type (
 
 ### Migration Strategy
 
-A CQRS split (see Section 14) enables incremental migration:
+A CQRS split (see [Section 16 — CQRS](#16-future-architecture-cqrs)) enables incremental migration:
 
 1. PostgreSQL remains the write store initially
 2. Cassandra is introduced as the read store
@@ -1984,6 +2313,8 @@ The service receives whichever repository is injected via `deps.py`. No service 
 ---
 
 ## 16. Future Architecture: CQRS
+
+**Capability Phase:** 15 — Operational Intelligence Platform (read/write separation)
 
 ### Problem Statement
 
@@ -2035,6 +2366,8 @@ Current write-side code is **already CQRS-ready**:
 ---
 
 ## 17. Future Architecture: Redpanda / Kafka
+
+**Capability Phase:** 14 — Enterprise Event Platform (domain event streaming)
 
 ### Problem Statement
 
@@ -2109,6 +2442,8 @@ def __init__(
 
 ## 18. Future Architecture: Temporal Workflows
 
+**Capability Phase:** 16 — Enterprise AI Platform (durable workflow orchestration)
+
 ### Problem Statement
 
 Sensor alert evaluation is a stateful, multi-step process:
@@ -2173,6 +2508,8 @@ Temporal is a side-car concern. The AGRIFLOW-AI application layer is unmodified 
 ---
 
 ## 19. Future Architecture: Digital Twin
+
+**Capability Phase:** 15 — Operational Intelligence Platform (current field state)
 
 ### Problem Statement
 
@@ -2243,6 +2580,8 @@ The `SensorType` shared enum in `app/core/enums.py` (established in Phase 7) was
 ---
 
 ## 20. Future Architecture: Generative-As-A-Service (GaaS)
+
+**Capability Phase:** 16 — Enterprise AI Platform (conversational decision support)
 
 ### Problem Statement
 
@@ -2373,89 +2712,127 @@ The only missing piece is the GaaS orchestration layer — the underlying data A
 
 ---
 
-## 22. Technology Evolution Roadmap
+## 22. Technology & Capability Evolution Roadmaps
 
-### Current Stack
+AGRIFLOW-AI maintains two complementary roadmaps: a **technology evolution** path showing infrastructure progression, and an **enterprise capability evolution** path showing business value delivery. Technologies implement capabilities — they are not adoption goals in isolation.
 
-| Component | Technology | Version |
-|---|---|---|
-| API Framework | FastAPI | 0.115.5 |
-| Language | Python | 3.12 |
-| ORM | SQLAlchemy | 2.0.36 |
-| Database | PostgreSQL | 17 |
-| Schema Migration | Alembic | 1.14.0 |
-| Validation | Pydantic | 2.10.3 |
-| Driver (async) | asyncpg | 0.30.0 |
-| Logging | structlog | 24.4.0 |
-| Containerisation | Docker | — |
+### Current Stack (Post Phase 12)
 
-### Near-Term Additions (Phases 11–15)
+| Component | Technology | Version | Status |
+|---|---|---|---|
+| API Framework | FastAPI | 0.115.5 | ✅ Operational |
+| Language | Python | 3.12 | ✅ Operational |
+| ORM | SQLAlchemy | 2.0.36 | ✅ Operational |
+| Database | PostgreSQL | 17.10 | ✅ Operational |
+| Time-Series Analytics | TimescaleDB | 2.28.1 | ✅ Operational (Phase 12) |
+| Schema Migration | Alembic | 1.14.0 | ✅ Operational |
+| Validation | Pydantic | 2.10.3 | ✅ Operational |
+| Driver (async) | asyncpg | 0.30.0 | ✅ Operational |
+| Logging | structlog | 24.4.0 | ✅ Operational |
+| Containerisation | Docker | — | ✅ Operational |
 
-| Component | Technology | Purpose |
-|---|---|---|
-| Time-Series DB | TimescaleDB | Sensor, irrigation, yield, and disease observation hypertables |
-| Message Broker | Redpanda | Event streaming |
-| Cache | Redis | Digital Twin state store |
-| GIS | PostGIS | Field boundary polygons |
-| Object Storage | Azure Blob / S3 | Satellite imagery |
+### Technology Evolution
 
-### AI Layer (Phases 12–15)
+Infrastructure progression from relational operations through enterprise AI:
 
-| Component | Technology | Purpose |
-|---|---|---|
-| ML Framework | scikit-learn / XGBoost | Yield prediction, disease risk |
-| Deep Learning | PyTorch / TensorFlow | LSTM time-series models |
-| MLOps | MLflow / Azure ML | Model registry, experiment tracking |
-| Serving | FastAPI + ONNX | Real-time inference endpoints |
-| Workflow | Temporal | Multi-step agricultural workflows |
-| LLM | GPT-4o / Claude | GaaS natural language interface |
+```text
+PostgreSQL                    (Phases 1–11)   ✅ Authoritative transactional store
+      ↓
+TimescaleDB                   (Phase 12)      ✅ Enterprise time-series analytics
+      ↓
+Redpanda                      (Phase 14)      🔜 Domain event streaming
+      ↓
+CQRS                          (Phase 15)      🔜 Read/write path separation
+      ↓
+Digital Twin                  (Phase 15)      🔜 Operational state store
+      ↓
+Temporal                      (Phase 16)      ⏳ Durable workflow orchestration
+      ↓
+GaaS / Farm Copilot           (Phase 16)      ⏳ Enterprise AI agents
+```
 
-### Architecture Evolution Path
+**Supporting technologies** (introduced when capability requires):
+
+| Component | Technology | Capability Phase | Purpose |
+|---|---|---|---|
+| Message Broker | Redpanda | 14 | Domain event streaming and consumer decoupling |
+| Cache / State Store | Redis | 15 | Digital Twin current field state |
+| Horizontal Read Scale | Apache Cassandra | 15+ | Telemetry read replicas at enterprise scale |
+| GIS | PostGIS | 15+ | Field boundary polygons |
+| Object Storage | Azure Blob / S3 | 12+ | Archive-before-delete cold chunk export |
+| Workflow Engine | Temporal | 16 | Multi-step agricultural workflows |
+| LLM | GPT-4o / Claude (evaluated) | 16 | GaaS natural language interface |
+| ML Framework | scikit-learn / XGBoost | 13 | Recommendation engine training |
+| MLOps | MLflow / Azure ML | 13–16 | Model registry, experiment tracking |
 
 ```mermaid
 graph TB
-    subgraph "Phase 7–10 (Current)"
-        P[PostgreSQL] --> App710["FastAPI\nSync REST\n9 domain tables"]
+    subgraph "Phases 1–12 (Complete)"
+        PG["PostgreSQL 17.10"] --> APP12["FastAPI\nClean Architecture\n10 domain verticals"]
+        TS["TimescaleDB 2.28.1"] --> APP12
     end
 
-    subgraph "Phase 11 (Near Term)"
-        P2[PostgreSQL] --> App11["FastAPI"]
-        TS[TimescaleDB] --> App11
-        RP[Redpanda] --> App11
+    subgraph "Phase 14 (Enterprise Events)"
+        PG2["PostgreSQL + Outbox"] --> APP14["FastAPI\n(unchanged API contracts)"]
+        RP["Redpanda"] --> APP14
+        APP14 --> CONS["Event Consumers"]
     end
 
-    subgraph "Phase 12–14 (AI Layer)"
-        All["PostgreSQL\nTimescaleDB\nCassandra\nRedis"] --> App1214["FastAPI\n+ AI Inference\n+ Digital Twin\n+ Temporal"]
-        RP2[Redpanda] --> App1214
+    subgraph "Phase 15 (Operational Intelligence)"
+        ALL["PostgreSQL\nTimescaleDB\nRedis\nCassandra (optional)"] --> APP15["FastAPI\n+ CQRS Read Models\n+ Digital Twin\n+ Dashboards"]
+        RP2["Redpanda"] --> APP15
     end
 
-    subgraph "Phase 15+ (GaaS)"
-        Full["Full Data Platform"] --> GaaS2["GaaS Agent\n+ LLM\n+ Farm Copilot"]
+    subgraph "Phase 16 (Enterprise AI)"
+        FULL["Full Capability Platform"] --> AI16["Temporal\n+ GaaS Agent\n+ Farm Copilot"]
     end
+
+    APP12 --> APP14
+    APP14 --> APP15
+    APP15 --> AI16
 ```
 
-### Domain Roadmap
+### Enterprise Capability Evolution
 
-| Phase | Domain | Key Capability |
-|---|---|---|
-| ✅ 1 | Foundation | Platform skeleton |
-| ✅ 2 | Field | Farm hierarchy |
-| ✅ 3 | Crop | Lifecycle management |
-| ✅ 4 | Soil | Nutrient intelligence |
-| ✅ 5 | Weather | Climate time-series |
-| ✅ 6 | AI Readiness | P1 attribute foundation |
-| ✅ 7 | Sensor | IoT telemetry |
-| ✅ 8 | Irrigation | Water management |
-| ✅ 9 | Yield | Harvest intelligence |
-| ✅ 10 | Disease Observation | Plant health monitoring |
-| ✅ 11 | Satellite | Remote sensing |
-| 🔮 12 | Yield Prediction Engine | First AI model |
-| 🔮 13 | Disease Prediction Engine | Risk scoring |
-| 🔮 14 | Irrigation Recommendation | Optimisation |
-| 🔮 15 | Farm Intelligence Platform | Full Digital Twin + GaaS |
+Business value progression independent of specific technology choices:
+
+```text
+Operations                    (Phases 1–6)    ✅ Governed farm management
+      ↓
+Data Intelligence             (Phases 7–12)   ✅ Complete observational data + analytics
+      ↓
+Decision Intelligence         (Phase 13)      🔜 Recommendations and decision services
+      ↓
+Event-Driven Operations       (Phase 14)      🔜 Domain events as enterprise assets
+      ↓
+Operational Intelligence      (Phase 15)      🔜 CQRS, Digital Twin, dashboards
+      ↓
+Enterprise AI                 (Phase 16)      ⏳ Agents, workflows, production readiness
+```
+
+### Domain & Capability Roadmap
+
+| Phase | Domain / Capability | Key Deliverable | Status |
+|---|---|---|---|
+| ✅ 1 | Foundation | Platform skeleton, schema governance | Complete |
+| ✅ 2 | Field | Farm hierarchy, geospatial foundation | Complete |
+| ✅ 3 | Crop | Lifecycle management | Complete |
+| ✅ 4 | Soil | Nutrient intelligence | Complete |
+| ✅ 5 | Weather | Climate time-series | Complete |
+| ✅ 6 | AI Readiness | P1 attribute foundation | Complete |
+| ✅ 7 | Sensor | IoT telemetry | Complete |
+| ✅ 8 | Irrigation | Water management events | Complete |
+| ✅ 9 | Yield | Harvest intelligence | Complete |
+| ✅ 10 | Disease Observation | Plant health monitoring | Complete |
+| ✅ 11 | Satellite | Remote sensing | Complete |
+| ✅ 12 | TimescaleDB | Enterprise time-series platform | Complete |
+| 🔜 13 | Decision Intelligence | Recommendation engines, decision services, Feature Store foundation | Planned (Current) |
+| 🔜 14 | Event-Driven Operations | Redpanda, domain events, event catalog | Planned |
+| 🔜 15 | Operational Intelligence | CQRS, Digital Twin, read models, dashboards | Planned |
+| ⏳ 16 | Enterprise AI Platform | GaaS, Farm Copilot, Temporal, production readiness | Planned |
 
 ---
 
 *This document is the authoritative implementation history and architecture reference for AGRIFLOW-AI. It should be updated at the completion of each phase.*
 
-*Last updated: Phase 11 completion — June 2026*
+*Last updated: Phase 12 completion — enterprise capability architecture for Phases 13–16 added — June 2026*

@@ -1595,23 +1595,3 @@ Phase 6 delivered P1 AI attributes (82% yield prediction coverage). Phases 7–1
 All Phase 1–11 domain APIs remain unchanged. No new REST endpoints were introduced in Phase 12. See `docs/04-api-design.md` for the complete API inventory.
 
 ---
-
-### Next Platform Evolution
-
-**Phase 13 – AI Recommendation Foundation**
-
-Phase 12 completed the persistence layer. The platform now enters its first AI implementation phase. Phase 13 will introduce the AI Feature Store, Recommendation Engines (Yield, Irrigation, Disease, Fertilizer), and Recommendation Services — building on the TimescaleDB continuous aggregates and governed time-series history delivered in Phase 12.
-
-```text
-TimescaleDB Platform (Phase 12 ✅)
-        ↓
-AI Feature Store (Phase 13)
-        ↓
-Recommendation Engines (Phase 13)
-        ↓
-Predictive Agriculture (Phase 14)
-        ↓
-Digital Twin & Farm Copilot (Phase 15)
-```
-
----
