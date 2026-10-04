@@ -40,8 +40,8 @@
 | Document | Relationship |
 |---|---|
 | `PHASE12_STEP4A_RETENTION_ARCHITECTURE_ASSESSMENT.md` v1.0 | Authoritative evidence base for this ADR |
-| `10-phase12-step1-foundation-handbook.md` v1.1 | Production scale projections; Phase 12 roadmap |
-| `11-phase12-analytical-platform-handbook.md` v1.0 | Four-layer stack; operational monitoring |
+| `docs/phases/phase12/handbooks/step1-foundation-handbook.md` v1.1 | Production scale projections; Phase 12 roadmap |
+| `docs/phases/phase12/handbooks/analytical-platform-handbook.md` v1.0 | Four-layer stack; operational monitoring |
 | `PHASE12_STEP2CD_RUNTIME_VALIDATION_AND_BENCHMARK_REPORT.md` v1.0 | Compression and storage baseline |
 | `PHASE12_STEP3C_CONTINUOUS_AGGREGATE_VALIDATION_REPORT.md` v1.0 | CA correctness and backfill behaviour |
 | `PHASE12_STEP3D_PERFORMANCE_BENCHMARK_REPORT.md` v1.0 | Scaling projections; retention urgency at 100× CDD |
@@ -674,8 +674,8 @@ Detailed risk analysis is recorded in `PHASE12_STEP4A_RETENTION_ARCHITECTURE_ASS
 ## 13. References
 
 * `PHASE12_STEP4A_RETENTION_ARCHITECTURE_ASSESSMENT.md` v1.0 — authoritative evidence base for this ADR
-* `10-phase12-step1-foundation-handbook.md` v1.1 — §13 Roadmap Beyond Step 1; production scale projections
-* `11-phase12-analytical-platform-handbook.md` v1.0 — §9 Operational Guidance; four-layer stack
+* `docs/phases/phase12/handbooks/step1-foundation-handbook.md` v1.1 — §13 Roadmap Beyond Step 1; production scale projections
+* `docs/phases/phase12/handbooks/analytical-platform-handbook.md` v1.0 — §9 Operational Guidance; four-layer stack
 * `PHASE12_STEP2CD_RUNTIME_VALIDATION_AND_BENCHMARK_REPORT.md` v1.0 — compression ratios, chunk inventory, CDD baseline
 * `PHASE12_STEP3C_CONTINUOUS_AGGREGATE_VALIDATION_REPORT.md` v1.0 — CA correctness, historical backfill
 * `PHASE12_STEP3D_PERFORMANCE_BENCHMARK_REPORT.md` v1.0 — scaling projections; retention urgency at 100× CDD

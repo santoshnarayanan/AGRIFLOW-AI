@@ -928,7 +928,7 @@ SELECT create_hypertable('yield_records', 'recorded_at', chunk_time_interval => 
 
 # Architecture Decision Register (Summary)
 
-Full ADR details are maintained in `docs/08-phase-architecture-handbook.md` (Section 19).
+Full ADR details are maintained in `08-architecture-handbook.md` (Section 19).
 
 Key decisions by phase:
 

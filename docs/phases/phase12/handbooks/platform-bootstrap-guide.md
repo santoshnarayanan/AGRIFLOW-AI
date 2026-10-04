@@ -4,7 +4,7 @@
 **Status:** Approved  
 **Last Updated:** 2026-07-01  
 **Scope:** Operational guide — rebuild the complete Phase 12 analytical platform from scratch  
-**Architecture Reference:** [12-phase12-complete-architecture-handbook.md](12-phase12-complete-architecture-handbook.md)  
+**Architecture Reference:** [complete-architecture-handbook.md](complete-architecture-handbook.md)  
 **CDD Reference:** [backend/app/cdd/README.md](../backend/app/cdd/README.md)
 
 ---
@@ -68,7 +68,7 @@ Platform-specific differences discovered during validation — virtual environme
 
 ## Platform Bootstrap Philosophy
 
-This guide is an **operational runbook** — it tells you what to run, in what order, and how to verify success. It does not explain *why* the architecture was designed this way. For architectural rationale, use the [Phase 12 Complete Architecture Handbook](12-phase12-complete-architecture-handbook.md).
+This guide is an **operational runbook** — it tells you what to run, in what order, and how to verify success. It does not explain *why* the architecture was designed this way. For architectural rationale, use the [Phase 12 Complete Architecture Handbook](complete-architecture-handbook.md).
 
 **Guiding principles:**
 
@@ -148,7 +148,7 @@ flowchart TD
     style READY fill:#c8e6c9
 ```
 
-For architectural rationale, see [ADR-001](adr/ADR-001-timescaledb-extension-enablement.md) through [ADR-005](adr/ADR-005-timescaledb-retention-policy-strategy.md) and the [Complete Architecture Handbook](12-phase12-complete-architecture-handbook.md).
+For architectural rationale, see [ADR-001](../../../adr/ADR-001-timescaledb-extension-enablement.md) through [ADR-005](../../../adr/ADR-005-timescaledb-retention-policy-strategy.md) and the [Complete Architecture Handbook](complete-architecture-handbook.md).
 
 ---
 
@@ -281,11 +281,11 @@ Actual Alembic history (oldest → newest):
 | `b7e2a9f4c8d3` | Create `yield_records` table | Business tables |
 | `d3e7b2a9f1c4` | Create `disease_observations` table | Business tables |
 | `a1b2c3d4e5f6` | Create `satellite_observations` table | Business tables |
-| `f1e2d3c4b5a6` | Enable TimescaleDB extension | TimescaleDB extension — [ADR-001](adr/ADR-001-timescaledb-extension-enablement.md) |
-| `c9d8e7f6a5b4` | Convert 6 tables to hypertables | Hypertable conversion — [ADR-002](adr/ADR-002-hypertable-primary-key-conversion-strategy.md) |
-| `d4f5e6a7b8c9` | Enable compression policies | Compression — [ADR-003](adr/ADR-003-timescaledb-compression-policy-strategy.md) |
-| `e5f6a7b8c9d0` | Create continuous aggregates | Continuous aggregates — [ADR-004](adr/ADR-004-timescaledb-continuous-aggregate-strategy.md) |
-| `f6a7b8c9d0e1` | Enable retention policies | Retention — [ADR-005](adr/ADR-005-timescaledb-retention-policy-strategy.md) |
+| `f1e2d3c4b5a6` | Enable TimescaleDB extension | TimescaleDB extension — [ADR-001](../../../adr/ADR-001-timescaledb-extension-enablement.md) |
+| `c9d8e7f6a5b4` | Convert 6 tables to hypertables | Hypertable conversion — [ADR-002](../../../adr/ADR-002-hypertable-primary-key-conversion-strategy.md) |
+| `d4f5e6a7b8c9` | Enable compression policies | Compression — [ADR-003](../../../adr/ADR-003-timescaledb-compression-policy-strategy.md) |
+| `e5f6a7b8c9d0` | Create continuous aggregates | Continuous aggregates — [ADR-004](../../../adr/ADR-004-timescaledb-continuous-aggregate-strategy.md) |
+| `f6a7b8c9d0e1` | Enable retention policies | Retention — [ADR-005](../../../adr/ADR-005-timescaledb-retention-policy-strategy.md) |
 
 Domain migrations establish the relational foundation. Phase 12 migrations (`f1e2d3c4b5a6` onward) transform time-series tables into an analytical platform. CDD generation and runtime validation occur **after** all migrations complete.
 
@@ -310,7 +310,7 @@ Six time-series domain tables are converted to hypertables by migration `c9d8e7f
 
 Each hypertable receives a composite primary key `(id, <time_column>)` per ADR-002. Application-layer UUID identity is unchanged — repositories continue `WHERE id = :id` predicate queries.
 
-Detail: [ADR-002 §Approved Decisions](adr/ADR-002-hypertable-primary-key-conversion-strategy.md).
+Detail: [ADR-002 §Approved Decisions](../../../adr/ADR-002-hypertable-primary-key-conversion-strategy.md).
 
 ---
 
@@ -331,7 +331,7 @@ Direct mapping between Phase 12 implementation steps, Alembic migrations, and op
 
 Domain table migrations (`8f3a1c2d9e04`–`a1b2c3d4e5f6`) precede all Phase 12 TimescaleDB steps and are applied automatically during `alembic upgrade head`.
 
-Cross-reference: [Foundation Handbook](10-phase12-step1-foundation-handbook.md) · [Complete Architecture Handbook §Phase Map](12-phase12-complete-architecture-handbook.md).
+Cross-reference: [Foundation Handbook](step1-foundation-handbook.md) · [Complete Architecture Handbook §Phase Map](complete-architecture-handbook.md).
 
 ---
 
@@ -568,7 +568,7 @@ curl -s http://localhost:8000/api/v1/health/ready
 
 | Topic | Document |
 |---|---|
-| Complete architecture | [12-phase12-complete-architecture-handbook.md](12-phase12-complete-architecture-handbook.md) |
+| Complete architecture | [complete-architecture-handbook.md](complete-architecture-handbook.md) |
 | Full validation SQL | [Section 8](#8-sql-verification-cheat-sheet) of this guide |
 | Troubleshooting | [Section 11](#11-troubleshooting) of this guide |
 
@@ -669,7 +669,7 @@ Verified platform versions for Phase 12 bootstrap. Do not mix major versions acr
 | Topic | Document |
 |---|---|
 | Local development setup | [05-local-setup.md](05-local-setup.md) |
-| Phase 12 architecture | [12-phase12-complete-architecture-handbook.md](12-phase12-complete-architecture-handbook.md) |
+| Phase 12 architecture | [complete-architecture-handbook.md](complete-architecture-handbook.md) |
 
 ---
 
@@ -945,8 +945,8 @@ docker compose down -v
 
 | Topic | Document |
 |---|---|
-| ADR-001 (TimescaleDB image) | [ADR-001-timescaledb-extension-enablement.md](adr/ADR-001-timescaledb-extension-enablement.md) |
-| Foundation handbook | [10-phase12-step1-foundation-handbook.md](10-phase12-step1-foundation-handbook.md) |
+| ADR-001 (TimescaleDB image) | [ADR-001-timescaledb-extension-enablement.md](../../../adr/ADR-001-timescaledb-extension-enablement.md) |
+| Foundation handbook | [step1-foundation-handbook.md](step1-foundation-handbook.md) |
 | Daily commands | [Daily Developer Commands](#daily-developer-commands) |
 
 ---
@@ -1022,9 +1022,9 @@ docker compose exec -T db psql -U agriflow -d agriflow -c "\dt"
 
 | Topic | Document |
 |---|---|
-| ADR-001 | [ADR-001-timescaledb-extension-enablement.md](adr/ADR-001-timescaledb-extension-enablement.md) |
+| ADR-001 | [ADR-001-timescaledb-extension-enablement.md](../../../adr/ADR-001-timescaledb-extension-enablement.md) |
 | Extension enablement report | [PHASE12_STEP1D_EXTENSION_ENABLEMENT_REPORT.md](report/PHASE12_STEP1D_EXTENSION_ENABLEMENT_REPORT.md) |
-| Foundation handbook | [10-phase12-step1-foundation-handbook.md](10-phase12-step1-foundation-handbook.md) |
+| Foundation handbook | [step1-foundation-handbook.md](step1-foundation-handbook.md) |
 
 ---
 
@@ -1176,7 +1176,7 @@ Both should show `f6a7b8c9d0e1`.
 
 #### Troubleshooting
 
-Wrong port (`25432` from host), missing extension image, or hypertable migration before domain schema — see [Section 11](#11-troubleshooting) and [ADR-002](adr/ADR-002-hypertable-primary-key-conversion-strategy.md).
+Wrong port (`25432` from host), missing extension image, or hypertable migration before domain schema — see [Section 11](#11-troubleshooting) and [ADR-002](../../../adr/ADR-002-hypertable-primary-key-conversion-strategy.md).
 
 **Verify Alembic head:**
 
@@ -1244,17 +1244,17 @@ flowchart TD
 
 Prior migrations (`001` through `a1b2c3d4e5f6`) create the standard PostgreSQL domain schema (farms, fields, crops, soil, weather, sensors, irrigation, yield, disease, satellite).
 
-**Detail:** [ADR-001](adr/ADR-001-timescaledb-extension-enablement.md) through [ADR-005](adr/ADR-005-timescaledb-retention-policy-strategy.md).
+**Detail:** [ADR-001](../../../adr/ADR-001-timescaledb-extension-enablement.md) through [ADR-005](../../../adr/ADR-005-timescaledb-retention-policy-strategy.md).
 
 ### Further Reading
 
 | Topic | Document |
 |---|---|
-| ADR-002 (hypertables) | [ADR-002-hypertable-primary-key-conversion-strategy.md](adr/ADR-002-hypertable-primary-key-conversion-strategy.md) |
-| ADR-003 (compression) | [ADR-003-timescaledb-compression-policy-strategy.md](adr/ADR-003-timescaledb-compression-policy-strategy.md) |
-| ADR-004 (continuous aggregates) | [ADR-004-timescaledb-continuous-aggregate-strategy.md](adr/ADR-004-timescaledb-continuous-aggregate-strategy.md) |
-| ADR-005 (retention) | [ADR-005-timescaledb-retention-policy-strategy.md](adr/ADR-005-timescaledb-retention-policy-strategy.md) |
-| Complete architecture | [12-phase12-complete-architecture-handbook.md](12-phase12-complete-architecture-handbook.md) |
+| ADR-002 (hypertables) | [ADR-002-hypertable-primary-key-conversion-strategy.md](../../../adr/ADR-002-hypertable-primary-key-conversion-strategy.md) |
+| ADR-003 (compression) | [ADR-003-timescaledb-compression-policy-strategy.md](../../../adr/ADR-003-timescaledb-compression-policy-strategy.md) |
+| ADR-004 (continuous aggregates) | [ADR-004-timescaledb-continuous-aggregate-strategy.md](../../../adr/ADR-004-timescaledb-continuous-aggregate-strategy.md) |
+| ADR-005 (retention) | [ADR-005-timescaledb-retention-policy-strategy.md](../../../adr/ADR-005-timescaledb-retention-policy-strategy.md) |
+| Complete architecture | [complete-architecture-handbook.md](complete-architecture-handbook.md) |
 
 ---
 
@@ -1697,7 +1697,7 @@ curl -s http://localhost:8000/api/v1/health/ready
 | Runtime validation (compression) | [PHASE12_STEP2CD_RUNTIME_VALIDATION_AND_BENCHMARK_REPORT.md](report/PHASE12_STEP2CD_RUNTIME_VALIDATION_AND_BENCHMARK_REPORT.md) |
 | Runtime validation (CAs) | [PHASE12_STEP3C_CONTINUOUS_AGGREGATE_VALIDATION_REPORT.md](report/PHASE12_STEP3C_CONTINUOUS_AGGREGATE_VALIDATION_REPORT.md) |
 | Runtime validation (retention) | [PHASE12_STEP4C_RETENTION_RUNTIME_VALIDATION_REPORT.md](report/PHASE12_STEP4C_RETENTION_RUNTIME_VALIDATION_REPORT.md) |
-| Analytical platform handbook | [11-phase12-analytical-platform-handbook.md](11-phase12-analytical-platform-handbook.md) |
+| Analytical platform handbook | [analytical-platform-handbook.md](analytical-platform-handbook.md) |
 
 ---
 
@@ -1884,7 +1884,7 @@ UNION ALL SELECT 'yield_records', MIN(recorded_at), MAX(recorded_at), COUNT(*) F
 |---|---|
 | Step 2C-D validation SQL | [PHASE12_STEP2CD_RUNTIME_VALIDATION_AND_BENCHMARK_REPORT.md](report/PHASE12_STEP2CD_RUNTIME_VALIDATION_AND_BENCHMARK_REPORT.md) |
 | Step 4C SQL appendix | [PHASE12_STEP4C_RETENTION_RUNTIME_VALIDATION_REPORT.md](report/PHASE12_STEP4C_RETENTION_RUNTIME_VALIDATION_REPORT.md) |
-| Complete architecture | [12-phase12-complete-architecture-handbook.md](12-phase12-complete-architecture-handbook.md) |
+| Complete architecture | [complete-architecture-handbook.md](complete-architecture-handbook.md) |
 
 ---
 
@@ -2041,7 +2041,7 @@ curl -s http://localhost:8000/api/v1/health/ready
 | Topic | Document |
 |---|---|
 | Backup protocol | [PHASE12_DECISION_REGISTER.md](report/PHASE12_DECISION_REGISTER.md) — P12-D003 |
-| Operational lifecycle | [12-phase12-complete-architecture-handbook.md](12-phase12-complete-architecture-handbook.md) §11 |
+| Operational lifecycle | [complete-architecture-handbook.md](complete-architecture-handbook.md) §11 |
 
 ---
 
@@ -2344,7 +2344,7 @@ flowchart TD
 
 | Topic | Document |
 |---|---|
-| Complete architecture handbook | [12-phase12-complete-architecture-handbook.md](12-phase12-complete-architecture-handbook.md) |
+| Complete architecture handbook | [complete-architecture-handbook.md](complete-architecture-handbook.md) |
 | Bootstrap guide checklist | [Complete Platform Rebuild Checklist](#complete-platform-rebuild-checklist) |
 
 ---
@@ -2398,7 +2398,7 @@ docker compose exec -T db psql -U agriflow -d agriflow -c "SELECT name, default_
 
 Expected: one row with `default_version = 2.28.1`.
 
-Cross-reference: [ADR-001](adr/ADR-001-timescaledb-extension-enablement.md) · [Step 3B Implementation Lessons Learned](report/PHASE12_STEP3B_IMPLEMENTATION_LESSONS_LEARNED.md) (extension and CA debugging patterns) · [Foundation Handbook §Known Issues](10-phase12-step1-foundation-handbook.md).
+Cross-reference: [ADR-001](../../../adr/ADR-001-timescaledb-extension-enablement.md) · [Step 3B Implementation Lessons Learned](../../../archive/phase12/reports/PHASE12_STEP3B_IMPLEMENTATION_LESSONS_LEARNED.md) (extension and CA debugging patterns) · [Foundation Handbook §Known Issues](step1-foundation-handbook.md).
 
 ---
 
@@ -2406,12 +2406,12 @@ Cross-reference: [ADR-001](adr/ADR-001-timescaledb-extension-enablement.md) · [
 |---|---|---|---|
 | `POSTGRES_PASSWORD must be set` on `docker compose up` | Missing root `.env` | Create `.env` at repo root with `POSTGRES_PASSWORD` | Section 2 |
 | Alembic connection refused | Wrong port in `backend/.env` | Use `POSTGRES_PORT=25432` from host | Section 2 |
-| `extension "timescaledb" is not available` | Wrong Docker image or connection | Verify TimescaleDB container and port; see [TimescaleDB Extension Missing](#timescaledb-extension-missing) | [ADR-001](adr/ADR-001-timescaledb-extension-enablement.md) |
+| `extension "timescaledb" is not available` | Wrong Docker image or connection | Verify TimescaleDB container and port; see [TimescaleDB Extension Missing](#timescaledb-extension-missing) | [ADR-001](../../../adr/ADR-001-timescaledb-extension-enablement.md) |
 | `extension "timescaledb" does not exist` | Extension not yet installed | Run `alembic upgrade head` through `f1e2d3c4b5a6`; verify pre-migration checks | [Verify TimescaleDB Before Running Alembic](#verify-timescaledb-before-running-alembic) |
-| Migration fails on hypertable PK | Pre-Phase-12 schema state | Ensure all domain migrations applied before `c9d8e7f6a5b4` | [ADR-002](adr/ADR-002-hypertable-primary-key-conversion-strategy.md) |
+| Migration fails on hypertable PK | Pre-Phase-12 schema state | Ensure all domain migrations applied before `c9d8e7f6a5b4` | [ADR-002](../../../adr/ADR-002-hypertable-primary-key-conversion-strategy.md) |
 | CDD persistence `RETURNING` error | Composite PK + `add_all()` | Use `execute_cdd_workflow` (uses `bulk_insert_mappings`) | [Step 2C-C](report/PHASE12_STEP2CC_CDD_GENERATION_AND_PERSISTENCE_REPORT.md) |
 | CAs empty after migration | `WITH NO DATA` + historical CDD | Run manual `refresh_continuous_aggregate(NULL, NULL)` | [Step 3C](report/PHASE12_STEP3C_CONTINUOUS_AGGREGATE_VALIDATION_REPORT.md) |
-| CA refresh policy registration fails | `start_offset` < 2 × bucket width | Fixed in migration v1.3 for `ca_weather_weekly` | [Step 3 Lessons Learned](report/PHASE12_STEP3B_IMPLEMENTATION_LESSONS_LEARNED.md) |
+| CA refresh policy registration fails | `start_offset` < 2 × bucket width | Fixed in migration v1.3 for `ca_weather_weekly` | [Step 3 Lessons Learned](../../../archive/phase12/reports/PHASE12_STEP3B_IMPLEMENTATION_LESSONS_LEARNED.md) |
 | `COMMENT ON MATERIALIZED VIEW` fails | CAs are `relkind='v'` | Use `COMMENT ON VIEW` in migrations | Step 3 Lessons Learned |
 | Compression ratio low at CDD scale | Dev dataset below production volume | Architecture validated; ratio improves at scale | [Step 2C-D](report/PHASE12_STEP2CD_RUNTIME_VALIDATION_AND_BENCHMARK_REPORT.md) |
 | Retention dropped CDD data unexpectedly | Should not happen at CDD age (~395 days) | Verify `drop_after` ≥ 24 months for sensors | [Step 4C](report/PHASE12_STEP4C_RETENTION_RUNTIME_VALIDATION_REPORT.md) |
@@ -2435,10 +2435,10 @@ docker compose exec -T db psql -U agriflow -d agriflow -c "SELECT j.job_id, j.pr
 
 | Topic | Document |
 |---|---|
-| CA implementation lessons | [PHASE12_STEP3B_IMPLEMENTATION_LESSONS_LEARNED.md](report/PHASE12_STEP3B_IMPLEMENTATION_LESSONS_LEARNED.md) |
-| ADR-001 (extension) | [ADR-001-timescaledb-extension-enablement.md](adr/ADR-001-timescaledb-extension-enablement.md) |
-| ADR-004 (CAs) | [ADR-004-timescaledb-continuous-aggregate-strategy.md](adr/ADR-004-timescaledb-continuous-aggregate-strategy.md) |
-| ADR-005 (retention) | [ADR-005-timescaledb-retention-policy-strategy.md](adr/ADR-005-timescaledb-retention-policy-strategy.md) |
+| CA implementation lessons | [PHASE12_STEP3B_IMPLEMENTATION_LESSONS_LEARNED.md](../../../archive/phase12/reports/PHASE12_STEP3B_IMPLEMENTATION_LESSONS_LEARNED.md) |
+| ADR-001 (extension) | [ADR-001-timescaledb-extension-enablement.md](../../../adr/ADR-001-timescaledb-extension-enablement.md) |
+| ADR-004 (CAs) | [ADR-004-timescaledb-continuous-aggregate-strategy.md](../../../adr/ADR-004-timescaledb-continuous-aggregate-strategy.md) |
+| ADR-005 (retention) | [ADR-005-timescaledb-retention-policy-strategy.md](../../../adr/ADR-005-timescaledb-retention-policy-strategy.md) |
 
 ---
 
@@ -2480,7 +2480,7 @@ flowchart TD
 
 | Topic | Document |
 |---|---|
-| Operational lifecycle | [12-phase12-complete-architecture-handbook.md](12-phase12-complete-architecture-handbook.md) §11 |
+| Operational lifecycle | [complete-architecture-handbook.md](complete-architecture-handbook.md) §11 |
 | Complete rebuild checklist | [Complete Platform Rebuild Checklist](#complete-platform-rebuild-checklist) |
 
 ---
@@ -2550,8 +2550,8 @@ When all 15 checks pass, the Phase 12 analytical platform is **bootstrap-complet
 
 | Topic | Document |
 |---|---|
-| Complete architecture | [12-phase12-complete-architecture-handbook.md](12-phase12-complete-architecture-handbook.md) |
-| Phase 13 readiness | [12-phase12-complete-architecture-handbook.md](12-phase12-complete-architecture-handbook.md) §12 |
+| Complete architecture | [complete-architecture-handbook.md](complete-architecture-handbook.md) |
+| Phase 13 readiness | [complete-architecture-handbook.md](complete-architecture-handbook.md) §12 |
 
 ---
 
@@ -2623,19 +2623,19 @@ After successfully completing bootstrap and passing the [Platform Health Checkli
 
 | Document | Why |
 |---|---|
-| [12-phase12-complete-architecture-handbook.md](12-phase12-complete-architecture-handbook.md) | Definitive Phase 12 architecture — single entry point |
-| [10-phase12-step1-foundation-handbook.md](10-phase12-step1-foundation-handbook.md) | Hypertable foundation, principles, and runtime behaviour |
-| [11-phase12-analytical-platform-handbook.md](11-phase12-analytical-platform-handbook.md) | Continuous aggregates, refresh tiers, and analytical queries |
+| [complete-architecture-handbook.md](complete-architecture-handbook.md) | Definitive Phase 12 architecture — single entry point |
+| [step1-foundation-handbook.md](step1-foundation-handbook.md) | Hypertable foundation, principles, and runtime behaviour |
+| [analytical-platform-handbook.md](analytical-platform-handbook.md) | Continuous aggregates, refresh tiers, and analytical queries |
 
 ### Understand
 
 | ADR | Topic |
 |---|---|
-| [ADR-001](adr/ADR-001-timescaledb-extension-enablement.md) | TimescaleDB extension enablement |
-| [ADR-002](adr/ADR-002-hypertable-primary-key-conversion-strategy.md) | Hypertable conversion and composite PKs |
-| [ADR-003](adr/ADR-003-timescaledb-compression-policy-strategy.md) | Compression policies |
-| [ADR-004](adr/ADR-004-timescaledb-continuous-aggregate-strategy.md) | Continuous aggregate catalogue and refresh tiers |
-| [ADR-005](adr/ADR-005-timescaledb-retention-policy-strategy.md) | Retention lifecycle and exemptions |
+| [ADR-001](../../../adr/ADR-001-timescaledb-extension-enablement.md) | TimescaleDB extension enablement |
+| [ADR-002](../../../adr/ADR-002-hypertable-primary-key-conversion-strategy.md) | Hypertable conversion and composite PKs |
+| [ADR-003](../../../adr/ADR-003-timescaledb-compression-policy-strategy.md) | Compression policies |
+| [ADR-004](../../../adr/ADR-004-timescaledb-continuous-aggregate-strategy.md) | Continuous aggregate catalogue and refresh tiers |
+| [ADR-005](../../../adr/ADR-005-timescaledb-retention-policy-strategy.md) | Retention lifecycle and exemptions |
 
 ### Use During Development
 
@@ -2658,7 +2658,7 @@ The completed platform provides:
 - Retention-governed lifecycle preserving multi-season summaries
 - Zero application-layer changes — Feature Store adds new read paths, not storage replacements
 
-Begin Phase 13 by reading the Complete Architecture Handbook [§12 AI Readiness](12-phase12-complete-architecture-handbook.md) and the Analytical Platform Handbook [§8 AI Readiness](11-phase12-analytical-platform-handbook.md).
+Begin Phase 13 by reading the Complete Architecture Handbook [§12 AI Readiness](complete-architecture-handbook.md) and the Analytical Platform Handbook [§8 AI Readiness](analytical-platform-handbook.md).
 
 ---
 
@@ -2666,16 +2666,16 @@ Begin Phase 13 by reading the Complete Architecture Handbook [§12 AI Readiness]
 
 | Topic | Document |
 |---|---|
-| Complete Phase 12 architecture | [12-phase12-complete-architecture-handbook.md](12-phase12-complete-architecture-handbook.md) |
-| Foundation (hypertables) | [10-phase12-step1-foundation-handbook.md](10-phase12-step1-foundation-handbook.md) |
-| Analytical layer (CAs) | [11-phase12-analytical-platform-handbook.md](11-phase12-analytical-platform-handbook.md) |
+| Complete Phase 12 architecture | [complete-architecture-handbook.md](complete-architecture-handbook.md) |
+| Foundation (hypertables) | [step1-foundation-handbook.md](step1-foundation-handbook.md) |
+| Analytical layer (CAs) | [analytical-platform-handbook.md](analytical-platform-handbook.md) |
 | CDD generator package | [backend/app/cdd/README.md](../backend/app/cdd/README.md) |
 | CDD architecture | [PHASE12_STEP2CA_CANONICAL_DEVELOPMENT_DATASET_ARCHITECTURE.md](report/PHASE12_STEP2CA_CANONICAL_DEVELOPMENT_DATASET_ARCHITECTURE.md) |
-| CA implementation lessons | [PHASE12_STEP3B_IMPLEMENTATION_LESSONS_LEARNED.md](report/PHASE12_STEP3B_IMPLEMENTATION_LESSONS_LEARNED.md) |
+| CA implementation lessons | [PHASE12_STEP3B_IMPLEMENTATION_LESSONS_LEARNED.md](../../../archive/phase12/reports/PHASE12_STEP3B_IMPLEMENTATION_LESSONS_LEARNED.md) |
 | Runtime validation (compression) | [PHASE12_STEP2CD_RUNTIME_VALIDATION_AND_BENCHMARK_REPORT.md](report/PHASE12_STEP2CD_RUNTIME_VALIDATION_AND_BENCHMARK_REPORT.md) |
 | Runtime validation (CAs) | [PHASE12_STEP3C_CONTINUOUS_AGGREGATE_VALIDATION_REPORT.md](report/PHASE12_STEP3C_CONTINUOUS_AGGREGATE_VALIDATION_REPORT.md) |
 | Runtime validation (retention) | [PHASE12_STEP4C_RETENTION_RUNTIME_VALIDATION_REPORT.md](report/PHASE12_STEP4C_RETENTION_RUNTIME_VALIDATION_REPORT.md) |
 
 ---
 
-*13-phase12-platform-bootstrap-guide.md v1.6 — 2026-07-01*
+*platform-bootstrap-guide.md v1.6 — 2026-07-01*

@@ -39,7 +39,7 @@
 | Document | Relationship |
 |---|---|
 | `PHASE12_STEP3A_CONTINUOUS_AGGREGATES_ARCHITECTURE_ASSESSMENT.md` v1.0 | Authoritative evidence base for this ADR |
-| `10-phase12-step1-foundation-handbook.md` v1.1 | Phase 12 foundation and roadmap context |
+| `docs/phases/phase12/handbooks/step1-foundation-handbook.md` v1.1 | Phase 12 foundation and roadmap context |
 | `PHASE12_STEP2CD_RUNTIME_VALIDATION_AND_BENCHMARK_REPORT.md` v1.0 | Hypertable, chunk, and compression baseline |
 | `PHASE12_STEP2CA_CANONICAL_DEVELOPMENT_DATASET_ARCHITECTURE.md` v1.0 | CDD feature windows and Step 3 validation scenarios |
 | `06-roadmap.md` | Phase 12–16 sequencing |
@@ -924,7 +924,7 @@ flowchart TD
 * `PHASE12_STEP3A_CONTINUOUS_AGGREGATES_ARCHITECTURE_ASSESSMENT.md` v1.0 — authoritative evidence base for this ADR
 * `PHASE12_STEP2CD_RUNTIME_VALIDATION_AND_BENCHMARK_REPORT.md` v1.0 — hypertable, chunk, compression baseline
 * `PHASE12_STEP2CA_CANONICAL_DEVELOPMENT_DATASET_ARCHITECTURE.md` v1.0 — CDD feature windows and Step 3 validation scenarios
-* `10-phase12-step1-foundation-handbook.md` v1.1 — §13 Roadmap Beyond Step 1
+* `docs/phases/phase12/handbooks/step1-foundation-handbook.md` v1.1 — §13 Roadmap Beyond Step 1
 * `06-roadmap.md` — Phase 12–16 sequencing
 * `PHASE12_DECISION_REGISTER.md` v1.4 — P12-D012, P12-D003, P12-D011
 * `docs/adr/ADR-001-timescaledb-extension-enablement.md` — Accepted 2026-06-29

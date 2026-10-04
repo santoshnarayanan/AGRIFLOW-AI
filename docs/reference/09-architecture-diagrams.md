@@ -1532,9 +1532,9 @@ graph LR
 **Diagram Rendering:** All diagrams in this document are authored in Mermaid syntax and render natively in GitHub Markdown, GitLab Markdown, Notion, and any Mermaid-compatible viewer.
 
 **Architecture Alignment:** Every diagram in this document is grounded in the decisions documented in:
-- `docs/08-phase-architecture-handbook.md` — primary source of architectural decisions
+- `08-architecture-handbook.md` — primary source of architectural decisions
 - `docs/06-roadmap.md` — phase sequencing and domain roadmap
-- `docs/AI_DATA_READINESS_ASSESSMENT.md` — AI coverage assessment and gap analysis
+- `../phases/phase06/ai-data-readiness-assessment.md` — AI coverage assessment and gap analysis
 
 **Living Document:** This document should be updated at the completion of each phase to reflect new domain additions, architectural decisions, and technology adoptions.
 
@@ -1543,5 +1543,5 @@ graph LR
 ---
 
 *AGRIFLOW-AI Architecture Diagrams — Produced by AGRIFLOW-AI Principal Enterprise Architecture*  
-*For implementation history, see `docs/08-phase-architecture-handbook.md`*  
+*For implementation history, see `08-architecture-handbook.md`*  
 *For phase roadmap, see `docs/06-roadmap.md`*

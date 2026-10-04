@@ -1042,7 +1042,7 @@ Foundry's Pipeline Builder and AIP operational workflows support multi-step, sta
 
 **✗ Real-Time Digital Twin**
 
-The Digital Twin concept is thoroughly documented in `docs/08-phase-architecture-handbook.md` (Section 17), the `SensorType` enum aligns with the planned field state model, and the service layer extension points are reserved. However, no Digital Twin store (Redis), updater service, or state model has been implemented.
+The Digital Twin concept is thoroughly documented in `08-architecture-handbook.md` (Section 17), the `SensorType` enum aligns with the planned field state model, and the service layer extension points are reserved. However, no Digital Twin store (Redis), updater service, or state model has been implemented.
 
 *Impact: Blocks real-time field state visibility and GaaS agent context.*
 

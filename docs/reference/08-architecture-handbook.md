@@ -722,7 +722,7 @@ Before AI models can be trained, the data they require must exist in the databas
 
 No new layers or patterns were introduced. Phase 6 was deliberately a schema-and-validation extension of existing patterns.
 
-The AI Data Readiness Assessment document (`docs/AI_DATA_READINESS_ASSESSMENT.md`) was the primary deliverable — a formal analysis rather than a code change.
+The AI Data Readiness Assessment document (`../phases/phase06/ai-data-readiness-assessment.md`) was the primary deliverable — a formal analysis rather than a code change.
 
 ### Database Changes
 

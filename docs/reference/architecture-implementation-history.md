@@ -79,7 +79,7 @@ AGRIFLOW-AI evolved from a **single-domain FastAPI foundation** (Phase 1) into a
 - **Problem:** Fields reference `farm_id`; farm creation assumed via seed/migration/direct DB.
 - **Rationale:** Phase 2 Field domain uses farm as parent reference only.
 - **Consequences:** Farm management API still absent at Phase 12; `FieldService` validates farm existence via `FarmRepository`.
-- **Status:** **INFERRED — NO FORMAL ADR FOUND**; noted in `docs/AGRIFLOW_PALANTIR_ALIGNMENT.md`.
+- **Status:** **INFERRED — NO FORMAL ADR FOUND**; noted in `palantir-alignment.md`.
 
 ### Repository pattern (minimal at Phase 1)
 - **Decision:** `BaseRepository` generic CRUD; `FarmRepository` extends it.
@@ -380,7 +380,7 @@ Yield prediction models blocked by missing schema features (18% coverage per ass
 
 ### Architectural Decisions
 - Nullable ADD COLUMN only (instantaneous DDL) — documented in migration
-- Assessment-driven attribute selection — `docs/plan/AI_DATA_READINESS_ASSESSMENT.md`
+- Assessment-driven attribute selection — `../phases/phase06/ai-data-readiness-assessment.md`
 
 ### Testing / Validation
 - Phase history documents backward compatibility verification; no automated test files.
@@ -669,7 +669,7 @@ Enterprise-scale time-series storage and analytics for AI workloads; repeated ag
 See §7 ADR Register — ADR-001 through ADR-005.
 
 ### Testing / Validation
-- Phase 12 Step 2C/3C/4C runtime validation reports in `docs/report/`
+- Phase 12 Step 2C/3C/4C runtime validation reports in `../archive/phase12/reports/`
 - CDD validation framework in `backend/app/cdd/validation/`
 - **FACT:** No automated pytest suite for TimescaleDB in `backend/app/tests/`
 
@@ -749,7 +749,7 @@ Phase 13 analytical read services over CAs; Feature Store (planned); decision in
 | disease_observations | observed_at | 1mo | (id, observed_at) | 60d | 7yr | ca_disease_weekly |
 | satellite_observations | observed_at | 7d | (id, observed_at) | 14d | 36mo | ca_satellite_daily |
 
-**Full column inventories:** See migration and ORM evidence in §4 and Phase 13 discovery report (`docs/phase13/phase13 Repository & Architecture Discovery Report.md`).
+**Full column inventories:** See migration and ORM evidence in §4 and Phase 13 discovery report (`../archive/phase13/discovery-report.md`).
 
 **ORM note:** `weather_records` compound index `ix_weather_records_field_id_recorded_at` exists in DB (migration 13) but is **not declared** in ORM `__table_args__` — documentation/implementation gap.
 
