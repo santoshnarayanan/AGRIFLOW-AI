@@ -1,14 +1,14 @@
 # API Design
 
-**Last Updated:** Phase 12 — TimescaleDB Time-Series Foundation Complete  
-**Current Implementation Version:** Phases 1–11 domain APIs (unchanged) + Phase 12 persistence-layer enhancements  
-**Alembic Head:** `f6a7b8c9d0e1_enable_retention_policies`
+**Last Updated:** Phase 13 — AI Decision Intelligence Layer Complete  
+**Current Implementation Version:** Phases 1–13 — all core domain APIs implemented  
+**Alembic Head:** `h2i3j4k5l6m7_create_alerts_table`
 
 ---
 
 ## API Architecture Overview
 
-Phase 12 upgraded the persistence tier beneath the existing Clean Architecture stack. REST endpoints, service contracts, and repository interfaces are unchanged; repository implementations transparently manage TimescaleDB access for time-series domains.
+Phase 12 upgraded the persistence tier beneath the existing Clean Architecture stack without changing any REST endpoints. Phase 13 extended the API surface with the Farm CRUD API (completed), the Recommendation domain, and the Alert domain — adding twelve new endpoints across three new routers. All prior Phase 1–12 endpoints remain unchanged.
 
 ```text
 Client
@@ -45,6 +45,16 @@ Phase 12 introduced persistence-layer enhancements only. The external contract v
 
 Clients require no changes. Existing integrations continue to function without modification.
 
+### Phase 13 New API Domains
+
+Phase 13 completed the Farm CRUD API and introduced two new decision-layer domains:
+
+* **Farm API** (5 endpoints) — `POST`, `GET`, `GET /{id}`, `PATCH`, `DELETE` on `/api/v1/farms`
+* **Recommendation API** (5 endpoints) — field-anchored; create, list, get, update, delete on `/api/v1/fields/{field_id}/recommendations`
+* **Alert API** (5 endpoints) — field-anchored; create, list, get, update, delete on `/api/v1/fields/{field_id}/alerts`
+
+All prior endpoints remain fully backward compatible.
+
 ---
 
 ## Existing Endpoints
@@ -57,6 +67,14 @@ Clients require no changes. Existing integrations continue to function without m
 ### Version
 
 * GET /api/v1/version
+
+### Farms
+
+* POST   /api/v1/farms
+* GET    /api/v1/farms
+* GET    /api/v1/farms/{farm_id}
+* PATCH  /api/v1/farms/{farm_id}
+* DELETE /api/v1/farms/{farm_id}
 
 ### Sensor Reading
 
@@ -90,11 +108,51 @@ Clients require no changes. Existing integrations continue to function without m
 * PATCH  /api/v1/disease-observations/{observation_id}
 * DELETE /api/v1/disease-observations/{observation_id}
 
+### Recommendation
+
+* POST   /api/v1/fields/{field_id}/recommendations
+* GET    /api/v1/fields/{field_id}/recommendations
+* GET    /api/v1/recommendations/{recommendation_id}
+* PATCH  /api/v1/recommendations/{recommendation_id}
+* DELETE /api/v1/recommendations/{recommendation_id}
+
+### Alert
+
+* POST   /api/v1/fields/{field_id}/alerts
+* GET    /api/v1/fields/{field_id}/alerts
+* GET    /api/v1/alerts/{alert_id}
+* PATCH  /api/v1/alerts/{alert_id}
+* DELETE /api/v1/alerts/{alert_id}
+
+---
+
+## Farm Domain Endpoints
+
+### Create Farm
+
+* POST /api/v1/farms
+
+### List Farms
+
+* GET /api/v1/farms
+
+### Get Farm
+
+* GET /api/v1/farms/{farm_id}
+
+### Update Farm
+
+* PATCH /api/v1/farms/{farm_id}
+
+### Delete Farm
+
+* DELETE /api/v1/farms/{farm_id}
+
 ---
 
 ## Field Domain Endpoints
 
-Cumulative API inventory for all implemented domains through Phase 11.
+Cumulative API inventory for all implemented domains through Phase 13.
 
 ### Health
 
@@ -336,6 +394,54 @@ Query parameter: `spectral_index`
 
 ---
 
+## Recommendation Domain Endpoints
+
+### Create Recommendation
+
+* POST /api/v1/fields/{field_id}/recommendations
+
+### List Recommendations for Field
+
+* GET /api/v1/fields/{field_id}/recommendations
+
+### Get Recommendation
+
+* GET /api/v1/recommendations/{recommendation_id}
+
+### Update Recommendation
+
+* PATCH /api/v1/recommendations/{recommendation_id}
+
+### Delete Recommendation
+
+* DELETE /api/v1/recommendations/{recommendation_id}
+
+---
+
+## Alert Domain Endpoints
+
+### Create Alert
+
+* POST /api/v1/fields/{field_id}/alerts
+
+### List Alerts for Field
+
+* GET /api/v1/fields/{field_id}/alerts
+
+### Get Alert
+
+* GET /api/v1/alerts/{alert_id}
+
+### Update Alert
+
+* PATCH /api/v1/alerts/{alert_id}
+
+### Delete Alert
+
+* DELETE /api/v1/alerts/{alert_id}
+
+---
+
 Request Flow:
 
 Client
@@ -416,6 +522,16 @@ Crop
 Field
 └── SatelliteObservations (mutable Earth observation records)
 
+### Recommendation Domain
+
+Field
+└── Recommendations (mutable, nullable crop context — decision layer)
+
+### Alert Domain
+
+Field
+└── Alerts (mutable, nullable crop + recommendation context — decision layer)
+
 ---
 
 ## HTTP Status Code Conventions
@@ -445,6 +561,14 @@ Field
 ### Version APIs
 
 * Application Version
+
+### Farm APIs
+
+* Create Farm
+* List Farms
+* Get Farm
+* Update Farm
+* Delete Farm
 
 ### Field APIs
 
@@ -520,6 +644,22 @@ Field
 * Get Satellite Observation
 * Update Satellite Observation
 * Delete Satellite Observation
+
+### Recommendation APIs
+
+* Create Recommendation
+* List Recommendations for Field
+* Get Recommendation
+* Update Recommendation
+* Delete Recommendation
+
+### Alert APIs
+
+* Create Alert
+* List Alerts for Field
+* Get Alert
+* Update Alert
+* Delete Alert
 
 ---
 
@@ -609,6 +749,28 @@ Field
 * PATCH is permitted — SatelliteObservation is a mutable Earth observation record
 * List responses are ordered by `observed_at DESC` (most recent first)
 
+### Recommendation Domain
+
+* Field must exist before Recommendation creation (→ 404 Not Found)
+* `field_id` is supplied through the route path — not in the request body
+* `crop_id`, when supplied, must belong to the same field (→ 400 Bad Request)
+* `confidence_score`, when supplied, must be within [0.000, 1.000] (schema + service validation)
+* `valid_until`, when supplied, must be after `valid_from` (→ 400 Bad Request)
+* `field_id` is immutable after creation — excluded from update schema
+* PATCH is permitted — Recommendation is mutable (status lifecycle, priority adjustments)
+* List responses include filtering by `status` and `recommendation_type` query parameters
+
+### Alert Domain
+
+* Field must exist before Alert creation (→ 404 Not Found)
+* `field_id` is supplied through the route path — not in the request body
+* `crop_id`, when supplied, must belong to the same field (→ 400 Bad Request)
+* `recommendation_id`, when supplied, must belong to the same field (→ 400 Bad Request)
+* `triggered_at` is mandatory and must be timezone-aware (→ 400 Bad Request); it is the event detection time, not the row insert time
+* `field_id` is immutable after creation — excluded from update schema
+* PATCH is permitted — Alert is mutable (`acknowledged_at`, `resolved_at`, `is_active`, `notes`)
+* List responses include filtering by `severity`, `alert_type`, and `is_active` query parameters
+
 ---
 
 ### Health
@@ -619,6 +781,14 @@ Field
 ### Version
 
 * GET /api/v1/version
+
+### Farms
+
+* POST   /api/v1/farms
+* GET    /api/v1/farms
+* GET    /api/v1/farms/{farm_id}
+* PATCH  /api/v1/farms/{farm_id}
+* DELETE /api/v1/farms/{farm_id}
 
 ### Fields
 
@@ -695,6 +865,22 @@ Field
 * PATCH  /api/v1/satellite-observations/{observation_id}
 * DELETE /api/v1/satellite-observations/{observation_id}
 
+### Recommendations
+
+* POST   /api/v1/fields/{field_id}/recommendations
+* GET    /api/v1/fields/{field_id}/recommendations
+* GET    /api/v1/recommendations/{recommendation_id}
+* PATCH  /api/v1/recommendations/{recommendation_id}
+* DELETE /api/v1/recommendations/{recommendation_id}
+
+### Alerts
+
+* POST   /api/v1/fields/{field_id}/alerts
+* GET    /api/v1/fields/{field_id}/alerts
+* GET    /api/v1/alerts/{alert_id}
+* PATCH  /api/v1/alerts/{alert_id}
+* DELETE /api/v1/alerts/{alert_id}
+
 ---
 
 ## Analytical APIs
@@ -703,7 +889,7 @@ Phase 12 delivered **implemented persistence support** for time-series analytics
 
 No new REST endpoints were introduced in Phase 12. Existing list and detail APIs continue to read authoritative raw hypertable rows through unchanged repository methods. Analytical rollups are consumed internally by services and future AI pipelines — not exposed as separate public aggregation endpoints.
 
-**Future Feature Store APIs remain Phase 13.** The Feature Store will materialise versioned feature vectors from validated continuous aggregates; that consumption layer is out of scope for Phase 12.
+Phase 13 consumed continuous aggregate data from within `RecommendationService` and `AlertService` to drive decision logic. The aggregates remain internal — no new analytical endpoints were exposed in Phase 13.
 
 ---
 
@@ -733,20 +919,20 @@ See [ADR-005](adr/ADR-005-timescaledb-retention-policy-strategy.md) for retentio
 
 ### Backward Compatibility
 
-Phase 12 introduces **zero breaking API changes**. All Phase 1–11 domain endpoints, request models, response models, authentication flows, and validation rules are preserved.
+Phase 12 and Phase 13 introduce **zero breaking API changes**. All Phase 1–12 domain endpoints, request models, response models, authentication flows, and validation rules are preserved. Phase 13 adds new endpoints and domains without modifying any existing contracts.
 
 * Existing clients continue to function without modification.
 * Persistence improvements — hypertables, compression, continuous aggregates, retention — are transparent to API consumers.
-* No OpenAPI contract changes, no new required fields, and no deprecated endpoints.
+* No OpenAPI contract changes, no new required fields, and no deprecated endpoints in any prior domain.
 
 ---
 
 ## Future API Evolution
 
-* AI Recommendation APIs (Phase 13+)
-* Feature Store APIs (Phase 13)
-* Digital Twin State API
-* GaaS / Farm Copilot API
+* ML Engine trigger APIs — Yield Prediction, Irrigation Optimization, Disease Risk Scoring (Phase 14)
+* Feature Store APIs (Phase 14)
+* Digital Twin State API (Phase 15)
+* GaaS / Farm Copilot API (Phase 15+)
 
 
 ---

@@ -1,8 +1,8 @@
 # AGRIFLOW-AI Architecture Archaeology & Implementation History Report
 
 **Document Type:** Repository-Grounded Architecture & Implementation History  
-**Scope:** Phase 1 through completed Phase 12  
-**Date:** August 9, 2026  
+**Scope:** Phase 1 through completed Phase 13  
+**Date:** October 2026  
 **Evidence Basis:** Source code, Alembic migrations, formal ADRs, tests, configuration, documentation, Git history  
 **Status:** Living historical record — implementation wins over documentation where conflicts exist
 
@@ -10,22 +10,22 @@
 
 # 1. Executive Summary
 
-AGRIFLOW-AI evolved from a **single-domain FastAPI foundation** (Phase 1) into a **ten-domain agricultural data platform** with an **enterprise TimescaleDB analytical layer** beneath unchanged repository and API contracts (Phase 12). The transformation is deliberate, migration-driven, and layered:
+AGRIFLOW-AI evolved from a **single-domain FastAPI foundation** (Phase 1) into a **twelve-domain agricultural data platform** with an **enterprise TimescaleDB analytical layer** and a **Decision Intelligence domain** (Phase 13) beneath unchanged repository and API contracts. The transformation is deliberate, migration-driven, and layered:
 
 | Era | Phases | Architectural Character |
 |---|---|---|
-| **Foundation** | 1 | FastAPI + PostgreSQL + Alembic + Farm model + Docker + health/version APIs |
+| **Foundation** | 1 | FastAPI + PostgreSQL + Alembic + Farm model + Podman + health/version APIs |
 | **Core agricultural domain** | 2–5 | Farm → Field → Crop hierarchy; SoilProfile (1:1); WeatherRecord (first time-series table) |
 | **AI readiness** | 6 | P1 nullable AI columns across 4 tables; no new APIs; yield prediction coverage 18% → 82% |
 | **Observational intelligence** | 7–11 | Sensor telemetry (append-only), irrigation events, yield/disease grandchildren, satellite Earth observation |
 | **Enterprise time-series platform** | 12 | TimescaleDB 2.28.1 extension; 6 hypertables; compression; 8 continuous aggregates; 11 retention policies |
-| **AI decision intelligence** | 13+ | **PLANNED / FUTURE** — not implemented in repository |
+| **AI decision intelligence** | 13 | Recommendation domain, Alert domain, Farm CRUD API; 5 ADRs; 5 new enums; 2 migrations |
 
 **FACT:** Phase 12 was an **infrastructure phase**. It changed persistence beneath the repository layer with **zero API breaking changes** (verified: no router/schema/service interface changes in Phase 12 migrations).
 
-**FACT:** Git history in this repository begins approximately at **Phase 9–10** (earliest commits reference Phase 9–10 work). Phases 1–8 chronology is reconstructed from Alembic migration timestamps, `docs/07-phase-history.md`, and source structure. See §Git History note below.
+**FACT:** Phase 13 delivered the Decision Intelligence Layer — `Recommendation` and `Alert` domains as standard PostgreSQL tables (not TimescaleDB hypertables), Farm CRUD API completion, five new enums (14 total in `core/enums.py`), and five formal ADRs (ADR-013-01 through ADR-013-05). Two Alembic migrations (total 18). HEAD: `h2i3j4k5l6m7`.
 
-**INFERENCE:** Phase 13 ("Enterprise Decision & Recommendation Platform" per `docs/06-roadmap.md`) is architecturally enabled by: governed domain ontology (Phases 1–11), AI-readiness schema (Phase 6), observational labels and telemetry (Phases 7–11), and pre-computed TimescaleDB rollups (Phase 12) — but **no recommendation, alert, task, or decision code exists yet**.
+**FACT:** Git history in this repository begins approximately at **Phase 9–10** (earliest commits reference Phase 9–10 work). Phases 1–8 chronology is reconstructed from Alembic migration timestamps, `docs/07-phase-history.md`, and source structure. See §Git History note below.
 
 ---
 
@@ -74,11 +74,11 @@ AGRIFLOW-AI evolved from a **single-domain FastAPI foundation** (Phase 1) into a
 - **Consequences:** 16 linear migrations by Phase 12; no branches.
 - **Status:** **INFERRED — NO FORMAL ADR FOUND**.
 
-### Farm without public CRUD API
+### Farm without public CRUD API (Phase 1–12 gap — resolved Phase 13)
 - **Decision:** Farm ORM + repository exist; no Farm service, schema, or router.
 - **Problem:** Fields reference `farm_id`; farm creation assumed via seed/migration/direct DB.
 - **Rationale:** Phase 2 Field domain uses farm as parent reference only.
-- **Consequences:** Farm management API still absent at Phase 12; `FieldService` validates farm existence via `FarmRepository`.
+- **Consequences:** Farm management API absent at Phase 12; `FieldService` validates farm existence via `FarmRepository`. **RESOLVED in Phase 13** — full Farm vertical slice (service, schema, router) with 5 CRUD endpoints delivered.
 - **Status:** **INFERRED — NO FORMAL ADR FOUND**; noted in `palantir-alignment.md`.
 
 ### Repository pattern (minimal at Phase 1)
@@ -89,9 +89,10 @@ AGRIFLOW-AI evolved from a **single-domain FastAPI foundation** (Phase 1) into a
 - **Decision:** FastAPI `Depends()` for session and services (`backend/app/api/deps.py`).
 - **Note:** Secondary `get_db()` in `backend/app/db/dependencies.py` also exists but is **not used by API routers** — **INFERRED — NO FORMAL ADR FOUND**.
 
-### Docker foundation
+### Container foundation
 - **Decision:** Multi-stage `backend/Dockerfile`; compose stack for local dev.
-- **Phase 12 update:** `docker-compose.yml` uses `timescale/timescaledb:2.28.1-pg17` image.
+- **Phase 12 update:** compose file uses `timescale/timescaledb:2.28.1-pg17` image.
+- **Phase 13 update:** Docker Desktop replaced by **Podman Desktop**; `docker-compose.yml` renamed to `compose.yaml`; `docker compose` → `podman compose`. Container image unchanged.
 
 ---
 
@@ -389,7 +390,7 @@ Yield prediction models blocked by missing schema features (18% coverage per ass
 Yield prediction feature coverage 18% → 82% (per roadmap documentation).
 
 ### Future Architecture Enabled
-Phase 12+ AI feature pipelines; Phase 13 recommendation inputs.
+Phase 12 TimescaleDB feature pipelines; Phase 13 Recommendation/Alert domains consumed these AI-ready attributes as decision inputs.
 
 ---
 
@@ -581,7 +582,7 @@ Plant health intelligence and disease risk model labels.
 Disease monitoring; field-scoped disease history without JOIN through crops.
 
 ### Future Architecture Enabled
-Phase 13 disease risk scoring (planned); `ca_disease_weekly`.
+Phase 14 Disease Risk Scoring Engine (ML, planned); `ca_disease_weekly` analytical read path.
 
 ---
 
@@ -629,7 +630,7 @@ Remote sensing features (NDVI, NDWI, etc.) for yield, disease, irrigation models
 NDVI/EVI/LAI/NDWI time-series foundation.
 
 ### Future Architecture Enabled
-Phase 12 hypertable + `ca_satellite_daily`; Phase 13–14 AI engines (planned).
+Phase 12 hypertable + `ca_satellite_daily`; Phase 14 AI engines (ML prediction planned).
 
 ---
 
@@ -677,7 +678,87 @@ See §7 ADR Register — ADR-001 through ADR-005.
 Enterprise time-series storage, compression, pre-computed rollups, governed lifecycle.
 
 ### Future Architecture Enabled
-Phase 13 analytical read services over CAs; Feature Store (planned); decision intelligence inputs.
+Phase 13 Decision Intelligence layer built on these analytical foundations; Feature Store (Phase 15 planned); Phase 14 ML model training inputs from CAs.
+
+---
+
+## Phase 13 — AI Decision Intelligence Layer
+
+### Objective
+Deliver the Decision Intelligence infrastructure: Recommendation domain, Alert domain, Farm CRUD API completion.
+
+### Problem Being Solved
+Platform lacked decision persistence — there was no structure to record AI-generated recommendations or system-detected alerts. Farm entity also lacked a public CRUD API despite being the aggregate root since Phase 1.
+
+### Implementation (5 formal ADRs, 2 migrations)
+- `RecommendationType`, `RecommendationStatus`, `RecommendationPriority`, `AlertType`, `AlertSeverity` added to `core/enums.py` (14 total)
+- `Recommendation` ORM, repository, service, router — 5 endpoints
+- `Alert` ORM, repository, service, router — 5 endpoints
+- `Farm` service, schema, router — 5 endpoints (vertical slice completed)
+- Migrations `g1h2i3j4k5l6` and `h2i3j4k5l6m7`
+
+### Files / Modules
+- `backend/app/db/models/recommendation.py`, `alert.py`
+- `backend/app/db/repositories/recommendation.py`, `alert.py`
+- `backend/app/services/recommendation.py`, `alert.py`, `farm.py`
+- `backend/app/schemas/recommendation.py`, `alert.py`, `farm.py`
+- `backend/app/api/recommendations/router.py`, `alerts/router.py`, `farms/router.py`
+
+### Database Changes
+
+| Migration | Deliverable |
+|---|---|
+| `g1h2i3j4k5l6` | `recommendations` table; 3 new enums (`recommendation_type`, `recommendation_status`, `recommendation_priority`) |
+| `h2i3j4k5l6m7` | `alerts` table; 2 new enums (`alert_type`, `alert_severity`) |
+
+**Key schema decisions:**
+- `crop_id` nullable with `SET NULL` on Recommendation (ADR-013-01) and Alert (ADR-013-02) — field-level entities; crop context optional
+- `recommendation_id` nullable FK on Alert with `SET NULL` — soft link enabling traceability without hard dependency
+- `triggered_at TIMESTAMPTZ NOT NULL` on Alert — event detection time, distinct from `created_at` (ADR-013-03)
+- `confidence_score NUMERIC(4,3)` on Recommendation — exact decimal arithmetic for ML threshold comparisons (ADR-013-04)
+- `engine_version VARCHAR(50)` on Recommendation — ML model provenance (ADR-013-05)
+- Both tables are **standard PostgreSQL** — not TimescaleDB hypertables (low-volume mutable decision records)
+
+### API Changes
+
+| Method | Path |
+|---|---|
+| POST | `/api/v1/farms` |
+| GET | `/api/v1/farms` |
+| GET | `/api/v1/farms/{farm_id}` |
+| PATCH | `/api/v1/farms/{farm_id}` |
+| DELETE | `/api/v1/farms/{farm_id}` |
+| POST | `/api/v1/fields/{field_id}/recommendations` |
+| GET | `/api/v1/fields/{field_id}/recommendations` |
+| GET | `/api/v1/recommendations/{recommendation_id}` |
+| PATCH | `/api/v1/recommendations/{recommendation_id}` |
+| DELETE | `/api/v1/recommendations/{recommendation_id}` |
+| POST | `/api/v1/fields/{field_id}/alerts` |
+| GET | `/api/v1/fields/{field_id}/alerts` |
+| GET | `/api/v1/alerts/{alert_id}` |
+| PATCH | `/api/v1/alerts/{alert_id}` |
+| DELETE | `/api/v1/alerts/{alert_id}` |
+
+### Architectural Decisions (FORMAL ADRs — ADR-013 series)
+
+| ID | Decision |
+|---|---|
+| ADR-013-01 | `crop_id` nullable with SET NULL on Recommendation — field-level entity |
+| ADR-013-02 | `crop_id` nullable with SET NULL on Alert — field-level entity |
+| ADR-013-03 | `triggered_at` mandatory on Alert — event detection time distinct from `created_at` |
+| ADR-013-04 | `confidence_score NUMERIC(4,3)` — exact decimal arithmetic for ML threshold comparisons |
+| ADR-013-05 | `engine_version VARCHAR(50)` — ML model provenance tracking |
+
+### Infrastructure Change
+- Docker Desktop → **Podman Desktop** (same container image `timescale/timescaledb:2.28.1-pg17`)
+- `docker-compose.yml` → `compose.yaml`
+- `docker compose` → `podman compose`
+
+### Business Capability Delivered
+Decision persistence layer — AI-generated recommendations and system alerts can now be stored, queried, and managed. Farm CRUD gap (Phase 1 debt) resolved.
+
+### Future Architecture Enabled
+Phase 14 ML prediction engines (Yield, Disease Risk, Irrigation) will write inference results into `recommendations` and `alerts` via the established service layer. Alert domain is the alerting backbone for the Phase 14 event-driven pipeline.
 
 ---
 
@@ -703,12 +784,14 @@ Phase 13 analytical read services over CAs; Feature Store (planned); decision in
 | 14 | `d4f5e6a7b8c9` | d4f5e6a7b8c9_enable_compression | c9d8… | 12-2B | Compression | add_compression_policy ×6 | remove policies |
 | 15 | `e5f6a7b8c9d0` | e5f6a7b8c9d0_create_continuous_aggregates | d4f5… | 12-3B | 8 CAs + refresh | CREATE CA views | DROP CA views |
 | 16 | `f6a7b8c9d0e1` | f6a7b8c9d0e1_enable_retention | e5f6… | 12-4B | Retention | add_retention_policy ×11 | remove policies |
+| 17 | `g1h2i3j4k5l6` | g1h2i3j4k5l6_create_recommendations_table | f6a7… | 13 | Recommendation domain | CREATE recommendations + 3 enums | DROP |
+| 18 | `h2i3j4k5l6m7` | h2i3j4k5l6m7_create_alerts_table | g1h2… | 13 | Alert domain | CREATE alerts + 2 enums | DROP |
 
-**Current head:** `f6a7b8c9d0e1`
+**Current head:** `h2i3j4k5l6m7`
 
 ---
 
-# 5. Current Database Schema — Phase 12
+# 5. Current Database Schema — Phase 13
 
 ## PostgreSQL Reference / Relational Tables
 
@@ -738,6 +821,22 @@ Phase 13 analytical read services over CAs; Feature Store (planned); decision in
 - **Enum:** `soil_type`
 - **TimescaleDB:** No — permanently relational per ADR-002
 
+### `recommendations` (Phase 13)
+- **Purpose:** AI-generated decision recommendations per field
+- **PK:** `id` UUID | **FK:** `field_id` → fields; `crop_id` → crops (nullable, SET NULL)
+- **Enums:** `recommendation_type`, `recommendation_status`, `recommendation_priority`
+- **Key fields:** `confidence_score NUMERIC(4,3)`, `engine_version VARCHAR(50)`, `valid_from / valid_until TIMESTAMPTZ`
+- **Mutability:** Mutable (full CRUD)
+- **TimescaleDB:** No — standard PostgreSQL (low-volume mutable decision records, ADR-013-01)
+
+### `alerts` (Phase 13)
+- **Purpose:** System-detected operational alerts per field
+- **PK:** `id` UUID | **FK:** `field_id` → fields; `crop_id` → crops (nullable, SET NULL); `recommendation_id` → recommendations (nullable, SET NULL)
+- **Enums:** `alert_type`, `alert_severity`
+- **Key fields:** `triggered_at TIMESTAMPTZ NOT NULL` (event detection time, ADR-013-03), `resolved_at TIMESTAMPTZ` (optional)
+- **Mutability:** Mutable (full CRUD)
+- **TimescaleDB:** No — standard PostgreSQL (ADR-013-02)
+
 ## TimescaleDB Hypertables
 
 | Table | Partition | Chunk | Composite PK | Compression after | Raw retention | CAs |
@@ -758,8 +857,9 @@ Phase 13 analytical read services over CAs; Feature Store (planned); decision in
 # 6. PostgreSQL + TimescaleDB Architecture
 
 ## Versions
-- **PostgreSQL:** 17 (`timescale/timescaledb:2.28.1-pg17` in `docker-compose.yml`)
+- **PostgreSQL:** 17 (`timescale/timescaledb:2.28.1-pg17` in `compose.yaml`)
 - **TimescaleDB:** 2.28.1
+- **Container runtime:** Podman Desktop (replaces Docker Desktop since Phase 13)
 
 ## Extension as PostgreSQL extension (not separate database)
 - **Decision (ADR-001):** `CREATE EXTENSION IF NOT EXISTS timescaledb CASCADE` via Alembic
@@ -817,14 +917,19 @@ Phase 13 analytical read services over CAs; Feature Store (planned); decision in
 | ADR-003 | 12 | Compression policies on all 6 hypertables | Approved v1.1 | **FORMAL** | `d4f5e6a7b8c9` | Storage scalability |
 | ADR-004 | 12 | 8 continuous aggregates + refresh tiers | Approved v1.0 | **FORMAL** | `e5f6a7b8c9d0` | Feature Store / dashboard read path |
 | ADR-005 | 12 | Domain-tiered retention; yield exempt | Accepted v1.0 | **FORMAL** | `f6a7b8c9d0e1` | Lifecycle governance |
-| ADR-006 | 13 (planned) | AI Feature Store | Referenced | **DOCUMENTATION-ONLY** | Not implemented | Phase 13 |
+| ADR-006 | 15 (planned) | AI Feature Store | Referenced | **DOCUMENTATION-ONLY** | Not implemented | Phase 15 |
 | ADR-007-01…33 | 7 | Sensor telemetry patterns | Accepted in docs | **DOCUMENTATION-ONLY** | Phase 7 code | Event streaming boundary |
 | ADR-008-01…06 | 8 | Irrigation domain + ENUM lifecycle | Accepted in docs | **DOCUMENTATION-ONLY** | Phase 8 code | Enum migration pattern reused |
 | ADR-009-01…12 | 9 | Yield grandchild + denorm field_id | Accepted in docs | **DOCUMENTATION-ONLY** | Phase 9 code | Disease pattern reused |
 | ADR-010-01…06 | 10 | Disease grandchild pattern | Accepted in docs | **DOCUMENTATION-ONLY** | Phase 10 code | Risk scoring labels |
 | ADR-011 (series) | 11 | Satellite field-anchoring | Accepted in docs | **DOCUMENTATION-ONLY** | Phase 11 code | Remote sensing AI |
+| ADR-013-01 | 13 | `crop_id` nullable with SET NULL on Recommendation | Approved | **FORMAL** | `g1h2i3j4k5l6` | Field-level entity pattern |
+| ADR-013-02 | 13 | `crop_id` nullable with SET NULL on Alert | Approved | **FORMAL** | `h2i3j4k5l6m7` | Field-level entity pattern |
+| ADR-013-03 | 13 | `triggered_at` mandatory on Alert — event detection time distinct from `created_at` | Approved | **FORMAL** | `h2i3j4k5l6m7` | Audit trail integrity |
+| ADR-013-04 | 13 | `confidence_score NUMERIC(4,3)` — exact decimal arithmetic for ML thresholds | Approved | **FORMAL** | `g1h2i3j4k5l6` | ML scoring precision |
+| ADR-013-05 | 13 | `engine_version VARCHAR(50)` — ML model provenance on Recommendation | Approved | **FORMAL** | `g1h2i3j4k5l6` | Model lineage |
 
-**FACT:** Only ADR-001–005 exist as files in `docs/adr/`.
+**FACT:** ADR-001–005 and ADR-013-01–005 exist as files in `docs/adr/`.
 
 ---
 
@@ -839,16 +944,19 @@ Phase 13 analytical read services over CAs; Feature Store (planned); decision in
 | Domain exceptions | Phase 2 | HTTP mapping in routers | Per-service `*Error` classes | All domains |
 | UUID identifiers | Phase 1 | API security | `UUIDPrimaryKeyMixin` | Composite PK Phase 12 |
 | Audit model | Phase 1 | created_at/updated_at | All AuditableModel tables | All domains |
-| Shared enum registry | Phase 7 | Cross-domain vocabulary | `core/enums.py` | Phases 8–11, future 13 |
+| Shared enum registry | Phase 7 | Cross-domain vocabulary | `core/enums.py` | Phases 8–13; 14 shared enums |
 | Append-only telemetry | Phase 7 | IoT immutability | SensorReading | Redpanda-ready |
 | Mutable operational events | Phase 8 | Operator correction | Irrigation, yield, disease, satellite | Compression delay tuning |
 | Grandchild domain | Phase 9 | Crop-cycle anchoring | Yield, Disease | Denorm field_id |
 | Denormalized FK | Phase 9 | Field-scoped queries without JOIN | yield_records, disease_observations | Field list APIs Ph 10 |
 | Compound time indexes | Phase 7+ | Time-range query performance | All time-series tables | Hypertable chunk exclusion |
 | postgresql.ENUM lifecycle | Phase 8 | Avoid duplicate CREATE TYPE | Migrations 006+ | All new enums |
-| Migration-as-code | Phase 1 | Schema governance | Alembic | 16 migrations |
-| TimescaleDB transparency | Phase 12 | Zero API regression | Infrastructure-only migrations | Phase 13 read layer |
-| Continuous aggregate read path | Phase 12 | Pre-computed analytics | DB views (not app yet) | Phase 13 Feature Store |
+| Migration-as-code | Phase 1 | Schema governance | Alembic | 18 migrations |
+| TimescaleDB transparency | Phase 12 | Zero API regression | Infrastructure-only migrations | Phase 13+ read layer |
+| Continuous aggregate read path | Phase 12 | Pre-computed analytics | DB views (not app yet) | Phase 15 Feature Store |
+| Decision Layer Pattern | Phase 13 | Low-volume mutable records → standard PG | recommendations, alerts | ML engine write-back (Phase 14) |
+| Nullable crop context FK | Phase 13 | Field-level entity; crop optional | recommendations.crop_id, alerts.crop_id | ADR-013-01/-02 |
+| Soft nullable FK (Alert → Recommendation) | Phase 13 | Traceability without hard dependency | alerts.recommendation_id | Alert-recommendation linkage |
 
 ---
 
@@ -869,15 +977,16 @@ Phase 13 analytical read services over CAs; Feature Store (planned); decision in
 | 9 | 5 (yield) | 36 |
 | 10 | 6 (disease) | 42 |
 | 11 | 9 (satellite) | 51 |
-| 12 | 0 | **51** |
+| 12 | 0 | 51 |
+| 13 | 15 (Farm ×5, Recommendation ×5, Alert ×5) | **66** |
 
-**Note:** Subagent counted 47 domain + infra; recount with infra = 51. All paths under `/api/v1`.
+**Note:** Subagent counted 47 domain + infra; recount with infra = 51. Phase 13 adds 15. All paths under `/api/v1`.
 
-## Current Phase 12 API inventory (51 endpoints)
+## Current Phase 13 API inventory (66 endpoints)
 
-See Phase 10–11 sections above for full path list. Key mutability rules:
+See Phase 10–11 sections above for full path list plus Phase 13 section for Farm/Recommendation/Alert paths. Key mutability rules:
 - **Append-only:** SensorReading (POST, GET, DELETE only)
-- **Mutable PATCH:** Field, Crop, Soil, Weather, Irrigation, Yield, Disease, Satellite
+- **Mutable PATCH:** Field, Crop, Soil, Weather, Irrigation, Yield, Disease, Satellite, Farm, Recommendation, Alert
 - **Pagination:** Standard on most lists except SensorReading list (returns all)
 - **Richest filters:** Satellite (date range, latest by index, provider, processing level); Crop list (`status`)
 
@@ -948,7 +1057,7 @@ Farm
     └── IrrigationEvent
 ```
 
-## Stage 11–12 (Current)
+## Stage 11–12
 ```
 Farm (relational)
 └── Field (relational)
@@ -962,8 +1071,25 @@ Farm (relational)
     └── SatelliteObservation (hypertable, mutable, field-anchored)
 ```
 
+## Stage 13 (Current)
+```
+Farm (relational) ← Farm CRUD API completed
+└── Field (relational)
+    ├── Crop (relational)
+    │   ├── YieldRecord (hypertable)
+    │   └── DiseaseObservation (hypertable)
+    ├── SoilProfile (relational, 1:1)
+    ├── WeatherRecord (hypertable)
+    ├── SensorReading (hypertable, append-only)
+    ├── IrrigationEvent (hypertable, mutable)
+    ├── SatelliteObservation (hypertable, mutable, field-anchored)
+    ├── Recommendation (relational, mutable; crop_id nullable)
+    └── Alert (relational, mutable; crop_id nullable; recommendation_id nullable)
+```
+
 ### Anchoring decisions
 - **Field-anchored:** Weather, Sensor, Irrigation, Satellite (spatial/field operations)
+- **Field-anchored (decision):** Recommendation, Alert (decision records; crop context optional via nullable FK)
 - **Crop-anchored:** Yield, Disease (crop-cycle measurements)
 - **Denormalized field_id:** Yield, Disease — ADR-009-02 / ADR-010-02 pattern
 
@@ -980,18 +1106,21 @@ Farm (relational)
 | 10 | Disease severity + diagnosis method labels |
 | 11 | Spectral indices, provider/processing provenance, date-range queries |
 | 12 | `time_bucket()` rollups via 8 CAs; governed retention; CDD 458k+ rows |
+| 13 | Recommendation persistence (`confidence_score`, `engine_version`, `recommendation_type`); Alert persistence (`triggered_at`, `alert_type`, `alert_severity`); 5 new enums; 5 formal ADRs |
 
-## Feature Store readiness (PLANNED)
-- ADR-004 and roadmap reference Phase 13 Feature Store consuming CAs
+## Feature Store readiness (PLANNED — Phase 15)
+- ADR-004 and roadmap reference a Phase 15 Feature Store consuming CAs
+- Phase 13 delivered the decision *output* layer (recommendations, alerts) — Phase 14 will deliver the ML *inference* engines; Phase 15 will materialize the Feature Store
 - **FACT:** No Feature Store code exists
 
-## Why Phase 13 is now architecturally plausible
+## Why Phase 14 ML engines are now architecturally plausible
 1. **Labels exist:** yield, disease severity, crop status
 2. **Features exist:** weather, soil, telemetry, satellite indices
 3. **Time-series infrastructure exists:** hypertables + CAs + compression
-4. **Vocabulary exists:** `core/enums.py` with AI-oriented docstrings
-5. **Validation corpus exists:** CDD framework
-6. **API stability:** CRUD contracts unchanged through Phase 12 — new intelligence layer can compose existing endpoints
+4. **Decision output layer exists:** `recommendations` and `alerts` tables for ML write-back
+5. **Vocabulary exists:** `core/enums.py` with 14 AI-oriented enums (including 5 Phase 13 decision enums)
+6. **Validation corpus exists:** CDD framework
+7. **API stability:** CRUD contracts unchanged through Phase 13 — intelligence layer composes existing endpoints
 
 ---
 
@@ -1008,8 +1137,11 @@ Farm (relational)
 | Denormalized field_id | Phase 9 | Phase 10 field-scoped disease list without JOIN |
 | Append-only sensor | Phase 7 | CQRS write model candidate (planned) |
 | Relational reference tables | ADR-002 | farms/fields/crops/soil never hypertables |
-| Repository transparency | Phase 12 | Phase 13 must add *new* read paths for CAs, not alter CRUD repos |
+| Repository transparency | Phase 12 | Phase 13 added new domains without altering TimescaleDB repos |
 | Cassandra partition model comments | Phase 7 models | field_id + time DESC maps to future CQRS (planned) |
+| Decision Layer as standard PG | Phase 13 (ADR-013-01–02) | Low-volume mutable records → no hypertable; ML write-back via service layer |
+| Nullable crop FK (SET NULL) | Phase 13 (ADR-013-01–02) | Field-level decisions survive crop deletion |
+| `triggered_at` vs `created_at` | Phase 13 (ADR-013-03) | Event detection time distinct from persistence time |
 
 ---
 
@@ -1030,13 +1162,18 @@ Phase 9 → yield recorded_at → permanent retention in ADR-005
 Phase 11 → satellite query methods → AI feature extraction without new tables
 Phase 12 ADR-001 → extension in PostgreSQL → single DATABASE_URL unchanged
 Phase 12 ADR-002 → composite PK → TimescaleDB compatibility
-Phase 12 ADR-004 → 8 CAs → Phase 13 analytical reads (not yet wired)
+Phase 12 ADR-004 → 8 CAs → Phase 15 Feature Store analytical reads (wiring deferred)
 Phase 12 → zero API changes → Phase 13 additive-only intelligence layer
+Phase 13 ADR-013-01/02 → nullable crop FK on Recommendation/Alert → field-level decisions survive crop deletion
+Phase 13 ADR-013-03 → triggered_at mandatory → event detection time separate from audit timestamps
+Phase 13 ADR-013-04 → NUMERIC(4,3) confidence_score → ML threshold precision without floating-point drift
+Phase 13 ADR-013-05 → engine_version VARCHAR(50) → ML model lineage in decision records
+Phase 13 → Farm CRUD completed → Phase 1 architectural debt (19 months) resolved
 ```
 
 ---
 
-# 14. Current Phase 12 Architecture
+# 14. Current Phase 13 Architecture
 
 ## Application architecture
 - Python 3.12, FastAPI 0.115.5, SQLAlchemy 2.0 async, Pydantic 2.x
@@ -1044,12 +1181,12 @@ Phase 12 → zero API changes → Phase 13 additive-only intelligence layer
 - No frontend in repository
 
 ## Domain architecture
-- 10 ORM models, 9 services (Farm has repo only), 51 API endpoints
+- 12 ORM models, 11 services, 66 API endpoints
 
 ## Database architecture
 - PostgreSQL 17 + TimescaleDB 2.28.1
-- 10 domain tables + 8 continuous aggregate views
-- Migration head: `f6a7b8c9d0e1`
+- 12 domain tables (6 relational, 6 hypertables) + 8 continuous aggregate views
+- Migration head: `h2i3j4k5l6m7`
 
 ## API architecture
 - Prefix `/api/v1`; routers aggregated in `api/router.py`
@@ -1066,8 +1203,9 @@ Phase 12 → zero API changes → Phase 13 additive-only intelligence layer
 - CDD manual/ report-based validation for Phase 12
 
 ## Container architecture
-- `docker-compose.yml`: db (TimescaleDB) + backend (uvicorn --reload)
+- `compose.yaml`: db (TimescaleDB via Podman) + backend (uvicorn --reload)
 - Multi-stage Dockerfile; non-root runtime user
+- Podman Desktop replaces Docker Desktop (Phase 13)
 
 ## Configuration architecture
 - `backend/.env` + `Settings` in `core/config/settings.py`
@@ -1081,8 +1219,8 @@ flowchart TB
     subgraph Application
         API[FastAPI Routers]
         SCH[Pydantic Schemas]
-        SVC[Services x9]
-        REPO[Repositories x10]
+        SVC[Services x11]
+        REPO[Repositories x12]
         ORM[SQLAlchemy ORM]
     end
     subgraph Database
@@ -1110,10 +1248,15 @@ erDiagram
     fields ||--o{ sensor_readings : "hypertable append-only"
     fields ||--o{ irrigation_events : "hypertable"
     fields ||--o{ satellite_observations : "hypertable"
+    fields ||--o{ recommendations : "relational"
+    fields ||--o{ alerts : "relational"
     crops ||--o{ yield_records : "hypertable"
     crops ||--o{ disease_observations : "hypertable"
+    crops ||--o{ recommendations : "nullable FK"
+    crops ||--o{ alerts : "nullable FK"
     fields ||--o{ yield_records : "denorm FK"
     fields ||--o{ disease_observations : "denorm FK"
+    recommendations ||--o{ alerts : "soft nullable"
 
     farms {
         uuid id PK
@@ -1169,9 +1312,25 @@ erDiagram
         uuid field_id FK
         enum spectral_index
     }
+    recommendations {
+        uuid id PK
+        uuid field_id FK
+        uuid crop_id FK_nullable
+        enum recommendation_type
+        numeric confidence_score
+        varchar engine_version
+    }
+    alerts {
+        uuid id PK
+        uuid field_id FK
+        uuid crop_id FK_nullable
+        uuid recommendation_id FK_nullable
+        enum alert_type
+        timestamptz triggered_at
+    }
 ```
 
-**Legend:** Tables with composite PK including time column = TimescaleDB hypertables at Phase 12.
+**Legend:** Tables with composite PK including time column = TimescaleDB hypertables (Phase 12). `recommendations` and `alerts` are standard PostgreSQL relational tables (Phase 13).
 
 ---
 
@@ -1181,7 +1340,7 @@ erDiagram
 flowchart TB
     C[Client / HTTP]
     FA[FastAPI app/main.py]
-    R[Routers - 11 modules]
+    R[Routers - 13 modules]
     D[api/deps.py DI]
     SC[Pydantic Schemas]
     SV[Service Layer]
@@ -1217,9 +1376,11 @@ flowchart TB
 
 | Capability | Planned Phase | Repository evidence |
 |---|---|---|
-| AI Feature Store | 13 | ADR-004, roadmap, Palantir doc |
-| Recommendation Engines | 13–14 | Enum comments, roadmap; **NOT PRESENT** in code |
-| Enterprise Ontology formalization | 13 | Implicit in ORM; no ontology module |
+| ML Yield Prediction Engine | 14 | Roadmap; `recommendations` table ready for write-back |
+| ML Disease Risk Scoring Engine | 14 | Roadmap; `recommendations` + `alerts` tables ready |
+| ML Irrigation Optimization Engine | 14 | Roadmap; `recommendations` table ready |
+| AI Feature Store | 15 | ADR-004, roadmap; Phase 13 decision layer in place |
+| Enterprise Ontology formalization | 15 | Implicit in ORM; no ontology module |
 | Redpanda event streaming | 14 | Service extension point comments (SensorReading, etc.) |
 | Domain Events / Outbox | 14 | Roadmap only |
 | CQRS | 15 | Repository comments; service boundary |
@@ -1238,10 +1399,10 @@ flowchart TB
 
 | Strength | Evidence |
 |---|---|
-| Migration discipline | 16 linear Alembic revisions; Phase 12 infrastructure via migrations only |
+| Migration discipline | 18 linear Alembic revisions; Phase 12 infrastructure and Phase 13 domains via migrations |
 | Clean separation of concerns | No SQL in routers; services delegate to repositories |
-| Domain model evolution | 10 domains with consistent vertical slice (except Farm API gap) |
-| API stability through Phase 12 | Zero endpoint changes in TimescaleDB migrations |
+| Domain model evolution | 12 domains with consistent vertical slice; Farm API gap resolved Phase 13 |
+| API stability through Phase 13 | Zero endpoint changes in TimescaleDB migrations; Phase 13 additive only |
 | TimescaleDB transparency | Repository interfaces unchanged post-hypertable |
 | Time-series readiness | Compound indexes, TIMESTAMPTZ, partition keys designed Phases 5–11 |
 | AI readiness | Phase 6 columns + Phases 7–11 labels and telemetry |
@@ -1259,7 +1420,7 @@ flowchart TB
 |---|---|---|
 | No domain/integration tests | **Technical debt** | Only `test_health.py` |
 | No authentication enforcement | **Intentional future work** (Phase 1 deferred) + **production gap** | Security stub; open API |
-| Farm incomplete vertical slice | **Architectural limitation** | No Farm service/router/schema |
+| ~~Farm incomplete vertical slice~~ | **RESOLVED Phase 13** | Farm CRUD (service + router + schema) delivered |
 | Continuous aggregates unused in app | **Architectural limitation** | CAs exist in DB only |
 | ADR-007–011 not formalized | **Missing ADR** | Documentation-only in phase history |
 | Dual session DI patterns | **Technical debt** | `get_db` vs `get_session` |
@@ -1278,11 +1439,11 @@ flowchart TB
 
 | Topic | Source | Evidence |
 |---|---|---|
-| 10 domain tables | Roadmap, architecture docs | `db/models/__init__.py` exports 10 models |
+| 12 domain tables | Roadmap, architecture docs | `db/models/__init__.py` exports 12 models |
 | 6 hypertables | ADR-002, Phase 12 docs | Migration `c9d8e7f6a5b4` |
 | 8 continuous aggregates | ADR-004 | Migration `e5f6a7b8c9d0` |
 | Phase 12 zero API changes | ADR-002, migration scope constraints | No router changes in Phase 12 commits |
-| 9 shared enums in core/enums.py | REPORT-001 | `backend/app/core/enums.py` |
+| 14 shared enums in core/enums.py | Phase 13 delivery | `backend/app/core/enums.py` |
 | SensorReading append-only | ADR-007-27, service code | No update method/route |
 | TimescaleDB 2.28.1 + PG 17 | docker-compose, ADRs | `timescale/timescaledb:2.28.1-pg17` |
 
@@ -1310,11 +1471,11 @@ flowchart TB
 
 ---
 
-# 21. Phase 1–12 Master Summary
+# 21. Phase 1–13 Master Summary
 
 | Phase | Capability | Major Implementation | DB Changes | Major ADRs | Architectural Contribution | Future Enabled |
 |---|---|---|---|---|---|---|
-| 1 | Foundation | FastAPI, Farm, Alembic, Docker, health/version | `farms` | — (inferred) | UUID PK, audit model, migrations | All phases |
+| 1 | Foundation | FastAPI, Farm, Alembic, Podman, health/version | `farms` | — (inferred) | UUID PK, audit model, migrations | All phases |
 | 2 | Field domain | Field CRUD vertical slice | `fields` | — (inferred) | Repository + Service + DI pattern | Crop, all field children |
 | 3 | Crop domain | Crop lifecycle, CropStatus | `crops` | — (inferred) | Third hierarchy level | Yield, disease |
 | 4 | Soil intelligence | 1:1 SoilProfile | `soil_profiles` | — (inferred) | UNIQUE FK pattern | AI soil features |
@@ -1326,6 +1487,7 @@ flowchart TB
 | 10 | Disease observation | Grandchild disease obs | `disease_observations`, 2 enums | ADR-010 (doc only) | Field-scoped list path | Risk scoring |
 | 11 | Satellite observation | 9 AI-oriented endpoints | `satellite_observations`, 3 enums | ADR-011 (doc only) | Richest query repository | NDVI/NDWI features |
 | 12 | TimescaleDB platform | Hypertables, compression, CAs, retention, CDD | 5 migrations, 8 CAs | ADR-001–005 (formal) | Repository transparency | Phase 13 analytics |
+| 13 | AI Decision Intelligence | Recommendation domain, Alert domain, Farm CRUD; 5 formal ADRs | `recommendations`, `alerts`, 5 enums | ADR-013-01–05 (formal) | Decision Layer Pattern (standard PG); nullable crop FK; triggered_at | Phase 14 ML engines write-back |
 
 ---
 
@@ -1341,9 +1503,9 @@ AGRIFLOW-AI began as a **well-structured agricultural CRUD foundation**: a FastA
 
 **Phase 12** transformed PostgreSQL into **PostgreSQL + TimescaleDB as a single analytical platform** — not by rewriting application code, but by five governed migrations implementing five formal ADRs: extension enablement, hypertable conversion with composite primary keys, compression, continuous aggregates with tiered refresh, and domain-tiered retention. Six tables became hypertables; eight continuous aggregates pre-compute `time_bucket()` rollups; eleven retention policies govern lifecycle; a Canonical Development Dataset validates the entire stack. Critically, **nothing changed above the repository layer** — API consumers, service contracts, and repository interfaces remained stable. TimescaleDB sits below the repository layer.
 
-**Phase 13 — AI decision intelligence** is therefore architecturally enabled but not yet built. The platform now has: a governed ten-domain ontology, AI-ready schema attributes, observational labels, high-frequency telemetry, spectral indices, pre-computed time-series rollups, shared vocabulary, deterministic validation data, and stable CRUD APIs. What it lacks — recommendation persistence, decision services, alert/task domains, semantic query facades over continuous aggregates, and enforced security — is the planned work of Phase 13+, not an accident of Phase 12.
+**Phase 13 — AI Decision Intelligence** delivered on the architectural promise: the `Recommendation` and `Alert` domains, Farm CRUD API completion, five new enums (14 total), and five formal ADRs (ADR-013-01 through ADR-013-05). Both decision domains are standard PostgreSQL relations — not TimescaleDB hypertables — reflecting a deliberate architectural pattern: low-volume mutable decision records do not require time-series partitioning. The `triggered_at` / `created_at` distinction on Alert, the nullable `crop_id` (field-level entities survive crop deletion), and the `confidence_score NUMERIC(4,3)` (exact decimal arithmetic for ML thresholds) are Phase 13's governing invariants. The Farm CRUD gap — a deliberate omission since Phase 1 — was finally resolved. Eighteen total Alembic migrations; head `h2i3j4k5l6m7`.
 
-The arc from Phase 1 to Phase 12 is not feature accumulation alone; it is **progressive architectural constraint**. Each phase closed doors that would have caused pain later (immutable telemetry, ENUM lifecycle, denormalized field queries, composite PKs, repository transparency) while leaving documented doors open for Redpanda, CQRS, Cassandra, Temporal, and GaaS — always planned, never prematurely implemented.
+The arc from Phase 1 to Phase 13 is not feature accumulation alone; it is **progressive architectural constraint**. Each phase closed doors that would have caused pain later (immutable telemetry, ENUM lifecycle, denormalized field queries, composite PKs, repository transparency, nullable crop FK) while leaving documented doors open for Phase 14 ML engines, Redpanda, CQRS, Cassandra, Temporal, and GaaS — always planned, never prematurely implemented.
 
 ---
 
@@ -1360,10 +1522,10 @@ The arc from Phase 1 to Phase 12 is not feature accumulation alone; it is **prog
 | **File** | `AGRIFLOW-AI_ARCHITECTURE_IMPLEMENTATION_HISTORY.md` (repository root) |
 | **Action** | Created (no prior file existed) |
 | **Approximate length** | ~850 lines |
-| **Phases covered** | 1–12 (complete); 13+ as PLANNED only |
-| **Migrations reviewed** | 16 / 16 |
-| **Formal ADRs reviewed** | 5 (ADR-001–005) + documentation-only ADR-007–011 series |
-| **Database tables reviewed** | 10 domain tables + 8 continuous aggregate views |
+| **Phases covered** | 1–13 (complete); 14+ as PLANNED only |
+| **Migrations reviewed** | 18 / 18 |
+| **Formal ADRs reviewed** | 10 (ADR-001–005 + ADR-013-01–005) + documentation-only ADR-007–011 series |
+| **Database tables reviewed** | 12 domain tables + 8 continuous aggregate views |
 | **TimescaleDB objects reviewed** | 6 hypertables, 6 compression policies, 8 CAs, 11 retention policies |
 | **Documentation/implementation discrepancies** | 5 documented (§20) |
 | **Insufficient evidence areas** | Phases 1–8 exact commit dates; Phase 11 runtime validation status; production deployment state |

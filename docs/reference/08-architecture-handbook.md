@@ -3,7 +3,7 @@
 **Document:** Architecture Reference & Implementation History  
 **Version:** 1.2  
 **Date:** June 2026  
-**Scope:** Phase 1 through Phase 12 — complete implementation record; Phases 13–16 — enterprise capability architecture  
+**Scope:** Phase 1 through Phase 13 — complete implementation record; Phases 14–16 — enterprise capability architecture  
 **Status:** Living Document
 
 ---
@@ -20,11 +20,11 @@
 8. [Phase 5 — Weather Intelligence Domain](#8-phase-5--weather-intelligence-domain)
 9. [Phase 6 — AI Readiness Foundation](#9-phase-6--ai-readiness-foundation)
 10. [Phase 7 — Sensor Telemetry Domain](#10-phase-7--sensor-telemetry-domain)
-11. [Phase 8 — Irrigation Management Domain](#11-phase-8--irrigation-management-domain)
+11. [Current Domain Architecture (Post Phase 7)](#11-current-domain-architecture-post-phase-7)
 12. [Phase 9 — Yield Domain](#12-phase-9--yield-domain)
 13. [Phase 10 – Disease Observation Domain Architecture](#phase-10--disease-observation-domain-architecture)
 14. [Phase 11 – Satellite Observation Domain Architecture](#phase-11--satellite-observation-domain-architecture)
-15. [Current Domain Architecture (Post Phase 11)](#15-current-domain-architecture-post-phase-11)
+15. [Current Domain Architecture (Post Phase 13)](#15-current-domain-architecture-post-phase-13)
 16. [Implemented Architecture: TimescaleDB](#14-implemented-architecture-timescaledb)
 17. [Enterprise Capability Roadmap](#enterprise-capability-roadmap)
 18. [Enterprise Capability Maturity Model](#enterprise-capability-maturity-model)
@@ -47,17 +47,17 @@ AGRIFLOW-AI is an Agricultural Intelligence Platform designed to evolve from ope
 The platform's strategic trajectory:
 
 ```
-Operational Platform           (Phases 1–6)   ✅
+Operational Platform           (Phases 1–6)   ✅ Complete
       ↓
-Data Intelligence Platform     (Phases 7–12)  ✅
+Data Intelligence Platform     (Phases 7–12)  ✅ Complete
       ↓
-Decision Intelligence Platform (Phase 13)     🔜
+Decision Intelligence Platform (Phase 13)     ✅ Complete
       ↓
-Enterprise Event Platform      (Phase 14)     🔜
+Enterprise Event Platform      (Phase 14)     🔜 Planned
       ↓
-Operational Intelligence Platform (Phase 15)  🔜
+Operational Intelligence Platform (Phase 15)  🔜 Planned
       ↓
-Enterprise AI Platform         (Phase 16)     ⏳
+Enterprise AI Platform         (Phase 16)     ⏳ Future
 ```
 
 This capability-driven evolution mirrors enterprise data platform patterns: establish governed operations, build analytical persistence, deliver decision intelligence, activate event-driven processing, optimize operational read paths, and complete with production-grade AI agents and workflows.
@@ -79,8 +79,12 @@ graph TD
     Field --> WeatherRecord
     Field --> SensorReading
     Field --> IrrigationEvent
-    Field --> YieldRecord
     Field --> SatelliteObservation
+    Field --> Recommendation
+    Field --> Alert
+    Crop --> YieldRecord
+    Crop --> DiseaseObservation
+    Recommendation --> Alert
 ```
 
 ---
@@ -995,7 +999,7 @@ Phase 7 sensor readings directly address several critical AI data gaps:
 
 ## 11. Current Domain Architecture (Post Phase 7)
 
-> **Note:** This section reflects the state as of Phase 7 completion. For the updated post-Phase 8 state, see [Section 12](#12-current-domain-architecture-post-phase-8).
+> **Note:** This section reflects the state as of Phase 7 completion. For the current state, see [Current Domain Architecture (Post Phase 13)](#15-current-domain-architecture-post-phase-13).
 
 ### Complete Entity Relationship
 
@@ -1225,7 +1229,7 @@ DELETE /api/v1/yield-records/{id}             — 204 No Content
 Crop disease pressure is a primary driver of yield loss and input cost escalation in commercial agriculture. Operators record disease sightings during field inspections, lab confirmations, and (increasingly) AI-assisted image analysis. Without a structured disease observation log, the platform cannot:
 
 - Correlate disease severity with yield outcomes (`YieldRecord` × `DiseaseObservation`)
-- Train a Disease Risk Scoring Engine (Phase 13) on labelled severity time-series
+- Train a Disease Risk Scoring Engine (Phase 14) on labelled severity time-series
 - Power GaaS PlantHealthAdvisor natural language queries ("What is the disease risk for my wheat crop?")
 - Feed Digital Twin crop health state with time-keyed severity labels
 
@@ -1265,9 +1269,9 @@ Disease pressure is a per-crop-cycle measurement — the same agronomic reasonin
 
 ### Enum Strategy
 
-**`DiseaseSeverity`** (LOW, MEDIUM, HIGH, CRITICAL) — placed in `app/core/enums.py` because severity labels are training targets for the Phase 13 Disease Risk Scoring Engine, GaaS PlantHealthAdvisor risk queries, and future Digital Twin crop health state. A closed enum (not free-text) ensures consistent ML label vocabulary.
+**`DiseaseSeverity`** (LOW, MEDIUM, HIGH, CRITICAL) — placed in `app/core/enums.py` because severity labels are training targets for the Phase 14 Disease Risk Scoring Engine, GaaS PlantHealthAdvisor risk queries, and future Digital Twin crop health state. A closed enum (not free-text) ensures consistent ML label vocabulary.
 
-**`DiagnosisMethod`** (VISUAL_INSPECTION, LAB_ANALYSIS, IMAGE_AI, AGRONOMIST, SENSOR_DETECTED) — placed in `app/core/enums.py` because diagnosis provenance enables data quality weighting in AI models (lab-confirmed observations carry higher confidence than visual inspection). `IMAGE_AI` and `SENSOR_DETECTED` reserve extension points for computer vision and IoT-triggered disease detection without schema changes.
+**`DiagnosisMethod`** (VISUAL_INSPECTION, LAB_ANALYSIS, IMAGE_AI, AGRONOMIST, SENSOR_DETECTED) — placed in `app/core/enums.py` because diagnosis provenance enables data quality weighting in Phase 14 AI models (lab-confirmed observations carry higher confidence than visual inspection). `IMAGE_AI` and `SENSOR_DETECTED` reserve extension points for computer vision and IoT-triggered disease detection without schema changes.
 
 ### Database Architecture
 
@@ -1383,11 +1387,11 @@ DELETE /api/v1/disease-observations/{observation_id}            204 No Content
 | Field access path | Denormalized `field_id` | JOIN through `crops` on every field query | Consistent with `YieldRecord`; enables `GET /fields/{id}/disease-observations` without JOIN |
 | Severity representation | Closed enum | Free-text severity field | ML models require consistent label vocabulary; free-text prevents reliable training |
 | Mutability | Mutable (PATCH) | Immutable like SensorReading | Operators legitimately correct disease assessments after lab confirmation |
-| Diagnosis method | Enum with IMAGE_AI reserved | Method as free-text | Enables confidence weighting in Phase 13 models; reserves CV integration path |
+| Diagnosis method | Enum with IMAGE_AI reserved | Method as free-text | Enables confidence weighting in Phase 14 models; reserves CV integration path |
 
 ### Future Extension Points
 
-- **Disease Risk Scoring Engine (Phase 13):** `get_by_crop` compound index `(crop_id, observed_at)` is the primary feature pipeline access pattern; `severity` is the training label
+- **Disease Risk Scoring Engine (Phase 14):** `get_by_crop` compound index `(crop_id, observed_at)` is the primary feature pipeline access pattern; `severity` is the training label
 - **Satellite correlation (Phase 11):** NDVI trend vectors from `SatelliteObservation` combined with `DiseaseObservation` severity time-series for spatial disease spread models
 - **Computer vision integration:** `DiagnosisMethod.IMAGE_AI` reserved; future ingestion service can create observations from CV model output without schema migration
 - **Digital Twin integration:** `DiseaseObservationService.create_observation()` contains a documented extension point for `DiseaseObservationCreated` domain events and twin crop health state updates
@@ -1509,9 +1513,9 @@ DELETE /api/v1/satellite-observations/{observation_id}            204 No Content
 
 ---
 
-## 15. Current Domain Architecture (Post Phase 11)
+## 15. Current Domain Architecture (Post Phase 13)
 
-### Complete Entity Relationship (Post Phase 11)
+### Complete Entity Relationship (Post Phase 13)
 
 ```mermaid
 erDiagram
@@ -1643,6 +1647,55 @@ erDiagram
         timestamptz updated_at
     }
 
+    SatelliteObservation {
+        UUID id PK
+        UUID field_id FK
+        timestamptz observed_at
+        enum satellite_provider
+        enum spectral_index
+        enum processing_level
+        numeric index_value
+        numeric cloud_cover_percent
+        numeric resolution_m
+        string scene_id
+        string source_url
+        timestamptz created_at
+        timestamptz updated_at
+    }
+
+    Recommendation {
+        UUID id PK
+        UUID field_id FK
+        UUID crop_id FK
+        enum recommendation_type
+        enum recommendation_status
+        enum recommendation_priority
+        string title
+        text description
+        numeric confidence_score
+        string engine_version
+        timestamptz valid_from
+        timestamptz valid_until
+        timestamptz created_at
+        timestamptz updated_at
+    }
+
+    Alert {
+        UUID id PK
+        UUID field_id FK
+        UUID crop_id FK
+        UUID recommendation_id FK
+        enum alert_type
+        enum alert_severity
+        string title
+        text description
+        timestamptz triggered_at
+        timestamptz acknowledged_at
+        timestamptz resolved_at
+        timestamptz created_at
+        timestamptz updated_at
+    }
+
     Farm ||--o{ Field : "has"
     Field ||--o{ Crop : "grows"
     Field ||--o| SoilProfile : "has"
@@ -1651,13 +1704,19 @@ erDiagram
     Field ||--o{ IrrigationEvent : "receives"
     Field ||--o{ YieldRecord : "yields (denormalized)"
     Field ||--o{ DiseaseObservation : "disease history (denormalized)"
+    Field ||--o{ SatelliteObservation : "observes (mutable)"
+    Field ||--o{ Recommendation : "receives"
+    Field ||--o{ Alert : "triggers"
     Crop ||--o{ YieldRecord : "measures"
     Crop ||--o{ DiseaseObservation : "observes"
+    Crop ||--o{ Recommendation : "contextualizes (nullable)"
+    Crop ||--o{ Alert : "contextualizes (nullable)"
+    Recommendation ||--o{ Alert : "links (soft, nullable)"
 ```
 
 ### Current Migration Head
 
-`d3e7b2a9f1c4_create_disease_observations_table`
+`h2i3j4k5l6m7_create_alerts_table`
 
 ### Current Database Tables
 
@@ -1671,8 +1730,11 @@ erDiagram
 * irrigation_events
 * yield_records
 * disease_observations
+* satellite_observations
+* recommendations
+* alerts
 
-### Current API Surface (Post Phase 11)
+### Current API Surface (Post Phase 13)
 
 ```
 Health
@@ -1750,22 +1812,52 @@ Satellite Observations (Phase 11 — mutable, field-anchored)
 * PATCH  /api/v1/satellite-observations/{observation_id}
 * DELETE /api/v1/satellite-observations/{observation_id}
 
-### Shared Enum Module (Post Phase 11)
+Farms (Phase 13 — completed)
 
-`app/core/enums.py` now contains six shared cross-domain enumerations:
+* POST   /api/v1/farms
+* GET    /api/v1/farms
+* GET    /api/v1/farms/{farm_id}
+* PATCH  /api/v1/farms/{farm_id}
+* DELETE /api/v1/farms/{farm_id}
+
+Recommendations (Phase 13 — mutable, field-anchored, nullable crop context)
+
+* POST   /api/v1/fields/{field_id}/recommendations
+* GET    /api/v1/fields/{field_id}/recommendations
+* GET    /api/v1/recommendations/{recommendation_id}
+* PATCH  /api/v1/recommendations/{recommendation_id}
+* DELETE /api/v1/recommendations/{recommendation_id}
+
+Alerts (Phase 13 — mutable, field-anchored, nullable crop/recommendation context)
+
+* POST   /api/v1/fields/{field_id}/alerts
+* GET    /api/v1/fields/{field_id}/alerts
+* GET    /api/v1/alerts/{alert_id}
+* PATCH  /api/v1/alerts/{alert_id}
+* DELETE /api/v1/alerts/{alert_id}
+
+### Shared Enum Module (Post Phase 13)
+
+`app/core/enums.py` contains fourteen shared cross-domain enumerations:
 
 | Enum | Phase | Used By |
 |---|---|---|
 | `SensorType` | 7 | SensorReading, future SensorDevice, Digital Twin, AI Engine |
 | `IrrigationMethod` | 8 | IrrigationEvent, future Digital Twin water balance, AI Irrigation Optimizer |
 | `WaterSource` | 8 | IrrigationEvent, future water management analytics |
-| `YieldMeasurementMethod` | 9 | YieldRecord, Phase 12 Yield Prediction Engine, GaaS YieldAdvisor |
-| `DiseaseSeverity` | 10 | DiseaseObservation, Phase 13 Disease Risk Scoring Engine, GaaS PlantHealthAdvisor |
-| `DiagnosisMethod` | 10 | DiseaseObservation, Phase 13 data quality weighting, future CV integration |
+| `YieldMeasurementMethod` | 9 | YieldRecord, Phase 14 Yield Prediction Engine, GaaS YieldAdvisor |
+| `DiseaseSeverity` | 10 | DiseaseObservation, Phase 14 Disease Risk Scoring Engine, GaaS PlantHealthAdvisor |
+| `DiagnosisMethod` | 10 | DiseaseObservation, Phase 14 data quality weighting, future CV integration |
+| `SatelliteProvider` | 11 | SatelliteObservation, future remote sensing analytics |
+| `SpectralIndex` | 11 | SatelliteObservation, future NDVI trend analysis, Digital Twin canopy state |
+| `ProcessingLevel` | 11 | SatelliteObservation, future quality-gate filtering |
+| `RecommendationType` | 13 | Recommendation (IRRIGATION, FERTILIZATION, PEST_CONTROL, DISEASE_MANAGEMENT, HARVEST_TIMING, SOIL_AMENDMENT) |
+| `RecommendationStatus` | 13 | Recommendation (PENDING, ACTIVE, ACKNOWLEDGED, APPLIED, DISMISSED, EXPIRED) |
+| `RecommendationPriority` | 13 | Recommendation (LOW, MEDIUM, HIGH, CRITICAL) |
+| `AlertType` | 13 | Alert (SOIL_MOISTURE_LOW/HIGH, TEMPERATURE_HIGH/LOW, DISEASE_RISK_HIGH, FROST_RISK, DROUGHT_RISK, FLOOD_RISK, PEST_ALERT, YIELD_ANOMALY) |
+| `AlertSeverity` | 13 | Alert (INFO, WARNING, CRITICAL, EMERGENCY) |
 
-* `SatelliteProvider`, `SpectralIndex`, `ProcessingLevel` (Phase 11)
-
-### Current Capability Matrix (Post Phase 11)
+### Current Capability Matrix (Post Phase 13)
 
 | Capability | Status | Phase |
 |---|---|---|
@@ -1779,10 +1871,15 @@ Satellite Observations (Phase 11 — mutable, field-anchored)
 | Yield observation log (grandchild) | ✅ | 9 |
 | Disease observation log (grandchild) | ✅ | 10 |
 | Satellite remote sensing | ✅ | 11 |
-| Yield Prediction Engine | 🔮 | 12 |
-| Disease Risk Scoring Engine | 🔮 | 13 |
-| Irrigation Recommendation Engine | 🔮 | 14 |
-| Digital Twin + GaaS | 🔮 | 15 |
+| TimescaleDB analytical platform | ✅ | 12 |
+| Farm CRUD API | ✅ | 13 |
+| Recommendation Engine | ✅ | 13 |
+| Alert Engine | ✅ | 13 |
+| Yield Prediction ML Engine | 🔮 | 14 |
+| Disease Risk ML Scoring Engine | 🔮 | 14 |
+| Irrigation ML Recommendation Engine | 🔮 | 14 |
+| Digital Twin | 🔮 | 15 |
+| GaaS / Farm Copilot | 🔮 | 16 |
 
 ---
 
@@ -1847,7 +1944,7 @@ Phases 5–11 deliberately designed time-series tables with `NOT NULL TIMESTAMPT
 * **Analytical performance** — eight continuous aggregates serve dashboard and AI workloads without repeated raw scans
 * **Governed lifecycle** — retention policies convert linear growth into predictable plateau storage
 * **Application transparency** — zero changes to REST endpoints, request/response schemas, service interfaces, or repository contracts
-* **AI readiness** — bounded-cardinality analytical reads and multi-season summary retention prepare Phase 13 Feature Store materialisation
+* **AI readiness** — bounded-cardinality analytical reads and multi-season summary retention prepare Phase 14 Feature Store materialisation
 
 ### Integration with PostgreSQL
 
@@ -1901,7 +1998,7 @@ Raw Hypertables (Phase 12 ✅)
         ↓
 Continuous Aggregates (Phase 12 ✅)
         ↓
-Decision Intelligence Platform (Phase 13)
+Decision Intelligence Platform (Phase 13 ✅)
         ↓
 Enterprise Event Platform (Phase 14)
         ↓
@@ -1910,8 +2007,8 @@ Operational Intelligence Platform (Phase 15)
 Enterprise AI Platform (Phase 16)
 ```
 
-* **Decision Services (Phase 13)** — consume TimescaleDB continuous aggregates as bounded-cardinality feature sources for recommendation engines
-* **Feature Store (Phase 13 foundation; Phase 15 maturation)** — materialises pre-computed rollups and engineered features for AI training and inference
+* **Decision Services (Phase 13 ✅)** — Recommendation Engine and Alert Engine consume TimescaleDB continuous aggregates as bounded-cardinality feature sources; infrastructure delivered Phase 13, ML models planned Phase 14
+* **Feature Store (Phase 15)** — materialises pre-computed rollups and engineered features for AI training and inference
 * **CQRS read path (Phase 15)** — analytical consumers read from projections and continuous aggregates while write repositories continue targeting raw hypertables; service layer remains the split boundary
 * **Cassandra horizontal scaling (Phase 15+)** — compound indexes `(field_id, recorded_at)` established in Phases 7–11 map directly to Cassandra partition/clustering keys for future CQRS projection
 * **Redpanda event streaming (Phase 14)** — service extension points (ADR-007-26, ADR-009-10) remain the publishing boundary; TimescaleDB handles durable storage independently
@@ -1932,13 +2029,13 @@ Operational Platform           (Phases 1–6)   ✅ Complete
       ↓
 Data Intelligence Platform     (Phases 7–12)  ✅ Complete
       ↓
-Decision Intelligence Platform (Phase 13)     🔜 Current
+Decision Intelligence Platform (Phase 13)     ✅ Complete
       ↓
 Enterprise Event Platform      (Phase 14)     🔜 Planned
       ↓
 Operational Intelligence Platform (Phase 15)  🔜 Planned
       ↓
-Enterprise AI Platform         (Phase 16)     ⏳ Planned
+Enterprise AI Platform         (Phase 16)     ⏳ Future
 ```
 
 ---
@@ -1989,50 +2086,52 @@ Enterprise AI Platform         (Phase 16)     ⏳ Planned
 
 ---
 
-## Phase 13: Decision Intelligence Platform (🔜 Current)
+## Phase 13: Decision Intelligence Platform (✅ Complete)
 
 **Business Objective:** Transform AGRIFLOW-AI from a data platform into a **decision-support platform** that produces actionable recommendations and operational decisions from governed agricultural data.
 
-**Enterprise Capability:** Decision Intelligence — structured recommendations, alerts, tasks, and decision services grounded in a semantic ontology and pre-computed analytical features.
+**Enterprise Capability:** Decision Intelligence — structured recommendations and alerts grounded in the Phase 12 analytical foundation, with ML engine infrastructure ready for Phase 14.
 
-**Architectural Components:**
+### What Was Delivered in Phase 13
 
-| Component | Role |
-|---|---|
-| **Enterprise Ontology** | Extends the Phase 1–11 domain model with recommendation, alert, and task Object Types; governed relationships and validation rules |
-| **Ontology Layer** | Formalises agricultural concepts — crop cycles, severity scales, measurement provenance — as first-class semantic objects |
-| **Semantic Knowledge Layer** | Business metrics, KPI definitions, and agronomic rules expressed once and reused across services and agents |
-| **Feature Store** | Materialises feature vectors from TimescaleDB continuous aggregates and domain attributes for training and inference |
-| **AI Feature Engineering** | Transforms time-series rollups, soil intelligence, and observation labels into bounded-cardinality model inputs |
-| **Decision Services** | Orchestrate feature retrieval, model invocation, and recommendation persistence behind a unified service boundary |
-| **Recommendation Engine** | Reusable domain engines — yield, irrigation, disease, fertilizer — consuming feature vectors and producing scored recommendations |
-| **Recommendation APIs** | REST endpoints exposing recommendations, alerts, operational timelines, and decision audit trails |
-| **Operational Timeline** | Chronological decision history per field, crop, and farm for operator review and compliance |
+| Component | Status | Notes |
+|---|---|---|
+| Farm CRUD API | ✅ | POST, GET, GET{id}, PATCH, DELETE /api/v1/farms |
+| Recommendation domain | ✅ | 6 types, 6 statuses, 3 priorities; 5 endpoints; `confidence_score NUMERIC(4,3)`, `engine_version` |
+| Alert domain | ✅ | 10 alert types, 4 severities; `triggered_at` mandatory; soft link to Recommendation |
+| Decision Layer Pattern | ✅ | Standard PostgreSQL (not hypertable) for low-volume mutable decision records |
+| 5 new shared enums | ✅ | `app/core/enums.py` expanded from 9 to 14 enums |
+| ADR-013-01 through ADR-013-05 | ✅ | Nullable crop_id, triggered_at, NUMERIC(4,3) confidence, engine_version provenance |
+
+### Planned for Phase 14+
+
+| Component | Phase | Role |
+|---|---|---|
+| Feature Store | 15 | Materialises feature vectors from TimescaleDB CAs for training and inference |
+| ML Yield Prediction Engine | 14 | Consumes YieldRecord + WeatherRecord + SoilProfile features |
+| ML Disease Risk Engine | 14 | Consumes DiseaseObservation severity time-series |
+| ML Irrigation Engine | 14 | Consumes SensorReading soil moisture + IrrigationEvent history |
+| Enterprise Ontology | 14+ | Formalises agricultural concepts as first-class semantic objects |
+| Operational Timeline | 14+ | Chronological decision history per field, crop, and farm |
 
 **How Existing Technologies Fit:**
 
-* **TimescaleDB Continuous Aggregates** — become primary **feature sources**; hourly/daily/weekly rollups eliminate redundant raw hypertable scans for model input
-* **PostgreSQL** — stores recommendation records, alert state, task assignments, and decision provenance alongside domain master data
-* **Existing REST APIs** — remain the write path; Decision Services read from repositories and continuous aggregate views without breaking client contracts
-* **Service layer extension points** — reserved boundaries for future event publication when Phase 14 activates
+* **TimescaleDB Continuous Aggregates** — primary feature sources for Phase 14 ML engines; hourly/daily/weekly rollups eliminate raw hypertable scans
+* **PostgreSQL** — stores recommendation and alert records (low-volume mutable decision data, not suited for hypertable partitioning)
+* **Existing REST APIs** — remain the write path; Decision Services read from repositories without breaking client contracts
+* **Service layer extension points** — reserved boundaries for Phase 14 event publication
 
-**Data Flow:**
+**Architectural Decisions (Phase 13):**
 
-```text
-Continuous Aggregates (Phase 12)
-        ↓
-Feature Store materialisation
-        ↓
-Decision Services (feature vector assembly)
-        ↓
-Recommendation Engines (domain inference)
-        ↓
-Recommendation APIs + Operational Timeline
-        ↓
-Digital Twin decision-state inputs (Phase 15 foundation)
-```
+| ADR | Decision |
+|---|---|
+| ADR-013-01 | `crop_id` nullable with SET NULL on Recommendation — field-level entities; crop context optional |
+| ADR-013-02 | `crop_id` nullable with SET NULL on Alert — same reasoning |
+| ADR-013-03 | `triggered_at` mandatory on Alert — event detection time, distinct from `created_at` |
+| ADR-013-04 | `confidence_score NUMERIC(4,3)` — exact arithmetic for threshold comparisons |
+| ADR-013-05 | `engine_version VARCHAR(50)` — ML model provenance for audit and reproducibility |
 
-**Expected Platform Outcome:** The platform evolves from storing agricultural data to **producing actionable recommendations**. Recommendation engines become reusable services. Decision Services consume feature vectors derived from TimescaleDB rollups. Digital Twin begins consuming decision outputs as structured state inputs in Phase 15.
+**Expected Platform Outcome:** The Recommendation and Alert infrastructure is operational. Phase 14 will activate ML prediction engines that consume this infrastructure and the TimescaleDB analytical foundation.
 
 ---
 
@@ -2172,14 +2271,14 @@ Platform stabilisation, full regression testing, performance benchmarking, secur
 |---|---|
 | **Phases 1–6 (Operational)** | Governed ontology, typed APIs, and domain validation — agent tools with structured schemas |
 | **Phases 7–12 (Data Intelligence)** | Complete observational data and TimescaleDB analytics — authoritative context for reasoning |
-| **Phase 13 (Decision Intelligence)** | Recommendation engines and Feature Store — scored decisions agents can explain and act on |
+| **Phase 13 (Decision Intelligence)** | Recommendation Engine, Alert Engine, Farm CRUD — scored decisions agents can explain and act on |
 | **Phase 14 (Enterprise Events)** | Event stream — real-time triggers for workflows and agent notifications |
 | **Phase 15 (Operational Intelligence)** | Digital Twin, read models, dashboards — current field state without raw time-series queries |
 
 ```text
 Ontology + Data (Phases 1–12)
         ↓
-Recommendations + Features (Phase 13)
+Recommendations + Alerts (Phase 13)
         ↓
 Events + Projections (Phases 14–15)
         ↓
@@ -2709,6 +2808,11 @@ The only missing piece is the GaaS orchestration layer — the underlying data A
 | ADR-010-04 | 10 | `DiseaseObservation` is mutable — PATCH permitted for operator corrections |
 | ADR-010-05 | 10 | `crop_id` immutable after creation — excluded from `UpdateDiseaseObservationRequest` |
 | ADR-010-06 | 10 | `DiseaseSeverity` and `DiagnosisMethod` placed in `app/core/enums.py` for cross-domain reuse |
+| ADR-013-01 | 13 | `crop_id` nullable with SET NULL on Recommendation — recommendations are field-level entities; crop context optional |
+| ADR-013-02 | 13 | `crop_id` nullable with SET NULL on Alert — same reasoning as ADR-013-01 |
+| ADR-013-03 | 13 | `triggered_at` mandatory on Alert — records event detection time; distinct from `created_at` (row insertion time) |
+| ADR-013-04 | 13 | `confidence_score NUMERIC(4,3)` — exact decimal arithmetic for threshold comparisons; avoids floating-point drift |
+| ADR-013-05 | 13 | `engine_version VARCHAR(50)` on Recommendation — ML model provenance required for audit and reproducibility |
 
 ---
 
@@ -2716,7 +2820,7 @@ The only missing piece is the GaaS orchestration layer — the underlying data A
 
 AGRIFLOW-AI maintains two complementary roadmaps: a **technology evolution** path showing infrastructure progression, and an **enterprise capability evolution** path showing business value delivery. Technologies implement capabilities — they are not adoption goals in isolation.
 
-### Current Stack (Post Phase 12)
+### Current Stack (Post Phase 13)
 
 | Component | Technology | Version | Status |
 |---|---|---|---|
@@ -2729,7 +2833,7 @@ AGRIFLOW-AI maintains two complementary roadmaps: a **technology evolution** pat
 | Validation | Pydantic | 2.10.3 | ✅ Operational |
 | Driver (async) | asyncpg | 0.30.0 | ✅ Operational |
 | Logging | structlog | 24.4.0 | ✅ Operational |
-| Containerisation | Docker | — | ✅ Operational |
+| Containerisation | Podman | 1.x | ✅ Operational (replaces Docker Desktop) |
 
 ### Technology Evolution
 
@@ -2739,6 +2843,8 @@ Infrastructure progression from relational operations through enterprise AI:
 PostgreSQL                    (Phases 1–11)   ✅ Authoritative transactional store
       ↓
 TimescaleDB                   (Phase 12)      ✅ Enterprise time-series analytics
+      ↓
+Decision Layer                (Phase 13)      ✅ Recommendation & Alert engines (PostgreSQL)
       ↓
 Redpanda                      (Phase 14)      🔜 Domain event streaming
       ↓
@@ -2767,9 +2873,10 @@ GaaS / Farm Copilot           (Phase 16)      ⏳ Enterprise AI agents
 
 ```mermaid
 graph TB
-    subgraph "Phases 1–12 (Complete)"
-        PG["PostgreSQL 17.10"] --> APP12["FastAPI\nClean Architecture\n10 domain verticals"]
+    subgraph "Phases 1–13 (Complete)"
+        PG["PostgreSQL 17.10"] --> APP12["FastAPI\nClean Architecture\n13 domain verticals"]
         TS["TimescaleDB 2.28.1"] --> APP12
+        DL["Decision Layer\n(Recommendation + Alert)"] --> APP12
     end
 
     subgraph "Phase 14 (Enterprise Events)"
@@ -2801,7 +2908,7 @@ Operations                    (Phases 1–6)    ✅ Governed farm management
       ↓
 Data Intelligence             (Phases 7–12)   ✅ Complete observational data + analytics
       ↓
-Decision Intelligence         (Phase 13)      🔜 Recommendations and decision services
+Decision Intelligence         (Phase 13)      ✅ Recommendation Engine, Alert Engine, Farm CRUD
       ↓
 Event-Driven Operations       (Phase 14)      🔜 Domain events as enterprise assets
       ↓
@@ -2826,8 +2933,8 @@ Enterprise AI                 (Phase 16)      ⏳ Agents, workflows, production 
 | ✅ 10 | Disease Observation | Plant health monitoring | Complete |
 | ✅ 11 | Satellite | Remote sensing | Complete |
 | ✅ 12 | TimescaleDB | Enterprise time-series platform | Complete |
-| 🔜 13 | Decision Intelligence | Recommendation engines, decision services, Feature Store foundation | Planned (Current) |
-| 🔜 14 | Event-Driven Operations | Redpanda, domain events, event catalog | Planned |
+| ✅ 13 | Decision Intelligence | Farm CRUD API, Recommendation Engine (6 types/statuses/priorities), Alert Engine (10 types/4 severities) | Complete |
+| 🔜 14 | Event-Driven Operations | Redpanda, domain events, event catalog, ML Prediction Engines | Planned |
 | 🔜 15 | Operational Intelligence | CQRS, Digital Twin, read models, dashboards | Planned |
 | ⏳ 16 | Enterprise AI Platform | GaaS, Farm Copilot, Temporal, production readiness | Planned |
 
@@ -2835,4 +2942,4 @@ Enterprise AI                 (Phase 16)      ⏳ Agents, workflows, production 
 
 *This document is the authoritative implementation history and architecture reference for AGRIFLOW-AI. It should be updated at the completion of each phase.*
 
-*Last updated: Phase 12 completion — enterprise capability architecture for Phases 13–16 added — June 2026*
+*Last updated: Phase 13 completion — enterprise capability architecture for Phases 14–16 current — October 2026*

@@ -595,22 +595,22 @@ Reference tables (`farms`, `fields`, `crops`, `soil_profiles`) remain standard P
 Reactive Farming
       ↓
 Data-Driven Farming
-(Phase 1–6) ✅
+(Phase 1–6) ✅ Complete
       ↓
 Time-Series Intelligence
 (Phase 7–12) ✅ Complete
       ↓
-AI Foundation
-(Phase 13+) 🔜 Current
+AI Decision Foundation
+(Phase 13) ✅ Complete
       ↓
 Intelligent Farming
-(Phase 13–15)
+(Phase 14–15) 🔜 Next
       ↓
 Autonomous Agriculture
-(Phase 15+)
+(Phase 16+)
 ```
 
-Phase 12 completed the Time-Series Intelligence era. The platform now enters the AI Foundation phase with Phase 13 — AI Recommendation Foundation.
+Phase 13 completed the AI Decision Foundation era — the platform now issues structured recommendations and real-time alerts. Phase 14 begins the event-driven Intelligent Farming era.
 
 ## Phase 12 Implementation Progress (Appendix)
 
@@ -643,7 +643,7 @@ Implemented:
 * Soil Intelligence Domain
 * Weather Intelligence Domain
 * SensorReading Domain (Phase 7)
-* Shared Enum Module (`app/core/enums.py`) — SensorType, IrrigationMethod, WaterSource, YieldMeasurementMethod, DiseaseSeverity, DiagnosisMethod, SatelliteProvider, SpectralIndex, ProcessingLevel
+* Shared Enum Module (`app/core/enums.py`) — 14 enums: SensorType, IrrigationMethod, WaterSource, YieldMeasurementMethod, DiseaseSeverity, DiagnosisMethod, SatelliteProvider, SpectralIndex, ProcessingLevel, RecommendationType, RecommendationStatus, RecommendationPriority, AlertType, AlertSeverity
 * Telemetry Immutability Pattern
 * Compound Index Strategy (time-series domains)
 * Operational Event Mutable Pattern (IrrigationEvent, YieldRecord, DiseaseObservation, SatelliteObservation)
@@ -663,11 +663,16 @@ Implemented:
 * Automated Background Jobs (Phase 12) — 27 platform jobs (compression, CA refresh, retention)
 * Repository Transparency (Phase 12) — persistence upgrades with zero API, service, or repository interface changes
 * Canonical Development Dataset (CDD v1.0.0) — deterministic validation corpus (458,645 rows)
+* Farm CRUD API (Phase 13) — completed Farm domain with full CRUD surface and `farm_code` uniqueness validation
+* Recommendation Domain (Phase 13) — field-anchored decision records; 6 types, 6 statuses, 3 priorities; confidence scoring; validity windows; engine version provenance
+* Alert Domain (Phase 13) — field-anchored operational alerts; 10 alert types, 4 severities; `triggered_at` event time; soft link to Recommendation via nullable FK
+* Decision Layer Pattern (Phase 13) — SET NULL on crop delete preserves decision history; standard PostgreSQL (not TimescaleDB) for low-volume mutable records
+* Alert → Recommendation Soft Linkage (Phase 13) — nullable `recommendation_id` FK; alerts survive recommendation deletion
 
-Near-Term (Phases 13–15):
+Near-Term (Phases 14–15):
 
-* AI Recommendation Foundation (Phase 13) — Yield, Irrigation, Disease, and Fertilizer Recommendation Engines; AI Feature Store; Recommendation Services
-* Predictive Agriculture (Phase 14)
+* Event-Driven Operations (Phase 14) — Redpanda, Domain Events, Outbox Pattern, ML engine triggers
+* Predictive Agriculture ML Engines (Phase 14) — Yield Prediction, Irrigation Optimization, Disease Risk Scoring
 * Digital Twin & Farm Copilot (Phase 15)
 * Redpanda (event streaming for SensorReadingCreated events)
 * Redis (Digital Twin field state cache)
@@ -687,23 +692,26 @@ Future:
 
 ---
 
-# Current Domain Hierarchy (Post Phase 12)
+# Current Domain Hierarchy (Post Phase 13)
 
-Six time-series domains are now backed by TimescaleDB hypertables. Master and reference tables (`farms`, `fields`, `crops`, `soil_profiles`) remain standard PostgreSQL relations.
+Six time-series domains are backed by TimescaleDB hypertables. The Phase 13 decision layer (`recommendations`, `alerts`) uses standard PostgreSQL. Master and reference tables remain standard PostgreSQL relations.
 
 ```text
-Farm                                         (PostgreSQL — relational)
-└── Field                                    (PostgreSQL — relational)
-     ├── Crop                                (PostgreSQL — relational)
-     │    ├── YieldRecord                   (Hypertable — Phase 12)
-     │    └── DiseaseObservation            (Hypertable — Phase 12)
-     ├── SoilProfile         (1:1)          (PostgreSQL — relational)
-     ├── WeatherRecord                      (Hypertable — Phase 12)
-     ├── SensorReading       (append-only)  (Hypertable — Phase 12)
-     ├── IrrigationEvent     (mutable)      (Hypertable — Phase 12)
-     └── SatelliteObservation (mutable)      (Hypertable — Phase 12)
+Farm                                              (PostgreSQL — relational)
+└── Field                                         (PostgreSQL — relational)
+     ├── Crop                                     (PostgreSQL — relational)
+     │    ├── YieldRecord                        (Hypertable — Phase 12)
+     │    └── DiseaseObservation                 (Hypertable — Phase 12)
+     ├── SoilProfile         (1:1)               (PostgreSQL — relational)
+     ├── WeatherRecord                           (Hypertable — Phase 12)
+     ├── SensorReading       (append-only)       (Hypertable — Phase 12)
+     ├── IrrigationEvent     (mutable)           (Hypertable — Phase 12)
+     ├── SatelliteObservation (mutable)           (Hypertable — Phase 12)
+     ├── Recommendation      (Phase 13) ✅       (PostgreSQL — relational)
+     └── Alert               (Phase 13) ✅       (PostgreSQL — relational)
 
 TimescaleDB analytical platform  ✅ Phase 12 (compression · continuous aggregates · retention)
+Decision Intelligence layer      ✅ Phase 13 (recommendations · alerts · farm API)
 ```
 
 # Target Domain Hierarchy (Long-Term)
@@ -712,13 +720,15 @@ TimescaleDB analytical platform  ✅ Phase 12 (compression · continuous aggrega
 Farm
 └── Field
      ├── Crop
-     │    ├── YieldRecord           ✅ implemented
-     │    └── DiseaseObservation    ✅ implemented
-     ├── SoilProfile
-     ├── WeatherRecord
-     ├── SensorReading
-     ├── IrrigationEvent
-     └── SatelliteObservation       ✅ Phase 11
+     │    ├── YieldRecord           ✅ implemented (Phase 9)
+     │    └── DiseaseObservation    ✅ implemented (Phase 10)
+     ├── SoilProfile                ✅ implemented (Phase 4)
+     ├── WeatherRecord              ✅ implemented (Phase 5)
+     ├── SensorReading              ✅ implemented (Phase 7)
+     ├── IrrigationEvent            ✅ implemented (Phase 8)
+     ├── SatelliteObservation       ✅ implemented (Phase 11)
+     ├── Recommendation             ✅ implemented (Phase 13)
+     └── Alert                      ✅ implemented (Phase 13)
 ```
 
 ---
@@ -930,9 +940,9 @@ AGRIFLOW-AI evolves from a farm management system into a comprehensive Agricultu
 
 ✅ Phase 12 – TimescaleDB Time-Series Foundation
 
-## Upcoming
-
 ✅ Phase 13 – Enterprise Decision & Recommendation Platform
+
+## Upcoming
 
 🔜 Phase 14 – Event-Driven Enterprise Platform
 
@@ -946,12 +956,12 @@ AGRIFLOW-AI evolves from a farm management system into a comprehensive Agricultu
 
 # Enterprise Capability Roadmap
 
-| Phase | Business Capability | Enterprise Technologies |
-|--------|---------------------|--------------------------|
-| **13** | Decision Intelligence | Enterprise Ontology, Recommendation Engine, Recommendation APIs, Decision Services, Operational Timeline |
-| **14** | Event-Driven Operations | Redpanda, Domain Events, Event Contracts, Outbox Pattern, Event Catalog |
-| **15** | Operational Intelligence | CQRS, Read Models, Feature Store, Digital Twin Foundation, AI-ready Query Services |
-| **16** | Enterprise AI Platform | Temporal Workflows, GaaS, Farm Copilot, MCP Evaluation, Production Readiness, Observability, Security, Quality Engineering |
+| Phase | Status | Business Capability | Enterprise Technologies |
+|--------|--------|---------------------|--------------------------|
+| **13** | ✅ Complete | Decision Intelligence | Farm CRUD API, Recommendation Engine (6 types/statuses/priorities), Alert Engine (10 types/4 severities), Decision Layer Pattern |
+| **14** | 🔜 Planned | Event-Driven Operations | Redpanda, Domain Events, Event Contracts, Outbox Pattern, ML Engine Triggers |
+| **15** | 🔜 Planned | Operational Intelligence | CQRS, Read Models, Feature Store, Digital Twin Foundation, AI-ready Query Services |
+| **16** | ⏳ Future | Enterprise AI Platform | Temporal Workflows, GaaS, Farm Copilot, MCP Evaluation, Production Readiness, Observability, Security, Quality Engineering |
 
 ## Capability-Driven Evolution
 
