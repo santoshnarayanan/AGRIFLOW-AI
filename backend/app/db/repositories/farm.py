@@ -9,6 +9,7 @@ domain grows; the current surface is intentionally minimal.
 import uuid
 from typing import Any
 
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.db.models.farm import Farm
@@ -36,3 +37,12 @@ class FarmRepository(BaseRepository[Farm]):
 
     async def delete(self, record_id: uuid.UUID) -> bool:
         return await super().delete(record_id)
+
+    # ── Farm-specific queries ─────────────────────────────────────────────────
+
+    async def get_by_farm_code(self, farm_code: str) -> Farm | None:
+        """Return a farm by its unique farm_code, or None if not found."""
+        result = await self._session.execute(
+            select(Farm).where(Farm.farm_code == farm_code)
+        )
+        return result.scalar_one_or_none()

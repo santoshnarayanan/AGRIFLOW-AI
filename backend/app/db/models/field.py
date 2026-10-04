@@ -19,10 +19,12 @@ from sqlalchemy.orm import Mapped, mapped_column, relationship
 from app.db.base import AuditableModel, Base
 
 if TYPE_CHECKING:
+    from app.db.models.alert import Alert
     from app.db.models.crop import Crop
     from app.db.models.disease_observation import DiseaseObservation
     from app.db.models.farm import Farm
     from app.db.models.irrigation_event import IrrigationEvent
+    from app.db.models.recommendation import Recommendation
     from app.db.models.satellite_observation import SatelliteObservation
     from app.db.models.sensor_reading import SensorReading
     from app.db.models.soil_profile import SoilProfile
@@ -111,6 +113,16 @@ class Field(AuditableModel, Base):
         back_populates="field",
         cascade="all, delete-orphan",
         order_by="desc(SatelliteObservation.observed_at)",
+    )
+    recommendations: Mapped[list[Recommendation]] = relationship(
+        back_populates="field",
+        cascade="all, delete-orphan",
+        order_by="desc(Recommendation.created_at)",
+    )
+    alerts: Mapped[list[Alert]] = relationship(
+        back_populates="field",
+        cascade="all, delete-orphan",
+        order_by="desc(Alert.triggered_at)",
     )
 
     def __repr__(self) -> str:

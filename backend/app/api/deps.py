@@ -19,21 +19,26 @@ from typing import Annotated
 from fastapi import Depends
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.db.repositories.alert import AlertRepository
 from app.db.repositories.crop import CropRepository
 from app.db.repositories.disease_observation import DiseaseObservationRepository
 from app.db.repositories.farm import FarmRepository
 from app.db.repositories.field import FieldRepository
 from app.db.repositories.irrigation_event import IrrigationEventRepository
+from app.db.repositories.recommendation import RecommendationRepository
 from app.db.repositories.satellite_observation import SatelliteObservationRepository
 from app.db.repositories.sensor_reading import SensorReadingRepository
 from app.db.repositories.soil_profile import SoilProfileRepository
 from app.db.repositories.weather_record import WeatherRecordRepository
 from app.db.repositories.yield_record import YieldRecordRepository
 from app.db.session import AsyncSessionFactory
+from app.services.alert import AlertService
 from app.services.crop import CropService
 from app.services.disease_observation import DiseaseObservationService
+from app.services.farm import FarmService
 from app.services.field import FieldService
 from app.services.irrigation_event import IrrigationEventService
+from app.services.recommendation import RecommendationService
 from app.services.satellite_observation import SatelliteObservationService
 from app.services.sensor_reading import SensorReadingService
 from app.services.soil_profile import SoilProfileService
@@ -158,3 +163,35 @@ def get_yield_record_service(session: SessionDep) -> YieldRecordService:
 
 
 YieldRecordServiceDep = Annotated[YieldRecordService, Depends(get_yield_record_service)]
+
+
+def get_farm_service(session: SessionDep) -> FarmService:
+    """Construct a ``FarmService`` wired to the request-scoped session."""
+    return FarmService(farm_repository=FarmRepository(session))
+
+
+FarmServiceDep = Annotated[FarmService, Depends(get_farm_service)]
+
+
+def get_recommendation_service(session: SessionDep) -> RecommendationService:
+    """Construct a ``RecommendationService`` wired to the request-scoped session."""
+    return RecommendationService(
+        recommendation_repository=RecommendationRepository(session),
+        field_repository=FieldRepository(session),
+        crop_repository=CropRepository(session),
+    )
+
+
+RecommendationServiceDep = Annotated[RecommendationService, Depends(get_recommendation_service)]
+
+
+def get_alert_service(session: SessionDep) -> AlertService:
+    """Construct an ``AlertService`` wired to the request-scoped session."""
+    return AlertService(
+        alert_repository=AlertRepository(session),
+        field_repository=FieldRepository(session),
+        recommendation_repository=RecommendationRepository(session),
+    )
+
+
+AlertServiceDep = Annotated[AlertService, Depends(get_alert_service)]
