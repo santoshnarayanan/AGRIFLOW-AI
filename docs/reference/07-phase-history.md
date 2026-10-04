@@ -667,7 +667,7 @@ Phase 6 formally closed after successful validation and stabilization.
 
 ### References
 
-* Full AI attribute gap analysis: `docs/AI_DATA_READINESS_ASSESSMENT.md`
+* Full AI attribute gap analysis: `../phases/phase06/ai-data-readiness-assessment.md`
 * Validation report across all layers: `docs/PHASE6_STEP3_VALIDATION_REPORT.md`
 
 ---
@@ -1457,7 +1457,7 @@ Phase 12 transformed the persistence tier from relational PostgreSQL into a hybr
 * **Background jobs configured** — 27 platform jobs (compression, CA refresh, retention) operating transparently below the repository layer
 * **Canonical Development Dataset (CDD) validation completed** — CDD v1.0.0 (458,645 rows) exercised at Steps 2C, 3C, and 4C
 
-Five Alembic migrations (`f1e2d3c4b5a6` → `f6a7b8c9d0e1`) delivered the complete TimescaleDB stack. Detailed implementation evidence is recorded in the Phase 12 reports under `docs/report/PHASE12_*.md`.
+Five Alembic migrations (`f1e2d3c4b5a6` → `f6a7b8c9d0e1`) delivered the complete TimescaleDB stack. Detailed implementation evidence is recorded in the Phase 12 reports under `../archive/phase12/reports/PHASE12_*.md`.
 
 ### Architecture Evolution
 

@@ -4,9 +4,9 @@
 **Status:** Approved  
 **Last Updated:** 2026-06-30  
 **Scope:** Phase 12 Step 3 — Continuous Aggregates & Analytical Layer  
-**Related ADRs:** [ADR-003](adr/ADR-003-timescaledb-compression-policy-strategy.md) · [ADR-004](adr/ADR-004-timescaledb-continuous-aggregate-strategy.md)  
-**Prerequisites:** [ADR-001](adr/ADR-001-timescaledb-extension-enablement.md) · [ADR-002](adr/ADR-002-hypertable-primary-key-conversion-strategy.md)  
-**Foundation Handbook:** [10-phase12-step1-foundation-handbook.md](10-phase12-step1-foundation-handbook.md)  
+**Related ADRs:** [ADR-003](../../../adr/ADR-003-timescaledb-compression-policy-strategy.md) · [ADR-004](../../../adr/ADR-004-timescaledb-continuous-aggregate-strategy.md)  
+**Prerequisites:** [ADR-001](../../../adr/ADR-001-timescaledb-extension-enablement.md) · [ADR-002](../../../adr/ADR-002-hypertable-primary-key-conversion-strategy.md)  
+**Foundation Handbook:** [step1-foundation-handbook.md](step1-foundation-handbook.md)  
 **Decision Register:** [PHASE12_DECISION_REGISTER.md](report/PHASE12_DECISION_REGISTER.md) — P12-D012
 
 ---
@@ -121,7 +121,7 @@ flowchart LR
 
 ### Relationship to ADR-004
 
-[ADR-004](adr/ADR-004-timescaledb-continuous-aggregate-strategy.md) is the **authoritative architecture** for Step 3. It defines:
+[ADR-004](../../../adr/ADR-004-timescaledb-continuous-aggregate-strategy.md) is the **authoritative architecture** for Step 3. It defines:
 
 - The eight-aggregate catalogue (no additions without ADR amendment)
 - Naming convention: `ca_{domain}_{interval}`
@@ -186,7 +186,7 @@ flowchart TD
 
 ## 4. Aggregate Catalogue
 
-Authoritative source: [ADR-004 §4](adr/ADR-004-timescaledb-continuous-aggregate-strategy.md). Implementation: migration `e5f6a7b8c9d0`.
+Authoritative source: [ADR-004 §4](../../../adr/ADR-004-timescaledb-continuous-aggregate-strategy.md). Implementation: migration `e5f6a7b8c9d0`.
 
 | Aggregate | Source Hypertable | Bucket | Primary Consumers | Tier |
 |---|---|---|---|---|
@@ -329,11 +329,11 @@ flowchart LR
 |---|---|---|
 | **3A** | [Architecture Assessment](report/PHASE12_STEP3A_CONTINUOUS_AGGREGATES_ARCHITECTURE_ASSESSMENT.md) | 8 CAs; tiered refresh; P12-D012 resolved |
 | **3B** | [Implementation Report](report/PHASE12_STEP3B_CONTINUOUS_AGGREGATE_IMPLEMENTATION_REPORT.md) | Migration authored; v1.1–v1.3 corrections |
-| **3B** | [Lessons Learned](report/PHASE12_STEP3B_IMPLEMENTATION_LESSONS_LEARNED.md) | Root-cause knowledge capture |
+| **3B** | [Lessons Learned](../../../archive/phase12/reports/PHASE12_STEP3B_IMPLEMENTATION_LESSONS_LEARNED.md) | Root-cause knowledge capture |
 | **3C** | [Validation Report](report/PHASE12_STEP3C_CONTINUOUS_AGGREGATE_VALIDATION_REPORT.md) | Runtime verification; **APPROVED** |
 | **3D** | [Benchmark Report](report/PHASE12_STEP3D_PERFORMANCE_BENCHMARK_REPORT.md) | Performance quantification |
 
-**Critical implementation lessons** (detail in [Lessons Learned](report/PHASE12_STEP3B_IMPLEMENTATION_LESSONS_LEARNED.md)):
+**Critical implementation lessons** (detail in [Lessons Learned](../../../archive/phase12/reports/PHASE12_STEP3B_IMPLEMENTATION_LESSONS_LEARNED.md)):
 
 1. TimescaleDB CAs use `CREATE MATERIALIZED VIEW` syntax but are stored as `relkind = 'v'` — use `COMMENT ON VIEW`, not `COMMENT ON MATERIALIZED VIEW`.
 2. Refresh policies require `start_offset − end_offset ≥ 2 × bucket_width` per aggregate, not per domain.
@@ -441,7 +441,7 @@ Retention is **out of scope** for Step 3 — deferred to [ADR-005](adr/) (Phase 
 
 3. **Raw stays authoritative.** CAs are derived. APIs, audit, and fine-grain replay continue to use hypertables.
 
-4. **Runtime validation is mandatory.** Step 3B surfaced two TimescaleDB-specific behaviours invisible at authoring time — CA object type and refresh window minimums. See [Lessons Learned](report/PHASE12_STEP3B_IMPLEMENTATION_LESSONS_LEARNED.md).
+4. **Runtime validation is mandatory.** Step 3B surfaced two TimescaleDB-specific behaviours invisible at authoring time — CA object type and refresh window minimums. See [Lessons Learned](../../../archive/phase12/reports/PHASE12_STEP3B_IMPLEMENTATION_LESSONS_LEARNED.md).
 
 5. **Historical data needs explicit backfill.** `WITH NO DATA` + `now()`-relative policies do not populate past buckets automatically.
 
@@ -457,10 +457,10 @@ Retention is **out of scope** for Step 3 — deferred to [ADR-005](adr/) (Phase 
 
 | ADR | Title | Role in Step 3 |
 |---|---|---|
-| [ADR-001](adr/ADR-001-timescaledb-extension-enablement.md) | TimescaleDB Extension | Prerequisite |
-| [ADR-002](adr/ADR-002-hypertable-primary-key-conversion-strategy.md) | Hypertable Strategy | Source layer for CAs |
-| [ADR-003](adr/ADR-003-timescaledb-compression-policy-strategy.md) | Compression Strategy | Storage layer beneath CAs |
-| [ADR-004](adr/ADR-004-timescaledb-continuous-aggregate-strategy.md) | Continuous Aggregate Strategy | **Authoritative Step 3 architecture** |
+| [ADR-001](../../../adr/ADR-001-timescaledb-extension-enablement.md) | TimescaleDB Extension | Prerequisite |
+| [ADR-002](../../../adr/ADR-002-hypertable-primary-key-conversion-strategy.md) | Hypertable Strategy | Source layer for CAs |
+| [ADR-003](../../../adr/ADR-003-timescaledb-compression-policy-strategy.md) | Compression Strategy | Storage layer beneath CAs |
+| [ADR-004](../../../adr/ADR-004-timescaledb-continuous-aggregate-strategy.md) | Continuous Aggregate Strategy | **Authoritative Step 3 architecture** |
 
 ### Step 3 Reports
 
@@ -468,7 +468,7 @@ Retention is **out of scope** for Step 3 — deferred to [ADR-005](adr/) (Phase 
 |---|---|---|
 | [PHASE12_STEP3A_CONTINUOUS_AGGREGATES_ARCHITECTURE_ASSESSMENT.md](report/PHASE12_STEP3A_CONTINUOUS_AGGREGATES_ARCHITECTURE_ASSESSMENT.md) | 3A | Evidence base for ADR-004 |
 | [PHASE12_STEP3B_CONTINUOUS_AGGREGATE_IMPLEMENTATION_REPORT.md](report/PHASE12_STEP3B_CONTINUOUS_AGGREGATE_IMPLEMENTATION_REPORT.md) | 3B | Migration `e5f6a7b8c9d0`; corrections v1.1–v1.3 |
-| [PHASE12_STEP3B_IMPLEMENTATION_LESSONS_LEARNED.md](report/PHASE12_STEP3B_IMPLEMENTATION_LESSONS_LEARNED.md) | 3B | Debugging journey; institutional knowledge |
+| [PHASE12_STEP3B_IMPLEMENTATION_LESSONS_LEARNED.md](../../../archive/phase12/reports/PHASE12_STEP3B_IMPLEMENTATION_LESSONS_LEARNED.md) | 3B | Debugging journey; institutional knowledge |
 | [PHASE12_STEP3C_CONTINUOUS_AGGREGATE_VALIDATION_REPORT.md](report/PHASE12_STEP3C_CONTINUOUS_AGGREGATE_VALIDATION_REPORT.md) | 3C | Runtime validation; **APPROVED** |
 | [PHASE12_STEP3D_PERFORMANCE_BENCHMARK_REPORT.md](report/PHASE12_STEP3D_PERFORMANCE_BENCHMARK_REPORT.md) | 3D | Measured performance |
 
@@ -476,7 +476,7 @@ Retention is **out of scope** for Step 3 — deferred to [ADR-005](adr/) (Phase 
 
 | Document | Relationship |
 |---|---|
-| [10-phase12-step1-foundation-handbook.md](10-phase12-step1-foundation-handbook.md) | Hypertable foundation; Phase 12 roadmap |
+| [step1-foundation-handbook.md](step1-foundation-handbook.md) | Hypertable foundation; Phase 12 roadmap |
 | [PHASE12_STEP2CD_RUNTIME_VALIDATION_AND_BENCHMARK_REPORT.md](report/PHASE12_STEP2CD_RUNTIME_VALIDATION_AND_BENCHMARK_REPORT.md) | Compression and raw query baselines |
 | [PHASE12_DECISION_REGISTER.md](report/PHASE12_DECISION_REGISTER.md) | P12-D012 resolution |
 
@@ -524,4 +524,4 @@ Phase 12 serves as the **permanent analytical foundation** for all subsequent AI
 
 ---
 
-*11-phase12-analytical-platform-handbook.md v1.0 — 2026-06-30 — Phase 12 Step 3E*
+*analytical-platform-handbook.md v1.0 — 2026-06-30 — Phase 12 Step 3E*

@@ -418,7 +418,7 @@ This diagram is the authoritative Phase 12 governance chain: each ADR unlocks th
 ## References
 
 * `PHASE12_STEP2A_COMPRESSION_ARCHITECTURE_ASSESSMENT.md` v1.0 — authoritative evidence base for this ADR
-* `10-phase12-step1-foundation-handbook.md` v1.1 — §13 Roadmap Beyond Step 1
+* `docs/phases/phase12/handbooks/step1-foundation-handbook.md` v1.1 — §13 Roadmap Beyond Step 1
 * `PHASE12_DECISION_REGISTER.md` v1.4 — P12-D010, P12-D003, P12-D005, P12-D011, P12-D012
 * `PHASE12_STEP1EB_HYPERTABLE_IMPLEMENTATION_REPORT.md` v1.0 — hypertable baseline
 * `docs/adr/ADR-001-timescaledb-extension-enablement.md` — Accepted 2026-06-29

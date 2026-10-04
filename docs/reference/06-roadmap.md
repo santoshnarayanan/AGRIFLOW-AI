@@ -218,7 +218,7 @@ Status: Completed
 
 Objectives:
 
-* AI Data Readiness Assessment (`docs/AI_DATA_READINESS_ASSESSMENT.md`)
+* AI Data Readiness Assessment (`../phases/phase06/ai-data-readiness-assessment.md`)
 * P1 AI Schema Enhancement (10 attributes across 4 domains)
 * AI Attribute Expansion Across Field, Crop, SoilProfile, WeatherRecord
 * Alembic Migration 005: P1 AI Readiness Columns

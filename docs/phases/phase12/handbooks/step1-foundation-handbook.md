@@ -3,7 +3,7 @@
 **Version:** 1.1  
 **Status:** Approved  
 **Last Updated:** 2026-06-29  
-**Related ADRs:** [ADR-001](adr/ADR-001-timescaledb-extension-enablement.md) · [ADR-002](adr/ADR-002-hypertable-primary-key-conversion-strategy.md)  
+**Related ADRs:** [ADR-001](../../../adr/ADR-001-timescaledb-extension-enablement.md) · [ADR-002](../../../adr/ADR-002-hypertable-primary-key-conversion-strategy.md)  
 **Related Reports:** Step 1A · Step 1B · Step 1C · Step 1D · Step 1E-A · Step 1E-B  
 **Decision Register:** [PHASE12_DECISION_REGISTER.md](report/PHASE12_DECISION_REGISTER.md) v1.4
 
@@ -219,7 +219,7 @@ timeline
 
 **Key decision:** The official `timescale/timescaledb:2.28.1-pg17` image was selected over the HA image (unnecessary operational overhead) and the OSS-only image (full feature set needed). A three-tier rollback model was defined before any change was made.
 
-**Outcome:** `timescale/timescaledb:2.28.1-pg17` pinned. Backup protocol (P12-D003) approved. Rollback tiers defined (P12-D005). *(See [ADR-001](adr/ADR-001-timescaledb-extension-enablement.md), [PHASE12_DECISION_REGISTER.md](report/PHASE12_DECISION_REGISTER.md) P12-D001–D003)*
+**Outcome:** `timescale/timescaledb:2.28.1-pg17` pinned. Backup protocol (P12-D003) approved. Rollback tiers defined (P12-D005). *(See [ADR-001](../../../adr/ADR-001-timescaledb-extension-enablement.md), [PHASE12_DECISION_REGISTER.md](report/PHASE12_DECISION_REGISTER.md) P12-D001–D003)*
 
 ---
 
@@ -245,7 +245,7 @@ timeline
 
 **Outcome:** TimescaleDB 2.28.1 active in `agriflow` database. Zero application changes. Documented in ADR-001.
 
-*Reference: PHASE12_STEP1D_EXTENSION_ENABLEMENT_REPORT.md · [ADR-001](adr/ADR-001-timescaledb-extension-enablement.md)*
+*Reference: PHASE12_STEP1D_EXTENSION_ENABLEMENT_REPORT.md · [ADR-001](../../../adr/ADR-001-timescaledb-extension-enablement.md)*
 
 ---
 
@@ -263,7 +263,7 @@ timeline
 
 **Outcome:** Six tables approved for hypertable conversion. Four remain relational. Chunk intervals defined. weather_records compound index gap identified. ADR-002 drafted and approved.
 
-*Reference: PHASE12_STEP1EA_HYPERTABLE_ARCHITECTURE_ASSESSMENT.md · [ADR-002](adr/ADR-002-hypertable-primary-key-conversion-strategy.md)*
+*Reference: PHASE12_STEP1EA_HYPERTABLE_ARCHITECTURE_ASSESSMENT.md · [ADR-002](../../../adr/ADR-002-hypertable-primary-key-conversion-strategy.md)*
 
 ---
 
@@ -690,18 +690,18 @@ This matrix traces every major Phase 12 Step 1 decision from its governing docum
 
 | Decision | Governing Document | Decision Register | Implemented In | Status |
 |---|---|---|---|---|
-| Docker image selection (`timescale/timescaledb:2.28.1-pg17`) | [ADR-001](adr/ADR-001-timescaledb-extension-enablement.md) | P12-D001 | Step 1C | ✅ Complete |
-| Version pinning strategy (exact semver tag) | [ADR-001](adr/ADR-001-timescaledb-extension-enablement.md) | P12-D002 | Step 1C | ✅ Complete |
-| Pre-migration backup protocol (pg_dump custom format) | [ADR-001](adr/ADR-001-timescaledb-extension-enablement.md) | P12-D003 | Steps 1C, 1D, 1E-B | ✅ Complete |
-| Extension enablement strategy (Alembic migration) | [ADR-001](adr/ADR-001-timescaledb-extension-enablement.md) | P12-D004 | Step 1D (`f1e2d3c4b5a6`) | ✅ Complete |
-| Infrastructure rollback strategy (3-tier model) | [ADR-001](adr/ADR-001-timescaledb-extension-enablement.md) | P12-D005 | Steps 1B, 1C | ✅ Complete |
-| `shared_preload_libraries` configuration gap | [ADR-001](adr/ADR-001-timescaledb-extension-enablement.md) | P12-D006 | Step 1D | ✅ Complete |
-| Hypertable primary key strategy (Composite PK Strategy A) | [ADR-002](adr/ADR-002-hypertable-primary-key-conversion-strategy.md) | P12-D007 | Step 1E-B (`c9d8e7f6a5b4`) | ✅ Complete |
-| Hypertable candidate tables & conversion sequence | [ADR-002](adr/ADR-002-hypertable-primary-key-conversion-strategy.md) | P12-D008 | Step 1E-B | ✅ Complete |
-| Chunk interval strategy (per-table intervals) | [ADR-002](adr/ADR-002-hypertable-primary-key-conversion-strategy.md) | P12-D009 | Step 1E-B | ✅ Complete |
-| Compression policy strategy | [ADR-002](adr/ADR-002-hypertable-primary-key-conversion-strategy.md) | P12-D010 | Step 1E-C (future) | ⏳ Deferred |
-| Retention policy strategy | [ADR-002](adr/ADR-002-hypertable-primary-key-conversion-strategy.md) | P12-D011 | Design-time (future) | ⏳ Deferred |
-| Continuous aggregate strategy | [ADR-002](adr/ADR-002-hypertable-primary-key-conversion-strategy.md) | P12-D012 | Step 1E-D (future) | ⏳ Deferred |
+| Docker image selection (`timescale/timescaledb:2.28.1-pg17`) | [ADR-001](../../../adr/ADR-001-timescaledb-extension-enablement.md) | P12-D001 | Step 1C | ✅ Complete |
+| Version pinning strategy (exact semver tag) | [ADR-001](../../../adr/ADR-001-timescaledb-extension-enablement.md) | P12-D002 | Step 1C | ✅ Complete |
+| Pre-migration backup protocol (pg_dump custom format) | [ADR-001](../../../adr/ADR-001-timescaledb-extension-enablement.md) | P12-D003 | Steps 1C, 1D, 1E-B | ✅ Complete |
+| Extension enablement strategy (Alembic migration) | [ADR-001](../../../adr/ADR-001-timescaledb-extension-enablement.md) | P12-D004 | Step 1D (`f1e2d3c4b5a6`) | ✅ Complete |
+| Infrastructure rollback strategy (3-tier model) | [ADR-001](../../../adr/ADR-001-timescaledb-extension-enablement.md) | P12-D005 | Steps 1B, 1C | ✅ Complete |
+| `shared_preload_libraries` configuration gap | [ADR-001](../../../adr/ADR-001-timescaledb-extension-enablement.md) | P12-D006 | Step 1D | ✅ Complete |
+| Hypertable primary key strategy (Composite PK Strategy A) | [ADR-002](../../../adr/ADR-002-hypertable-primary-key-conversion-strategy.md) | P12-D007 | Step 1E-B (`c9d8e7f6a5b4`) | ✅ Complete |
+| Hypertable candidate tables & conversion sequence | [ADR-002](../../../adr/ADR-002-hypertable-primary-key-conversion-strategy.md) | P12-D008 | Step 1E-B | ✅ Complete |
+| Chunk interval strategy (per-table intervals) | [ADR-002](../../../adr/ADR-002-hypertable-primary-key-conversion-strategy.md) | P12-D009 | Step 1E-B | ✅ Complete |
+| Compression policy strategy | [ADR-002](../../../adr/ADR-002-hypertable-primary-key-conversion-strategy.md) | P12-D010 | Step 1E-C (future) | ⏳ Deferred |
+| Retention policy strategy | [ADR-002](../../../adr/ADR-002-hypertable-primary-key-conversion-strategy.md) | P12-D011 | Design-time (future) | ⏳ Deferred |
+| Continuous aggregate strategy | [ADR-002](../../../adr/ADR-002-hypertable-primary-key-conversion-strategy.md) | P12-D012 | Step 1E-D (future) | ⏳ Deferred |
 
 ### Key Takeaways
 
@@ -849,8 +849,8 @@ The Digital Twin reconstructs field state by replaying events across `sensor_rea
 
 | Document | Title | Status |
 |---|---|---|
-| [ADR-001](adr/ADR-001-timescaledb-extension-enablement.md) | TimescaleDB Extension Enablement | Accepted |
-| [ADR-002](adr/ADR-002-hypertable-primary-key-conversion-strategy.md) | Hypertable Primary Key & Conversion Strategy | Approved |
+| [ADR-001](../../../adr/ADR-001-timescaledb-extension-enablement.md) | TimescaleDB Extension Enablement | Accepted |
+| [ADR-002](../../../adr/ADR-002-hypertable-primary-key-conversion-strategy.md) | Hypertable Primary Key & Conversion Strategy | Approved |
 
 ### Decision Register
 
@@ -874,7 +874,7 @@ The Digital Twin reconstructs field state by replaying events across `sensor_rea
 | Document | Purpose |
 |---|---|
 | [02-architecture.md](02-architecture.md) | Platform-wide Clean Architecture reference |
-| [08-phase-architecture-handbook.md](08-phase-architecture-handbook.md) | Phase 1–11 architecture history and domain ADRs |
+| [../../../reference/08-architecture-handbook.md](../../../reference/08-architecture-handbook.md) | Phase 1–11 architecture history and domain ADRs |
 | [09-architecture-diagrams.md](09-architecture-diagrams.md) | Architecture diagrams library |
 
 ### Database Documentation

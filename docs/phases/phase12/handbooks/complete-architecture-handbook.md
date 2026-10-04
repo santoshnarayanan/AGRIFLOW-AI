@@ -4,8 +4,8 @@
 **Status:** Approved  
 **Last Updated:** 2026-06-30  
 **Scope:** Phase 12 — Complete TimescaleDB Analytical Data Platform  
-**Related ADRs:** [ADR-001](adr/ADR-001-timescaledb-extension-enablement.md) · [ADR-002](adr/ADR-002-hypertable-primary-key-conversion-strategy.md) · [ADR-003](adr/ADR-003-timescaledb-compression-policy-strategy.md) · [ADR-004](adr/ADR-004-timescaledb-continuous-aggregate-strategy.md) · [ADR-005](adr/ADR-005-timescaledb-retention-policy-strategy.md)  
-**Prerequisites:** [10-phase12-step1-foundation-handbook.md](10-phase12-step1-foundation-handbook.md) · [11-phase12-analytical-platform-handbook.md](11-phase12-analytical-platform-handbook.md)  
+**Related ADRs:** [ADR-001](../../../adr/ADR-001-timescaledb-extension-enablement.md) · [ADR-002](../../../adr/ADR-002-hypertable-primary-key-conversion-strategy.md) · [ADR-003](../../../adr/ADR-003-timescaledb-compression-policy-strategy.md) · [ADR-004](../../../adr/ADR-004-timescaledb-continuous-aggregate-strategy.md) · [ADR-005](../../../adr/ADR-005-timescaledb-retention-policy-strategy.md)  
+**Prerequisites:** [step1-foundation-handbook.md](step1-foundation-handbook.md) · [analytical-platform-handbook.md](analytical-platform-handbook.md)  
 **Decision Register:** [PHASE12_DECISION_REGISTER.md](report/PHASE12_DECISION_REGISTER.md)
 
 ---
@@ -154,7 +154,7 @@ flowchart LR
     style after fill:#c8e6c9
 ```
 
-**What did not change:** API routes, service interfaces, repository contracts, domain models (except composite PK declarations on six ORM models), Docker Compose topology, and Clean Architecture boundaries. See [Foundation Handbook §5](10-phase12-step1-foundation-handbook.md).
+**What did not change:** API routes, service interfaces, repository contracts, domain models (except composite PK declarations on six ORM models), Docker Compose topology, and Clean Architecture boundaries. See [Foundation Handbook §5](step1-foundation-handbook.md).
 
 ---
 
@@ -237,7 +237,7 @@ flowchart TB
 | **Retention** | Lifecycle governance | 11 policies, 3 exemptions | No |
 | **Feature Store** | Versioned ML features | Phase 13 | Future |
 
-Detail per layer: [Foundation Handbook](10-phase12-step1-foundation-handbook.md) (Steps 1–2) · [Analytical Platform Handbook](11-phase12-analytical-platform-handbook.md) (Step 3) · [ADR-005](adr/ADR-005-timescaledb-retention-policy-strategy.md) (Step 4).
+Detail per layer: [Foundation Handbook](step1-foundation-handbook.md) (Steps 1–2) · [Analytical Platform Handbook](analytical-platform-handbook.md) (Step 3) · [ADR-005](../../../adr/ADR-005-timescaledb-retention-policy-strategy.md) (Step 4).
 
 ---
 
@@ -407,7 +407,7 @@ flowchart LR
     style COLD fill:#e3f2fd
 ```
 
-Per-table thresholds: [ADR-003 §4](adr/ADR-003-timescaledb-compression-policy-strategy.md).
+Per-table thresholds: [ADR-003 §4](../../../adr/ADR-003-timescaledb-compression-policy-strategy.md).
 
 ### Continuous Aggregate Pipeline
 
@@ -423,7 +423,7 @@ flowchart LR
     style CA fill:#fff3e0
 ```
 
-Refresh tiers T1–T4: [ADR-004 §6](adr/ADR-004-timescaledb-continuous-aggregate-strategy.md) · [Analytical Handbook §5](11-phase12-analytical-platform-handbook.md).
+Refresh tiers T1–T4: [ADR-004 §6](../../../adr/ADR-004-timescaledb-continuous-aggregate-strategy.md) · [Analytical Handbook §5](analytical-platform-handbook.md).
 
 ---
 
@@ -554,7 +554,7 @@ flowchart TD
 | **Backup** | `pg_dump` before every migration | P12-D003 |
 | **Archive** | Azure Blob Parquet (deferred) | ADR-005 · `AGRIFLOW-ARCHIVE-001` |
 | **Retention** | 11 `policy_retention` jobs | ADR-005 |
-| **Monitor** | `timescaledb_information.job_stats` | [Analytical Handbook §9](11-phase12-analytical-platform-handbook.md) |
+| **Monitor** | `timescaledb_information.job_stats` | [Analytical Handbook §9](analytical-platform-handbook.md) |
 | **Recovery** | Tier 2 `pg_dump` restore | P12-D005 |
 
 **Production gate:** Retention drops require archive-before-delete pipeline before production activation. See [Step 4B](report/PHASE12_STEP4B_RETENTION_IMPLEMENTATION_REPORT.md).
@@ -601,7 +601,7 @@ flowchart TD
 | **15 — Farm Copilot** | Conversational field intelligence | Sub-ms CA reads; summary grounding | `ca_sensor_hourly`, `ca_weather_daily` |
 | **16 — Digital Twin** | Field state replay | Hourly/daily CA timelines; raw for current season | CAs coarse mode + raw fine-grain |
 
-Feature-to-CA mapping: [ADR-004 §10](adr/ADR-004-timescaledb-continuous-aggregate-strategy.md) · [Analytical Handbook §8](11-phase12-analytical-platform-handbook.md).
+Feature-to-CA mapping: [ADR-004 §10](../../../adr/ADR-004-timescaledb-continuous-aggregate-strategy.md) · [Analytical Handbook §8](analytical-platform-handbook.md).
 
 ---
 
@@ -652,11 +652,11 @@ Phase 12 surfaced infrastructure patterns that apply beyond TimescaleDB. Full de
 |---|---|---|
 | **Governance-first execution** | Migrations authored and reviewed before batch runtime | [Step 2B](report/PHASE12_STEP2B_COMPRESSION_IMPLEMENTATION_REPORT.md), [Step 3B](report/PHASE12_STEP3B_CONTINUOUS_AGGREGATE_IMPLEMENTATION_REPORT.md) |
 | **ADR-before-implementation** | No capability deployed without approved ADR | All five ADRs |
-| **CA object type is `relkind='v'`** | `COMMENT ON MATERIALIZED VIEW` fails; use `COMMENT ON VIEW` | [Step 3 Lessons Learned](report/PHASE12_STEP3B_IMPLEMENTATION_LESSONS_LEARNED.md) |
-| **Refresh window ≥ 2 × bucket width** | `ca_weather_weekly` required 21-day `start_offset` | [Step 3 Lessons Learned](report/PHASE12_STEP3B_IMPLEMENTATION_LESSONS_LEARNED.md) |
+| **CA object type is `relkind='v'`** | `COMMENT ON MATERIALIZED VIEW` fails; use `COMMENT ON VIEW` | [Step 3 Lessons Learned](../../../archive/phase12/reports/PHASE12_STEP3B_IMPLEMENTATION_LESSONS_LEARNED.md) |
+| **Refresh window ≥ 2 × bucket width** | `ca_weather_weekly` required 21-day `start_offset` | [Step 3 Lessons Learned](../../../archive/phase12/reports/PHASE12_STEP3B_IMPLEMENTATION_LESSONS_LEARNED.md) |
 | **Historical CDD needs manual CA backfill** | `WITH NO DATA` + `now()`-relative policies skip history | [Step 3C](report/PHASE12_STEP3C_CONTINUOUS_AGGREGATE_VALIDATION_REPORT.md) |
-| **`shared_preload_libraries` gap** | Extension enablement required preload config | [ADR-001](adr/ADR-001-timescaledb-extension-enablement.md) |
-| **Composite PK preserves UUID APIs** | `WHERE id = :id` unchanged; zero repository impact | [ADR-002](adr/ADR-002-hypertable-primary-key-conversion-strategy.md) |
+| **`shared_preload_libraries` gap** | Extension enablement required preload config | [ADR-001](../../../adr/ADR-001-timescaledb-extension-enablement.md) |
+| **Composite PK preserves UUID APIs** | `WHERE id = :id` unchanged; zero repository impact | [ADR-002](../../../adr/ADR-002-hypertable-primary-key-conversion-strategy.md) |
 | **Retention on logical CA names** | `add_retention_policy('ca_sensor_daily', ...)` is official API | [Step 4B](report/PHASE12_STEP4B_RETENTION_IMPLEMENTATION_REPORT.md) |
 | **Interval normalisation** | `24 months` stored as `2 years` in job config | [Step 4C](report/PHASE12_STEP4C_RETENTION_RUNTIME_VALIDATION_REPORT.md) |
 | **CDD as single validation corpus** | All benchmarks and validations use identical deterministic data | [CDD Architecture](report/PHASE12_STEP2CA_CANONICAL_DEVELOPMENT_DATASET_ARCHITECTURE.md) |
@@ -851,7 +851,7 @@ flowchart TB
     style ai fill:#c8e6c9,stroke:#2e7d32
 ```
 
-**No persistence redesign is expected.** Phase 13 introduces Feature Store schema and extraction pipelines that **consume** Phase 12 outputs. Future enhancements (archive pipeline, CA compression, `cdd-benchmark` profile) extend the stack without replacing it. See [ADR-005 §9 Future Considerations](adr/ADR-005-timescaledb-retention-policy-strategy.md).
+**No persistence redesign is expected.** Phase 13 introduces Feature Store schema and extraction pipelines that **consume** Phase 12 outputs. Future enhancements (archive pipeline, CA compression, `cdd-benchmark` profile) extend the stack without replacing it. See [ADR-005 §9 Future Considerations](../../../adr/ADR-005-timescaledb-retention-policy-strategy.md).
 
 ---
 
@@ -861,18 +861,18 @@ flowchart TB
 
 | Topic | Primary Reference |
 |---|---|
-| Extension enablement | [ADR-001](adr/ADR-001-timescaledb-extension-enablement.md) |
-| Hypertables & composite PKs | [ADR-002](adr/ADR-002-hypertable-primary-key-conversion-strategy.md) |
-| Compression policies | [ADR-003](adr/ADR-003-timescaledb-compression-policy-strategy.md) |
-| Continuous aggregates | [ADR-004](adr/ADR-004-timescaledb-continuous-aggregate-strategy.md) |
-| Retention & lifecycle | [ADR-005](adr/ADR-005-timescaledb-retention-policy-strategy.md) |
+| Extension enablement | [ADR-001](../../../adr/ADR-001-timescaledb-extension-enablement.md) |
+| Hypertables & composite PKs | [ADR-002](../../../adr/ADR-002-hypertable-primary-key-conversion-strategy.md) |
+| Compression policies | [ADR-003](../../../adr/ADR-003-timescaledb-compression-policy-strategy.md) |
+| Continuous aggregates | [ADR-004](../../../adr/ADR-004-timescaledb-continuous-aggregate-strategy.md) |
+| Retention & lifecycle | [ADR-005](../../../adr/ADR-005-timescaledb-retention-policy-strategy.md) |
 
 ### Handbooks
 
 | Topic | Primary Reference |
 |---|---|
-| Step 1 foundation (hypertables, principles) | [10-phase12-step1-foundation-handbook.md](10-phase12-step1-foundation-handbook.md) |
-| Step 3 analytical layer (CAs, refresh) | [11-phase12-analytical-platform-handbook.md](11-phase12-analytical-platform-handbook.md) |
+| Step 1 foundation (hypertables, principles) | [step1-foundation-handbook.md](step1-foundation-handbook.md) |
+| Step 3 analytical layer (CAs, refresh) | [analytical-platform-handbook.md](analytical-platform-handbook.md) |
 | **Complete Phase 12 reference** | **This document** |
 
 ### Architecture Assessments
@@ -912,7 +912,7 @@ flowchart TB
 |---|---|
 | CDD architecture | [PHASE12_STEP2CA_CANONICAL_DEVELOPMENT_DATASET_ARCHITECTURE.md](report/PHASE12_STEP2CA_CANONICAL_DEVELOPMENT_DATASET_ARCHITECTURE.md) |
 | CDD generation guide | [backend/app/cdd/README.md](../backend/app/cdd/README.md) |
-| CA implementation lessons | [PHASE12_STEP3B_IMPLEMENTATION_LESSONS_LEARNED.md](report/PHASE12_STEP3B_IMPLEMENTATION_LESSONS_LEARNED.md) |
+| CA implementation lessons | [PHASE12_STEP3B_IMPLEMENTATION_LESSONS_LEARNED.md](../../../archive/phase12/reports/PHASE12_STEP3B_IMPLEMENTATION_LESSONS_LEARNED.md) |
 | Decision register | [PHASE12_DECISION_REGISTER.md](report/PHASE12_DECISION_REGISTER.md) |
 
 ### Alembic Migrations
@@ -940,4 +940,4 @@ All capabilities are validated against CDD v1.0.0, governed by five ADRs, and im
 
 ---
 
-*12-phase12-complete-architecture-handbook.md v1.0 — 2026-06-30 — Phase 12 Complete*
+*complete-architecture-handbook.md v1.0 — 2026-06-30 — Phase 12 Complete*

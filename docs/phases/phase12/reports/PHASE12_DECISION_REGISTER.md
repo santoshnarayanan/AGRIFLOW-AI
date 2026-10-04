@@ -4,7 +4,7 @@
 **Version:** 1.1  
 **Phase:** 12 — TimescaleDB Time-Series Foundation  
 **Status:** Active  
-**Governance Reference:** `docs/report/PHASE12_STEP1A_INFRASTRUCTURE_ASSESSMENT.md` v1.3
+**Governance Reference:** `../../../archive/phase12/reports/PHASE12_STEP1A_INFRASTRUCTURE_ASSESSMENT.md` v1.3
 
 This register records formal decisions made during Phase 12. Decisions affecting API contracts, domain models, repository interfaces, service interfaces, primary key strategy, or database architecture require an **Architecture Decision Review (ADR)** per Step 1A Section 2.4 before implementation.
 
