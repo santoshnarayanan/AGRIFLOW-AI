@@ -271,3 +271,131 @@ class ProcessingLevel(str, enum.Enum):
     L2A = "L2A"
     ARD = "ARD"
     DERIVED = "DERIVED"
+
+
+# ── Phase 13: Enterprise Decision & Recommendation Platform ───────────────────
+
+
+class RecommendationType(str, enum.Enum):
+    """
+    Category of agricultural recommendation produced by the decision engine.
+
+    Placed in this shared module for cross-domain reuse across:
+    - Recommendation domain  (Phase 13 — primary discriminator)
+    - Alert domain           (Phase 13 — alert-to-recommendation linkage)
+    - GaaS Farm Copilot      (future — recommendation-aware natural language)
+    - Digital Twin           (future — action feed)
+
+    Type-specific engine mappings:
+    - IRRIGATION          FAO-56 water balance + soil moisture sensor signals
+    - DISEASE_TREATMENT   Disease Risk Scoring Engine (satellite NDVI + weather humidity)
+    - FERTILIZATION       Soil profile NPK gap analysis + yield history
+    - HARVEST_TIMING      Spectral index trend + crop growth stage model
+    - SOIL_AMENDMENT      Long-term soil profile degradation signal
+    - GENERAL             Cross-domain advisory not fitting a specific category
+    """
+
+    IRRIGATION = "IRRIGATION"
+    DISEASE_TREATMENT = "DISEASE_TREATMENT"
+    FERTILIZATION = "FERTILIZATION"
+    HARVEST_TIMING = "HARVEST_TIMING"
+    SOIL_AMENDMENT = "SOIL_AMENDMENT"
+    GENERAL = "GENERAL"
+
+
+class RecommendationStatus(str, enum.Enum):
+    """
+    Lifecycle state of a Recommendation.
+
+    Transitions:
+        PENDING → ACTIVE → ACKNOWLEDGED → SUPERSEDED | EXPIRED | DISMISSED
+
+    Used by:
+    - Recommendation domain  (Phase 13 — lifecycle management)
+    - Alert domain           (Phase 13 — alert resolution workflow)
+    - Operational Timeline   (future — decision audit trail)
+    """
+
+    PENDING = "PENDING"
+    ACTIVE = "ACTIVE"
+    ACKNOWLEDGED = "ACKNOWLEDGED"
+    SUPERSEDED = "SUPERSEDED"
+    EXPIRED = "EXPIRED"
+    DISMISSED = "DISMISSED"
+
+
+class RecommendationPriority(str, enum.Enum):
+    """
+    Urgency classification of a Recommendation.
+
+    Maps to Alert severity when an alert is derived from a recommendation:
+    - CRITICAL → AlertSeverity.CRITICAL
+    - HIGH     → AlertSeverity.HIGH
+    - MEDIUM   → AlertSeverity.WARNING
+    - LOW      → AlertSeverity.INFO
+
+    Used by:
+    - Recommendation domain  (Phase 13)
+    - Alert domain           (Phase 13 — severity derivation)
+    - Farm Copilot           (future — priority-aware response ordering)
+    """
+
+    LOW = "LOW"
+    MEDIUM = "MEDIUM"
+    HIGH = "HIGH"
+    CRITICAL = "CRITICAL"
+
+
+class AlertType(str, enum.Enum):
+    """
+    Type of condition that triggered a field or crop alert.
+
+    Placed in this shared module for cross-domain reuse across:
+    - Alert domain      (Phase 13 — primary discriminator)
+    - SensorAlert       (future — threshold-rule registry)
+    - Digital Twin      (future — real-time field state alert feed)
+    - GaaS Farm Copilot (future — alert-aware conversational reasoning)
+
+    Alert-specific data source mapping:
+    - SOIL_MOISTURE_LOW / HIGH  → SensorReading (SOIL_MOISTURE)
+    - DISEASE_RISK_HIGH         → DiseaseObservation + SatelliteObservation (NDVI)
+    - DISEASE_OUTBREAK          → DiseaseObservation (CRITICAL severity)
+    - FROST_RISK / HEAT_STRESS  → WeatherRecord (temperature_min_c / temperature_max_c)
+    - DROUGHT_STRESS            → WeatherRecord (rainfall) + SatelliteObservation (NDWI)
+    - SENSOR_ANOMALY            → SensorReading (out-of-range or device health)
+    - IRRIGATION_OVERDUE        → IrrigationEvent (last event age) + SensorReading (SOIL_MOISTURE)
+    - HARVEST_WINDOW_OPEN       → SatelliteObservation (NDVI peak) + Crop (growth_stage)
+    """
+
+    SOIL_MOISTURE_LOW = "SOIL_MOISTURE_LOW"
+    SOIL_MOISTURE_HIGH = "SOIL_MOISTURE_HIGH"
+    DISEASE_RISK_HIGH = "DISEASE_RISK_HIGH"
+    DISEASE_OUTBREAK = "DISEASE_OUTBREAK"
+    FROST_RISK = "FROST_RISK"
+    HEAT_STRESS = "HEAT_STRESS"
+    DROUGHT_STRESS = "DROUGHT_STRESS"
+    SENSOR_ANOMALY = "SENSOR_ANOMALY"
+    IRRIGATION_OVERDUE = "IRRIGATION_OVERDUE"
+    HARVEST_WINDOW_OPEN = "HARVEST_WINDOW_OPEN"
+
+
+class AlertSeverity(str, enum.Enum):
+    """
+    Severity level of a field or crop alert.
+
+    Severity definitions (mirrors RecommendationPriority mapping):
+    - INFO      Informational; no immediate action required
+    - WARNING   Attention warranted; monitor closely
+    - HIGH      Significant risk; action recommended within 24 hours
+    - CRITICAL  Urgent; immediate intervention required
+
+    Used by:
+    - Alert domain  (Phase 13 — primary severity classifier)
+    - SensorAlert   (future — threshold rule severity)
+    - Digital Twin  (future — field health state feed)
+    """
+
+    INFO = "INFO"
+    WARNING = "WARNING"
+    HIGH = "HIGH"
+    CRITICAL = "CRITICAL"

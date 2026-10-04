@@ -28,6 +28,7 @@ from app.db.base import AuditableModel, Base
 if TYPE_CHECKING:
     from app.db.models.disease_observation import DiseaseObservation
     from app.db.models.field import Field
+    from app.db.models.recommendation import Recommendation
     from app.db.models.yield_record import YieldRecord
 
 
@@ -137,6 +138,11 @@ class Crop(AuditableModel, Base):
         back_populates="crop",
         cascade="all, delete-orphan",
         order_by="desc(DiseaseObservation.observed_at)",
+    )
+    recommendations: Mapped[list[Recommendation]] = relationship(
+        back_populates="crop",
+        cascade="all, delete-orphan",
+        order_by="desc(Recommendation.created_at)",
     )
 
     def __repr__(self) -> str:

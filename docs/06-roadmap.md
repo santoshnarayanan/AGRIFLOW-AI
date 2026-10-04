@@ -725,24 +725,84 @@ Farm
 
 # Phase 13 – Enterprise Decision & Recommendation Platform
 
-Status: 🔜 Planned (Current Phase)
+Status: ✅ Complete
 
 ## Primary Objective
 
 Build the operational intelligence layer that transforms AGRIFLOW-AI from a data platform into a decision-support platform.
 
-## Major Deliverables
+## Delivered
 
-* Enterprise Ontology
-* Recommendation Domain
-* Alert Domain
-* Task Domain
-* Decision Services
-* Operational Timeline
-* Recommendation APIs
-* Recommendation persistence
-* Business Event Catalog
-* AI-ready semantic layer
+* Phase 13 vocabulary added to `app/core/enums.py`: `RecommendationType` (6 values), `RecommendationStatus` (6 values), `RecommendationPriority` (4 values), `AlertType` (10 values), `AlertSeverity` (4 values)
+* **Farm API completed** (Phase 1 model, Phase 13 API): `FarmCreate`, `FarmUpdate`, `FarmResponse` schemas; `FarmService` with `farm_code` uniqueness validation; `farms` router (POST/GET list/GET single/PATCH/DELETE); `FarmServiceDep` DI registration; `get_by_farm_code` added to `FarmRepository`
+* **Recommendation Domain** — full vertical slice: ORM model (`recommendations` table), Alembic migration `g1h2i3j4k5l6`, Pydantic schemas, `RecommendationRepository` (list by field/status/type/crop), `RecommendationService` (field validation, crop-field mismatch guard, confidence validation, auto-set `acknowledged_at`), `recommendations` router (5 endpoints), `RecommendationServiceDep` DI registration
+* **Alert Domain** — full vertical slice: ORM model (`alerts` table), Alembic migration `h2i3j4k5l6m7`, Pydantic schemas, `AlertRepository` (list active, by severity, by type), `AlertService` (field validation, recommendation-field guard, future timestamp rejection, auto-set `acknowledged_at`), `alerts` router (6 endpoints including `/active`), `AlertServiceDep` DI registration
+* `Field` and `Crop` ORM models updated with `recommendations` and `alerts` relationships
+* `models/__init__.py`, `services/__init__.py`, `api/deps.py`, `api/router.py` all updated
+
+## Delivered APIs
+
+```
+# Farm (Phase 1 model — Phase 13 API completion)
+POST   /api/v1/farms
+GET    /api/v1/farms
+GET    /api/v1/farms/{farm_id}
+PATCH  /api/v1/farms/{farm_id}
+DELETE /api/v1/farms/{farm_id}
+
+# Recommendation
+POST   /api/v1/fields/{field_id}/recommendations
+GET    /api/v1/fields/{field_id}/recommendations
+GET    /api/v1/recommendations/{recommendation_id}
+PATCH  /api/v1/recommendations/{recommendation_id}
+DELETE /api/v1/recommendations/{recommendation_id}
+
+# Alert
+POST   /api/v1/fields/{field_id}/alerts
+GET    /api/v1/fields/{field_id}/alerts
+GET    /api/v1/fields/{field_id}/alerts/active
+GET    /api/v1/alerts/{alert_id}
+PATCH  /api/v1/alerts/{alert_id}
+DELETE /api/v1/alerts/{alert_id}
+```
+
+## Architectural Decisions (ADR-013 series)
+
+* Recommendations anchor to `field_id` as primary FK; `crop_id` is nullable for crop-scoped context (HARVEST_TIMING, DISEASE_TREATMENT) (ADR-013-01)
+* Recommendation lifecycle: PENDING → ACTIVE → ACKNOWLEDGED → SUPERSEDED | EXPIRED | DISMISSED (ADR-013-02)
+* `acknowledged_at` is auto-set by service when status transitions to ACKNOWLEDGED (ADR-013-03)
+* `confidence_score` in [0.000, 1.000] carries AI engine provenance for MLOps pipelines (ADR-013-04)
+* `engine_version` enables A/B comparison between recommendation engine versions (ADR-013-05)
+* Alerts can be standalone (sensor threshold crossing) or derived from a Recommendation via nullable `recommendation_id` (ADR-013-06)
+* `triggered_at` is the Alert primary time key — represents condition detection time, not row creation time (ADR-013-07)
+* Alert acknowledgement sets `acknowledged_at` automatically at the service layer; acknowledged alerts are retained for audit history (ADR-013-08)
+* PostgreSQL ENUM lifecycle pattern from ADR-008-01 applied to all 5 new enum types (ADR-013-09)
+* Farm API completed in Phase 13 rather than Phase 1 to respect the original sequencing discipline (ADR-013-10)
+
+## Current Domain Hierarchy (Post Phase 13)
+
+```text
+Farm                                         (PostgreSQL — relational)
+└── Field                                    (PostgreSQL — relational)
+     ├── Crop                                (PostgreSQL — relational)
+     │    ├── YieldRecord                   (Hypertable)
+     │    └── DiseaseObservation            (Hypertable)
+     ├── SoilProfile         (1:1)          (PostgreSQL — relational)
+     ├── WeatherRecord                      (Hypertable)
+     ├── SensorReading       (append-only)  (Hypertable)
+     ├── IrrigationEvent     (mutable)      (Hypertable)
+     ├── SatelliteObservation               (Hypertable)
+     ├── Recommendation      (Phase 13) ✅  (PostgreSQL — relational)
+     └── Alert               (Phase 13) ✅  (PostgreSQL — relational)
+```
+
+## Alembic Migration Chain (Post Phase 13)
+
+```
+f6a7b8c9d0e1 (Phase 12 retention — previous HEAD)
+ → g1h2i3j4k5l6 (Phase 13 recommendations table)
+ → h2i3j4k5l6m7 (Phase 13 alerts table) ← HEAD
+```
 
 ## Business Outcome
 
@@ -872,7 +932,7 @@ AGRIFLOW-AI evolves from a farm management system into a comprehensive Agricultu
 
 ## Upcoming
 
-🔜 Phase 13 – Enterprise Decision & Recommendation Platform
+✅ Phase 13 – Enterprise Decision & Recommendation Platform
 
 🔜 Phase 14 – Event-Driven Enterprise Platform
 

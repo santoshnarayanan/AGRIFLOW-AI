@@ -1,8 +1,25 @@
+from .alert import (
+    AlertNotFoundError,
+    AlertRecommendationMismatchError,
+    AlertService,
+    InvalidAlertError,
+)
 from .crop import (
     CropNotFoundError,
     CropService,
     InvalidHarvestDateError,
     InvalidYieldDataError,
+)
+from .farm import (
+    DuplicateFarmCodeError,
+    FarmNotFoundError,
+    FarmService,
+)
+from .recommendation import (
+    CropFieldMismatchError,
+    InvalidRecommendationError,
+    RecommendationNotFoundError,
+    RecommendationService,
 )
 from .disease_observation import (
     DiseaseObservationNotFoundError,
@@ -49,18 +66,26 @@ from .yield_record import (
 )
 
 __all__ = [
+    "AlertNotFoundError",
+    "AlertRecommendationMismatchError",
+    "AlertService",
+    "CropFieldMismatchError",
     "CropNotFoundError",
     "CropService",
     "DiseaseObservationNotFoundError",
     "DiseaseObservationService",
+    "DuplicateFarmCodeError",
     "DuplicateFieldNameError",
     "DuplicateSoilProfileError",
     "FarmNotFoundError",
+    "FarmService",
     "FieldNotFoundError",
     "FieldService",
+    "InvalidAlertError",
     "InvalidDiseaseObservationError",
     "InvalidHarvestDateError",
     "InvalidIrrigationTimestampError",
+    "InvalidRecommendationError",
     "InvalidSatelliteObservationError",
     "InvalidSensorTimestampError",
     "InvalidTemperatureRangeError",
@@ -69,6 +94,8 @@ __all__ = [
     "InvalidYieldDataError",
     "IrrigationEventNotFoundError",
     "IrrigationEventService",
+    "RecommendationNotFoundError",
+    "RecommendationService",
     "SatelliteObservationNotFoundError",
     "SatelliteObservationService",
     "SensorReadingNotFoundError",
