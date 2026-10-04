@@ -100,7 +100,7 @@ def upgrade() -> None:
         # Classification
         sa.Column(
             "alert_type",
-            sa.Enum(
+            postgresql.ENUM(
                 "SOIL_MOISTURE_LOW",
                 "SOIL_MOISTURE_HIGH",
                 "DISEASE_RISK_HIGH",
@@ -119,7 +119,7 @@ def upgrade() -> None:
         ),
         sa.Column(
             "severity",
-            sa.Enum(
+            postgresql.ENUM(
                 "INFO",
                 "WARNING",
                 "HIGH",

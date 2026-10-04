@@ -101,7 +101,7 @@ def upgrade() -> None:
         # Classification
         sa.Column(
             "recommendation_type",
-            sa.Enum(
+            postgresql.ENUM(
                 "IRRIGATION",
                 "DISEASE_TREATMENT",
                 "FERTILIZATION",
@@ -116,7 +116,7 @@ def upgrade() -> None:
         ),
         sa.Column(
             "status",
-            sa.Enum(
+            postgresql.ENUM(
                 "PENDING",
                 "ACTIVE",
                 "ACKNOWLEDGED",
@@ -132,7 +132,7 @@ def upgrade() -> None:
         ),
         sa.Column(
             "priority",
-            sa.Enum(
+            postgresql.ENUM(
                 "LOW",
                 "MEDIUM",
                 "HIGH",
