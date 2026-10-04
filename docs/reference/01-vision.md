@@ -137,7 +137,7 @@ flowchart TB
         DS3["Soil & Weather Intelligence"]
         DS4["Sensor Telemetry"]
         DS5["Irrigation Events"]
-        DS6["Satellite Imagery · Future"]
+        DS6["Satellite Imagery"]
     end
 
     subgraph ControlTower["AGRIFLOW-AI Control Tower"]
@@ -305,7 +305,7 @@ The goal is to provide expert-level decision support accessible to every farm.
 
 # Core Intelligence Domains
 
-AGRIFLOW-AI expands across multiple intelligence domains. Implemented domains include Farm, Field, Crop, Soil, Weather, Sensor, Irrigation, and Yield Intelligence. Disease, Satellite, and AI Decision Intelligence are on the roadmap.
+AGRIFLOW-AI expands across multiple intelligence domains. Through Phase 13, all core intelligence domains are implemented: Farm, Field, Crop, Soil, Weather, Irrigation, Sensor, Yield, Disease, and Satellite Intelligence, topped by the AI Decision Intelligence layer that delivers structured recommendations and real-time alerts to operators.
 
 ## Farm Intelligence
 
@@ -333,11 +333,15 @@ Optimizing water usage and irrigation scheduling.
 
 ## Sensor Intelligence
 
-Utilizing IoT and real-time environmental monitoring.
+Utilizing IoT and real-time environmental monitoring. SensorReading telemetry (Phase 7) feeds soil moisture, temperature, EC, and leaf wetness signals into the alert and recommendation engines.
+
+## Disease Intelligence
+
+Tracking biological risk events across crop cycles. DiseaseObservation records (Phase 10) capture disease name, severity, affected area, and diagnosis method — the ground-truth training data for the Phase 13 disease risk alert engine.
 
 ## Satellite Intelligence
 
-Leveraging remote sensing and geospatial analytics.
+Leveraging remote sensing and geospatial analytics. SatelliteObservation records (Phase 11) store derived spectral indices — NDVI, EVI, NDWI, NDRE, LAI — from seven satellite providers including Sentinel-2 and Landsat. These indices drive canopy health monitoring, water stress detection, and early disease risk signals for the recommendation engine.
 
 ## Yield Intelligence
 
@@ -345,7 +349,7 @@ Forecasting production and improving harvest planning. YieldRecord observations 
 
 ## AI Decision Intelligence
 
-Generating predictive recommendations and optimization strategies.
+Translating data signals into actionable decisions through the Recommendation and Alert engines (Phase 13). The platform issues structured recommendations across six categories (Irrigation, Disease Treatment, Fertilization, Harvest Timing, Soil Amendment, General) with confidence scores and validity windows. The alert engine monitors ten condition types — from soil moisture thresholds and disease risk scores to frost risk and harvest windows — with a four-tier severity model (INFO / WARNING / HIGH / CRITICAL) and a full operator acknowledgement lifecycle.
 
 ---
 
