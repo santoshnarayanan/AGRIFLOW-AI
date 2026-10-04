@@ -4,7 +4,7 @@
 
 AGRIFLOW-AI is an Agricultural Intelligence Platform built using a layered architecture that emphasizes maintainability, scalability, separation of concerns, and domain-driven development.
 
-The platform currently implements Farm, Field, Crop, Soil Intelligence, Weather Intelligence, Sensor Telemetry, Irrigation Management, Yield Intelligence, Disease Observation, and Satellite Observation domains across eleven completed phases, following a Clean Architecture approach with clearly separated responsibilities across API, Service, Repository, and Database layers.
+The platform currently implements Farm, Field, Crop, Soil Intelligence, Weather Intelligence, Sensor Telemetry, Irrigation Management, Yield Intelligence, Disease Observation, Satellite Observation, and AI Decision Intelligence (Recommendation + Alert) domains across thirteen completed phases, following a Clean Architecture approach with clearly separated responsibilities across API, Service, Repository, and Database layers.
 
 ---
 
@@ -65,7 +65,7 @@ PostgreSQL
 
 # Current Domain Hierarchy
 
-The authoritative domain hierarchy reflects all implemented entities through Phase 11:
+The authoritative domain hierarchy reflects all implemented entities through Phase 13:
 
 ```text
 Farm
@@ -77,7 +77,9 @@ Farm
       ├── WeatherRecord
       ├── SensorReading             (append-only telemetry)
       ├── IrrigationEvent           (mutable operational events)
-      └── SatelliteObservation      (mutable Earth observation — field-anchored)
+      ├── SatelliteObservation      (mutable Earth observation — field-anchored)
+      ├── Recommendation            (mutable, field-anchored, nullable crop context — Phase 13)
+      └── Alert                     (mutable, field-anchored, nullable crop context — Phase 13)
 ```
 
 ### Implemented Domains
@@ -92,13 +94,15 @@ Farm
 * Yield Intelligence
 * Disease Observation
 * Satellite Observation
+* AI Decision Intelligence — Recommendation Engine (Phase 13)
+* AI Decision Intelligence — Alert Engine (Phase 13)
 
 ### Planned AI Layer
 
-* Yield Prediction Engine (Phase 12)
-* Disease Risk Scoring Engine (Phase 13)
-* Irrigation Recommendation Engine (Phase 14)
+* Yield Prediction Engine (Phase 14)
+* Irrigation Optimization Engine (Phase 14)
 * Farm Intelligence Platform — Digital Twin + GaaS Farm Copilot (Phase 15)
+* Event-Driven Architecture — Redpanda integration (Phase 14)
 
 ---
 
@@ -110,9 +114,12 @@ backend/
 │   ├── api
 │   │   ├── crops/
 │   │   ├── disease_observations/
+│   │   ├── farms/
 │   │   ├── satellite_observations/
 │   │   ├── fields/
 │   │   ├── irrigation_events/
+│   │   ├── recommendations/
+│   │   ├── alerts/
 │   │   ├── sensor_readings/
 │   │   ├── soil_profiles/
 │   │   ├── weather_records/
@@ -139,7 +146,10 @@ backend/
 │   │   │   ├── sensor_reading.py
 │   │   │   ├── irrigation_event.py
 │   │   │   ├── disease_observation.py
-│   │   │   └── yield_record.py
+│   │   │   ├── yield_record.py
+│   │   │   ├── satellite_observation.py
+│   │   │   ├── recommendation.py
+│   │   │   └── alert.py
 │   │   ├── repositories/
 │   │   │   ├── base.py
 │   │   │   ├── farm.py
@@ -150,14 +160,21 @@ backend/
 │   │   │   ├── sensor_reading.py
 │   │   │   ├── irrigation_event.py
 │   │   │   ├── disease_observation.py
-│   │   │   └── yield_record.py
+│   │   │   ├── yield_record.py
+│   │   │   ├── satellite_observation.py
+│   │   │   ├── recommendation.py
+│   │   │   └── alert.py
 │   │   └── session/
 │   │
 │   ├── schemas/
 │   │   ├── crop.py
 │   │   ├── disease_observation.py
+│   │   ├── farm.py
 │   │   ├── field.py
 │   │   ├── irrigation_event.py
+│   │   ├── recommendation.py
+│   │   ├── alert.py
+│   │   ├── satellite_observation.py
 │   │   ├── sensor_reading.py
 │   │   ├── soil_profile.py
 │   │   ├── weather_record.py
@@ -166,8 +183,12 @@ backend/
 │   ├── services/
 │   │   ├── crop.py
 │   │   ├── disease_observation.py
+│   │   ├── farm.py
 │   │   ├── field.py
 │   │   ├── irrigation_event.py
+│   │   ├── recommendation.py
+│   │   ├── alert.py
+│   │   ├── satellite_observation.py
 │   │   ├── sensor_reading.py
 │   │   ├── soil_profile.py
 │   │   ├── weather_record.py
@@ -199,6 +220,7 @@ Responsibilities:
 Examples:
 
 ```text
+app/api/farms
 app/api/fields
 app/api/crops
 app/api/soil_profiles
@@ -207,6 +229,9 @@ app/api/sensor_readings
 app/api/irrigation_events
 app/api/yield_records
 app/api/disease_observations
+app/api/satellite_observations
+app/api/recommendations
+app/api/alerts
 ```
 
 The API layer should not contain business logic.
@@ -224,6 +249,7 @@ Responsibilities:
 Examples:
 
 ```text
+FarmCreate / FarmUpdate / FarmResponse
 FieldCreate / FieldUpdate / FieldResponse
 CropCreate / CropUpdate / CropResponse
 SoilProfileCreate / SoilProfileUpdate / SoilProfileResponse
@@ -232,6 +258,9 @@ SensorReadingCreate / SensorReadingResponse  (no Update — immutable)
 IrrigationEventCreate / IrrigationEventUpdate / IrrigationEventResponse
 YieldRecordCreate / YieldRecordUpdate / YieldRecordResponse
 CreateDiseaseObservationRequest / UpdateDiseaseObservationRequest / DiseaseObservationResponse
+SatelliteObservationCreate / SatelliteObservationUpdate / SatelliteObservationResponse
+RecommendationCreate / RecommendationUpdate / RecommendationResponse
+AlertCreate / AlertUpdate / AlertResponse
 ```
 
 The schema layer defines what data enters and exits the application.
@@ -250,6 +279,7 @@ Responsibilities:
 Examples:
 
 ```text
+FarmService
 FieldService
 CropService
 SoilProfileService
@@ -258,6 +288,9 @@ SensorReadingService
 IrrigationEventService
 YieldRecordService
 DiseaseObservationService
+SatelliteObservationService
+RecommendationService
+AlertService
 ```
 
 Business rules belong here. Representative examples:
@@ -275,6 +308,13 @@ Business rules belong here. Representative examples:
 * `area_harvested_ha` and `test_weight_kg_hl`, when supplied, must be > 0 (YieldRecord)
 * Crop must exist before DiseaseObservation creation; `field_id` resolved server-side from crop (DiseaseObservation)
 * `observed_at` must be timezone-aware and not in the future (DiseaseObservation)
+* `observed_at` must be timezone-aware and not in the future (SatelliteObservation)
+* `cloud_cover_percent`, when supplied, must be in [0, 100] (SatelliteObservation)
+* Field must exist before Recommendation creation; `crop_id`, when supplied, must belong to that field (Recommendation)
+* `confidence_score` must be in [0.000, 1.000] (Recommendation)
+* `valid_until`, when supplied, must be after `valid_from` (Recommendation)
+* `recommendation_id`, when supplied on an Alert, must belong to the same field (Alert)
+* `source_value` and `threshold_value` are machine-supplied context columns — not validated against each other at service layer
 
 ---
 
@@ -299,6 +339,9 @@ SensorReadingRepository
 IrrigationEventRepository
 YieldRecordRepository
 DiseaseObservationRepository
+SatelliteObservationRepository
+RecommendationRepository
+AlertRepository
 ```
 
 Repositories should not contain business rules.
@@ -325,6 +368,9 @@ SensorReading
 IrrigationEvent
 YieldRecord
 DiseaseObservation
+SatelliteObservation
+Recommendation
+Alert
 ```
 
 Models represent PostgreSQL tables.
@@ -466,9 +512,11 @@ irrigation_events
 yield_records
 disease_observations
 satellite_observations
+recommendations
+alerts
 ```
 
-Current migration head: `a1b2c3d4e5f6_create_satellite_observations_table`
+Current migration head: `h2i3j4k5l6m7_create_alerts_table` (Phase 13)
 
 Relationships:
 
@@ -484,6 +532,9 @@ Field (N)
    ├────────────► WeatherRecord (N)
    ├────────────► SensorReading (N, append-only)
    ├────────────► IrrigationEvent (N, mutable)
+   ├────────────► SatelliteObservation (N, mutable — field-level EO)
+   ├────────────► Recommendation (N, mutable — nullable crop context)
+   ├────────────► Alert (N, mutable — nullable crop + recommendation context)
    │
    └────────────► SoilProfile (1)
 ```
@@ -503,17 +554,21 @@ AGRIFLOW-AI uses Alembic for schema evolution.
 Migration sequence:
 
 ```text
-001_create_farms_table
-002_create_fields_table
-003_create_crops_table
-004_create_weather_records_table
-13aabbe35d51_add_soil_profiles_table
-005_add_p1_ai_readiness_columns
-006_create_sensor_readings_table
-235a51cdf901_create_irrigation_events_table
-b7e2a9f4c8d3_create_yield_records_table
-d3e7b2a9f1c4_create_disease_observations_table
-a1b2c3d4e5f6_create_satellite_observations_table
+001_create_farms_table                                    (Phase 1)
+002_create_fields_table                                   (Phase 2)
+003_create_crops_table                                    (Phase 3)
+004_create_weather_records_table                          (Phase 5)
+13aabbe35d51_add_soil_profiles_table                      (Phase 4)
+005_add_p1_ai_readiness_columns                           (Phase 6)
+006_create_sensor_readings_table                          (Phase 7)
+235a51cdf901_create_irrigation_events_table               (Phase 8)
+b7e2a9f4c8d3_create_yield_records_table                   (Phase 9)
+d3e7b2a9f1c4_create_disease_observations_table            (Phase 10)
+a1b2c3d4e5f6_create_satellite_observations_table          (Phase 11)
+c9d8e7f6a5b4_timescaledb_hypertables_and_aggregates       (Phase 12)
+f6a7b8c9d0e1_timescaledb_retention_policies               (Phase 12)
+g1h2i3j4k5l6_create_recommendations_table                 (Phase 13)
+h2i3j4k5l6m7_create_alerts_table                          (Phase 13)  ← HEAD
 ```
 
 Migration flow:
@@ -551,6 +606,14 @@ All paths are prefixed with `/api/v1`.
 ## Version
 
 * GET /api/v1/version
+
+## Farms
+
+* POST   /api/v1/farms
+* GET    /api/v1/farms
+* GET    /api/v1/farms/{farm_id}
+* PATCH  /api/v1/farms/{farm_id}
+* DELETE /api/v1/farms/{farm_id}
 
 ## Fields
 
@@ -651,6 +714,38 @@ Domain exception mapping for Satellite Observation endpoints:
 | `SatelliteObservationNotFoundError` | 404 |
 | `InvalidSatelliteObservationError` | 400 |
 
+## Recommendations
+
+* POST   /api/v1/fields/{field_id}/recommendations
+* GET    /api/v1/fields/{field_id}/recommendations
+* GET    /api/v1/recommendations/{recommendation_id}
+* PATCH  /api/v1/recommendations/{recommendation_id}
+* DELETE /api/v1/recommendations/{recommendation_id}
+
+Domain exception mapping for Recommendation endpoints:
+
+| Domain Exception | HTTP Status |
+| ---------------- | ----------- |
+| `FieldNotFoundError` | 404 |
+| `RecommendationNotFoundError` | 404 |
+| `InvalidRecommendationError` | 400 |
+
+## Alerts
+
+* POST   /api/v1/fields/{field_id}/alerts
+* GET    /api/v1/fields/{field_id}/alerts
+* GET    /api/v1/alerts/{alert_id}
+* PATCH  /api/v1/alerts/{alert_id}
+* DELETE /api/v1/alerts/{alert_id}
+
+Domain exception mapping for Alert endpoints:
+
+| Domain Exception | HTTP Status |
+| ---------------- | ----------- |
+| `FieldNotFoundError` | 404 |
+| `AlertNotFoundError` | 404 |
+| `InvalidAlertError` | 400 |
+
 ---
 
 # Current Platform Status
@@ -670,8 +765,10 @@ Domain exception mapping for Satellite Observation endpoints:
 | Yield Intelligence | YieldRecord | Mutable, Crop-anchored grandchild |
 | Disease Observation | DiseaseObservation | Mutable, Crop-anchored grandchild |
 | Satellite Observation | SatelliteObservation | Mutable, Field-anchored |
+| AI Decision Intelligence | Recommendation | Mutable, Field-anchored, nullable crop context; 6 types, 6 statuses, 3 priorities |
+| AI Decision Intelligence | Alert | Mutable, Field-anchored, nullable crop + recommendation context; 10 types, 4 severities |
 
-### Phase 11 Implementation Status
+### Phase 13 Implementation Status
 
 | Status | Detail |
 |---|---|
@@ -689,12 +786,15 @@ Domain exception mapping for Satellite Observation endpoints:
 * Dependency Injection (`app/api/deps.py`)
 * PostgreSQL Integration
 * Alembic Migration Framework
+* TimescaleDB Hypertables + Continuous Aggregates (Phase 12)
 * Shared Enum Module (`app/core/enums.py`)
 * Telemetry Immutability Pattern (SensorReading)
 * Operational Event Mutable Pattern (IrrigationEvent, YieldRecord, DiseaseObservation, SatelliteObservation)
 * Compound Index Strategy (time-series domains)
 * Crop-Anchored Grandchild Pattern (YieldRecord, DiseaseObservation)
 * Field-Anchored Observation Pattern (SatelliteObservation)
+* Decision Layer Pattern — Recommendation + Alert (Phase 13)
+* Alert → Recommendation soft linkage via nullable FK (Phase 13)
 
 ---
 
@@ -787,14 +887,22 @@ Cross-domain enums are placed in `app/core/enums.py` to prevent circular import 
 
 Current shared enums:
 
-| Enum | Domain |
-|---|---|
-| `SensorType` | SensorReading |
-| `IrrigationMethod` | IrrigationEvent |
-| `WaterSource` | IrrigationEvent |
-| `YieldMeasurementMethod` | YieldRecord, Yield Prediction Engine |
-| `DiseaseSeverity` | DiseaseObservation, Disease Risk Scoring Engine |
-| `DiagnosisMethod` | DiseaseObservation, Disease Risk Scoring Engine |
+| Enum | Domain | Phase |
+|---|---|---|
+| `SensorType` | SensorReading | 7 |
+| `IrrigationMethod` | IrrigationEvent | 8 |
+| `WaterSource` | IrrigationEvent | 8 |
+| `YieldMeasurementMethod` | YieldRecord, Yield Prediction Engine | 9 |
+| `DiseaseSeverity` | DiseaseObservation, Alert Engine | 10 |
+| `DiagnosisMethod` | DiseaseObservation | 10 |
+| `SatelliteProvider` | SatelliteObservation | 11 |
+| `SpectralIndex` | SatelliteObservation, AI feature pipelines | 11 |
+| `ProcessingLevel` | SatelliteObservation, AI quality gate | 11 |
+| `RecommendationType` | Recommendation | 13 |
+| `RecommendationStatus` | Recommendation | 13 |
+| `RecommendationPriority` | Recommendation | 13 |
+| `AlertType` | Alert | 13 |
+| `AlertSeverity` | Alert | 13 |
 
 All future cross-domain enumerations should be placed here.
 
@@ -962,6 +1070,14 @@ Key decisions by phase:
 | ADR-010-04 | 10 | `DiseaseObservation` is mutable — PATCH permitted |
 | ADR-010-05 | 10 | `crop_id` immutable after creation |
 | ADR-010-06 | 10 | `DiseaseSeverity` and `DiagnosisMethod` placed in `app/core/enums.py` for cross-domain reuse |
+| ADR-011-01 | 11 | `SatelliteObservation` anchors to `field_id` — satellite overpasses are geographic, not crop-cycle |
+| ADR-011-02 | 11 | `NUMERIC(9,6)` for `index_value` — exact decimal aggregates preferred over `DOUBLE PRECISION` for derived spectral indices |
+| ADR-011-03 | 11 | `processing_level` and `cloud_cover_percent` are AI quality gate columns — baked into schema, not external metadata |
+| ADR-013-01 | 13 | `Recommendation` anchors to `field_id` with nullable `crop_id` (SET NULL on delete) — decision layer is field-level, crop context is optional |
+| ADR-013-02 | 13 | `Alert` anchors to `field_id` with nullable `crop_id` and nullable `recommendation_id` (both SET NULL on delete) — soft linkage preserves alert history |
+| ADR-013-03 | 13 | `triggered_at` on Alert is the event detection time, not the row creation time — mandatory column distinct from `created_at` |
+| ADR-013-04 | 13 | `confidence_score NUMERIC(4,3)` — 3 decimal places sufficient for ML model output; exact arithmetic preferred for threshold comparisons |
+| ADR-013-05 | 13 | `engine_version` on Recommendation — captures model version for training data provenance and reproducibility |
 
 ---
 
@@ -975,13 +1091,15 @@ The following capabilities extend the current layered architecture without requi
 Farm
  └── Field
       ├── Crop
-      │    ├── YieldRecord              ✅ implemented
+      │    ├── YieldRecord              ✅ implemented (Phase 9)
       │    └── DiseaseObservation       ✅ implemented (Phase 10)
-      ├── SoilProfile
-      ├── WeatherRecord
-      ├── SensorReading
-      ├── IrrigationEvent
-      └── SatelliteObservation          ✅ implemented (Phase 11)
+      ├── SoilProfile                   ✅ implemented (Phase 4)
+      ├── WeatherRecord                 ✅ implemented (Phase 5)
+      ├── SensorReading                 ✅ implemented (Phase 7)
+      ├── IrrigationEvent               ✅ implemented (Phase 8)
+      ├── SatelliteObservation          ✅ implemented (Phase 11)
+      ├── Recommendation                ✅ implemented (Phase 13)
+      └── Alert                         ✅ implemented (Phase 13)
 ```
 
 ### PostGIS
@@ -996,7 +1114,7 @@ Domain events (`SensorReadingCreated`, `IrrigationEventCreated`, `YieldRecordCre
 
 `SensorReadingService.create_sensor_reading()` contains a documented extension point (ADR-007-26) for publishing `SensorReadingCreated` events to the Redpanda topic `sensor.readings.created`. Downstream consumers: Digital Twin updater, AI anomaly detector, alert evaluator, CQRS projector.
 
-Similar extension points exist on `YieldRecordService` and `DiseaseObservationService` for the Yield Prediction Engine and Disease Risk Scoring Engine feature pipelines.
+Similar extension points exist on `YieldRecordService`, `DiseaseObservationService`, `RecommendationService`, and `AlertService` for future ML model pipelines.
 
 ### CQRS
 
@@ -1004,16 +1122,18 @@ Write side (`create`, `update`, `delete`) and read side (`list_by_field`, `get_b
 
 ### TimescaleDB
 
-Time-series tables are designed for zero-friction hypertable promotion:
+Phase 12 promoted six time-series tables to TimescaleDB hypertables:
 
-| Table | Partition Key | Chunk Interval |
-|---|---|---|
-| `sensor_readings` | `recorded_at` | 1 week |
-| `irrigation_events` | `started_at` | 1 month |
-| `yield_records` | `recorded_at` | 1 season |
-| `disease_observations` | `observed_at` | 1 season |
+| Table | Partition Key | Chunk Interval | Retention | Continuous Aggregate |
+|---|---|---|---|---|
+| `sensor_readings` | `recorded_at` | 1 week | 24 months | `ca_sensor_hourly` |
+| `weather_records` | `recorded_at` | 1 month | 36 months | `ca_weather_daily` |
+| `irrigation_events` | `started_at` | 1 month | 60 months | `ca_irrigation_monthly` |
+| `yield_records` | `recorded_at` | 1 season | indefinite | `ca_yield_seasonal` |
+| `disease_observations` | `observed_at` | 1 season | 84 months | `ca_disease_weekly` |
+| `satellite_observations` | `observed_at` | 7 days | 36 months | `ca_satellite_daily` |
 
-No application code changes are required for promotion. Continuous aggregates will be implemented as materialised views queried by future aggregation repositories.
+Eight continuous aggregates feed AI feature pipelines and real-time dashboards.
 
 ### Apache Cassandra
 
@@ -1027,11 +1147,13 @@ Stateful agricultural alert workflows (sustained soil moisture deficit → irrig
 
 A continuously updated virtual model of every field will be maintained, sourced from domain events (Redpanda), AI inference results, and crop lifecycle updates. `SensorType` enum values map directly to Digital Twin field state properties.
 
-### AI Recommendation Engine
+### AI ML Engines (Future)
 
-* **Yield Prediction Engine** (Phase 12) — supervised model trained on `YieldRecord` time-series
-* **Disease Risk Scoring Engine** (Phase 13) — risk scoring using `DiseaseObservation` labels, sensor telemetry, and weather patterns
-* **Irrigation Recommendation Engine** (Phase 14) — FAO-56 water balance optimization using `IrrigationEvent` history
+The Phase 13 Recommendation and Alert domains provide the **infrastructure** for AI-driven decision making. The ML engines that drive them are planned:
+
+* **Yield Prediction Engine** (Phase 14) — supervised model trained on `YieldRecord` time-series from `ca_yield_seasonal`; injects into `Recommendation` as `HARVEST_TIMING` type
+* **Irrigation Optimization Engine** (Phase 14) — FAO-56 water balance model trained on `IrrigationEvent` + `SensorReading` history; injects as `IRRIGATION` type recommendations
+* **Disease Risk Scoring Engine** (Phase 14) — risk scoring using `DiseaseObservation` labels, `ca_disease_weekly`, and `ca_satellite_daily` signals; injects as `DISEASE_RISK_HIGH` + `DISEASE_OUTBREAK` alert types
 
 ### Generative AI as a Service (GaaS) — Farm Copilot
 

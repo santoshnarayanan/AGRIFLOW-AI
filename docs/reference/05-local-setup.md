@@ -1,6 +1,6 @@
 # AGRIFLOW-AI Local Development Setup
 
-**Last Updated:** Phase 8 — Irrigation Management Domain Complete  
+**Last Updated:** Phase 13 — AI Decision Intelligence Layer Complete  
 **Status:** Current
 
 ---
@@ -9,10 +9,11 @@
 
 | Tool | Minimum Version | Purpose |
 |---|---|---|
-| Docker | 24.x | Container runtime |
-| Docker Compose | 2.x | Service orchestration |
+| Podman Desktop | 1.x | Container runtime (replaces Docker Desktop) |
 | Python | 3.12 | Backend runtime |
 | Git | 2.x | Version control |
+
+**Container image:** `timescale/timescaledb:2.28.1-pg17` — PostgreSQL 17.10 with TimescaleDB 2.28.1 extension pre-installed. Standard `postgres:17` does not include TimescaleDB and will fail migration `f1e2d3c4b5a6`.
 
 ---
 
@@ -23,21 +24,29 @@ AGRIFLOW-AI/
 ├── backend/
 │   ├── app/
 │   │   ├── api/
+│   │   │   ├── farms/
 │   │   │   ├── fields/
 │   │   │   ├── crops/
 │   │   │   ├── soil_profiles/
 │   │   │   ├── weather_records/
 │   │   │   ├── sensor_readings/
-│   │   │   ├── irrigation_events/   ← Phase 8
+│   │   │   ├── irrigation_events/
+│   │   │   ├── yield_records/
+│   │   │   ├── disease_observations/
+│   │   │   ├── satellite_observations/
+│   │   │   ├── recommendations/         ← Phase 13
+│   │   │   ├── alerts/                  ← Phase 13
 │   │   │   ├── health/
-│   │   │   └── version/
+│   │   │   ├── version/
+│   │   │   ├── deps.py
+│   │   │   └── router.py
 │   │   ├── core/
 │   │   │   ├── config/
-│   │   │   ├── enums.py             ← Shared enums (SensorType, IrrigationMethod, WaterSource)
+│   │   │   ├── enums.py             ← 14 shared enums (Phase 13)
 │   │   │   └── logging/
 │   │   ├── db/
 │   │   │   ├── migrations/
-│   │   │   │   └── versions/        ← 8 migration files
+│   │   │   │   └── versions/        ← 18 migration files (Phases 1–13)
 │   │   │   ├── models/
 │   │   │   └── repositories/
 │   │   ├── schemas/
@@ -48,7 +57,7 @@ AGRIFLOW-AI/
 │   └── requirements.txt
 ├── docs/
 ├── infrastructure/
-└── docker-compose.yml
+└── compose.yaml
 ```
 
 ---
@@ -64,19 +73,19 @@ cd AGRIFLOW-AI
 
 ## 2. Start Infrastructure Services
 
-Docker Compose starts PostgreSQL (and any other configured services):
+Podman Compose starts the TimescaleDB container (PostgreSQL 17 + TimescaleDB 2.28.1):
 
 ```bash
-docker compose up -d
+podman compose up -d
 ```
 
 Verify services are running:
 
 ```bash
-docker compose ps
+podman compose ps
 ```
 
-Expected: PostgreSQL container in `Up` state.
+Expected: `agriflow-db` container in `Up` state running `timescale/timescaledb:2.28.1-pg17`.
 
 **Database connection defaults:**
 
@@ -87,6 +96,8 @@ Expected: PostgreSQL container in `Up` state.
 | Database | `agriflow` |
 | User | `agriflow` |
 | Password | See `.env` file |
+
+> **Note:** The compose file uses `timescale/timescaledb:2.28.1-pg17`, not `postgres:17`. This is required — Phase 12 migrations enable the TimescaleDB extension and convert six tables to hypertables. A plain PostgreSQL image will fail at migration `f1e2d3c4b5a6`.
 
 ---
 
@@ -124,7 +135,7 @@ From inside the `backend/` directory:
 alembic upgrade head
 ```
 
-This applies all migrations in order:
+This applies all 18 migrations in order:
 
 ```text
 001_create_farms_table
@@ -134,7 +145,17 @@ This applies all migrations in order:
 004_create_weather_records_table
 005_add_p1_ai_readiness_columns
 006_create_sensor_readings_table
-235a51cdf901_create_irrigation_events_table   ← Phase 8
+235a51cdf901_create_irrigation_events_table
+b7e2a9f4c8d3_create_yield_records_table
+d3e7b2a9f1c4_create_disease_observations_table
+a1b2c3d4e5f6_create_satellite_observations_table
+f1e2d3c4b5a6_enable_timescaledb_extension         ← requires TimescaleDB image
+c9d8e7f6a5b4_convert_time_series_tables_to_hypertables
+d4f5e6a7b8c9_enable_hypertable_compression_policies
+e5f6a7b8c9d0_create_continuous_aggregates
+f6a7b8c9d0e1_enable_retention_policies
+g1h2i3j4k5l6_create_recommendations_table
+h2i3j4k5l6m7_create_alerts_table                  ← HEAD
 ```
 
 Verify migration status:
@@ -143,7 +164,7 @@ Verify migration status:
 alembic current
 ```
 
-Expected output includes `235a51cdf901 (head)`.
+Expected output includes `h2i3j4k5l6m7 (head)`.
 
 ---
 
@@ -189,7 +210,7 @@ Open in browser:
 http://localhost:8000/docs
 ```
 
-The Swagger UI lists all implemented endpoints across all 8 phases.
+The Swagger UI lists all implemented endpoints across all 13 phases.
 
 ---
 
@@ -201,6 +222,16 @@ The Swagger UI lists all implemented endpoints across all 8 phases.
 GET /api/v1/health/live
 GET /api/v1/health/ready
 GET /api/v1/version
+```
+
+### Farms
+
+```http
+POST   /api/v1/farms
+GET    /api/v1/farms
+GET    /api/v1/farms/{farm_id}
+PATCH  /api/v1/farms/{farm_id}
+DELETE /api/v1/farms/{farm_id}
 ```
 
 ### Fields
@@ -242,7 +273,7 @@ PATCH  /api/v1/weather-records/{weather_record_id}
 DELETE /api/v1/weather-records/{weather_record_id}
 ```
 
-### Sensor Readings (Phase 7)
+### Sensor Readings
 
 ```http
 POST   /api/v1/fields/{field_id}/sensor-readings
@@ -251,7 +282,7 @@ GET    /api/v1/sensor-readings/{sensor_reading_id}
 DELETE /api/v1/sensor-readings/{sensor_reading_id}
 ```
 
-### Irrigation Events (Phase 8)
+### Irrigation Events
 
 ```http
 POST   /api/v1/fields/{field_id}/irrigation-events
@@ -259,6 +290,61 @@ GET    /api/v1/fields/{field_id}/irrigation-events
 GET    /api/v1/irrigation-events/{event_id}
 PATCH  /api/v1/irrigation-events/{event_id}
 DELETE /api/v1/irrigation-events/{event_id}
+```
+
+### Yield Records
+
+```http
+POST   /api/v1/crops/{crop_id}/yield-records
+GET    /api/v1/crops/{crop_id}/yield-records
+GET    /api/v1/yield-records/{yield_record_id}
+PATCH  /api/v1/yield-records/{yield_record_id}
+DELETE /api/v1/yield-records/{yield_record_id}
+```
+
+### Disease Observations
+
+```http
+POST   /api/v1/crops/{crop_id}/disease-observations
+GET    /api/v1/crops/{crop_id}/disease-observations
+GET    /api/v1/fields/{field_id}/disease-observations
+GET    /api/v1/disease-observations/{observation_id}
+PATCH  /api/v1/disease-observations/{observation_id}
+DELETE /api/v1/disease-observations/{observation_id}
+```
+
+### Satellite Observations
+
+```http
+POST   /api/v1/fields/{field_id}/satellite-observations
+GET    /api/v1/fields/{field_id}/satellite-observations
+GET    /api/v1/fields/{field_id}/satellite-observations/range
+GET    /api/v1/fields/{field_id}/satellite-observations/latest
+GET    /api/v1/satellite-observations/by-provider/{satellite_provider}
+GET    /api/v1/satellite-observations/by-processing-level/{processing_level}
+GET    /api/v1/satellite-observations/{observation_id}
+PATCH  /api/v1/satellite-observations/{observation_id}
+DELETE /api/v1/satellite-observations/{observation_id}
+```
+
+### Recommendations (Phase 13)
+
+```http
+POST   /api/v1/fields/{field_id}/recommendations
+GET    /api/v1/fields/{field_id}/recommendations
+GET    /api/v1/recommendations/{recommendation_id}
+PATCH  /api/v1/recommendations/{recommendation_id}
+DELETE /api/v1/recommendations/{recommendation_id}
+```
+
+### Alerts (Phase 13)
+
+```http
+POST   /api/v1/fields/{field_id}/alerts
+GET    /api/v1/fields/{field_id}/alerts
+GET    /api/v1/alerts/{alert_id}
+PATCH  /api/v1/alerts/{alert_id}
+DELETE /api/v1/alerts/{alert_id}
 ```
 
 ---
@@ -309,42 +395,62 @@ uvicorn app.main:app --reload --port 8001
 
 ### Database connection refused
 
-Ensure Docker services are running:
+Ensure Podman services are running:
 
 ```bash
-docker compose up -d
-docker compose ps
+podman compose up -d
+podman compose ps
 ```
 
 ---
 
-## Database Tables (Post Phase 8)
+## Database Tables (Post Phase 13)
+
+After `alembic upgrade head`, the database contains 13 domain tables plus `alembic_version`. Six of the domain tables are **TimescaleDB hypertables** (marked below).
 
 ```text
 agriflow=# \dt
            List of relations
- Schema |        Name        | Type  |  Owner   
---------+--------------------+-------+----------
- public | alembic_version    | table | agriflow
- public | crops              | table | agriflow
- public | farms              | table | agriflow
- public | fields             | table | agriflow
- public | irrigation_events  | table | agriflow
- public | sensor_readings    | table | agriflow
- public | soil_profiles      | table | agriflow
- public | weather_records    | table | agriflow
+ Schema |          Name           | Type  |  Owner   
+--------+-------------------------+-------+----------
+ public | alembic_version         | table | agriflow
+ public | alerts                  | table | agriflow
+ public | crops                   | table | agriflow
+ public | disease_observations    | table | agriflow  ← hypertable
+ public | farms                   | table | agriflow
+ public | fields                  | table | agriflow
+ public | irrigation_events       | table | agriflow  ← hypertable
+ public | recommendations         | table | agriflow
+ public | satellite_observations  | table | agriflow  ← hypertable
+ public | sensor_readings         | table | agriflow  ← hypertable
+ public | soil_profiles           | table | agriflow
+ public | weather_records         | table | agriflow  ← hypertable
+ public | yield_records           | table | agriflow  ← hypertable
 ```
+
+> Hypertables are managed by TimescaleDB. `SELECT * FROM timescaledb_information.hypertables;` lists them.
 
 ## PostgreSQL Enum Types
 
 ```text
 agriflow=# \dT
           List of data types
- Schema |       Name        | Description 
---------+-------------------+-------------
- public | crop_status       | 
- public | irrigation_method | 
- public | sensor_type       | 
- public | soil_type         | 
- public | water_source      | 
+ Schema |           Name             | Description 
+--------+----------------------------+-------------
+ public | alert_severity             | 
+ public | alert_type                 | 
+ public | crop_status                | 
+ public | diagnosis_method           | 
+ public | disease_severity           | 
+ public | irrigation_method          | 
+ public | processing_level           | 
+ public | recommendation_priority    | 
+ public | recommendation_status      | 
+ public | recommendation_type        | 
+ public | satellite_provider         | 
+ public | sensor_type                | 
+ public | soil_type                  | 
+ public | spectral_index             | 
+ public | water_source               | 
+ public | yield_measurement_method   | 
 ```

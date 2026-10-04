@@ -1,23 +1,24 @@
 # Database Design
 
-**Last Updated:** Phase 12 — TimescaleDB Time-Series Foundation Complete  
-**Migration Head:** `f6a7b8c9d0e1_enable_retention_policies`  
+**Last Updated:** Phase 13 — AI Decision Intelligence Layer Complete  
+**Migration Head:** `h2i3j4k5l6m7_create_alerts_table`  
 **Database:** PostgreSQL 17.10 + TimescaleDB 2.28.1 (`timescale/timescaledb:2.28.1-pg17`)
 
 ---
 
 ## Current Schema Overview
 
-AGRIFLOW-AI operates ten domain tables plus `alembic_version` after Phase 12 completion. All domain tables inherit the `AuditableModel` mixin (UUID PK, `created_at TIMESTAMPTZ`, `updated_at TIMESTAMPTZ`). All foreign keys to `fields.id` and `crops.id` use `ON DELETE CASCADE` where applicable.
+AGRIFLOW-AI operates twelve domain tables plus `alembic_version` after Phase 13 completion. All domain tables inherit the `AuditableModel` mixin (UUID PK, `created_at TIMESTAMPTZ`, `updated_at TIMESTAMPTZ`). All foreign keys to `fields.id` and `crops.id` use `ON DELETE CASCADE` where applicable; Phase 13 decision-layer FKs use `ON DELETE SET NULL` to preserve alert and recommendation history when a crop is deleted.
 
-**Storage model (Phase 12):**
+**Storage model (Phase 13):**
 
 | Category | Tables | Engine |
 |---|---|---|
 | **Reference / master data** | `farms`, `fields`, `crops`, `soil_profiles` | Standard PostgreSQL |
 | **Time-series hypertables** | `weather_records`, `sensor_readings`, `irrigation_events`, `yield_records`, `disease_observations`, `satellite_observations` | TimescaleDB hypertables |
+| **Decision layer** | `recommendations`, `alerts` | Standard PostgreSQL |
 
-Only these six time-series tables are TimescaleDB hypertables. All reference tables remain standard PostgreSQL relations permanently (ADR-002).
+Only the six time-series tables are TimescaleDB hypertables. Reference tables and the decision-layer tables remain standard PostgreSQL relations (ADR-002). The decision layer uses standard tables because recommendation and alert records are low-volume, mutable, and not partitioned by time.
 
 ```mermaid
 erDiagram
@@ -30,8 +31,13 @@ erDiagram
     fields ||--o{ yield_records : "denormalized"
     fields ||--o{ disease_observations : "denormalized"
     fields ||--o{ satellite_observations : "observes"
+    fields ||--o{ recommendations : "receives"
+    fields ||--o{ alerts : "triggers"
     crops ||--o{ yield_records : "measures"
     crops ||--o{ disease_observations : "observes"
+    crops ||--o{ recommendations : "optional context"
+    crops ||--o{ alerts : "optional context"
+    recommendations ||--o{ alerts : "linked"
 ```
 
 ---
@@ -39,23 +45,25 @@ erDiagram
 ## Current Domain Hierarchy
 
 ```text
-Farm                                         (PostgreSQL — relational)
-└── Field                                    (PostgreSQL — relational)
-     ├── Crop                                (PostgreSQL — relational)
-     │    ├── YieldRecord                   (Hypertable — Phase 12)
-     │    └── DiseaseObservation            (Hypertable — Phase 12)
-     ├── SoilProfile         (1:1)          (PostgreSQL — relational)
-     ├── WeatherRecord                      (Hypertable — Phase 12)
-     ├── SensorReading       (append-only)  (Hypertable — Phase 12)
-     ├── IrrigationEvent     (mutable)      (Hypertable — Phase 12)
-     └── SatelliteObservation (mutable)      (Hypertable — Phase 12)
+Farm                                              (PostgreSQL — relational)
+└── Field                                         (PostgreSQL — relational)
+     ├── Crop                                     (PostgreSQL — relational)
+     │    ├── YieldRecord                        (Hypertable — Phase 12)
+     │    └── DiseaseObservation                 (Hypertable — Phase 12)
+     ├── SoilProfile         (1:1)               (PostgreSQL — relational)
+     ├── WeatherRecord                           (Hypertable — Phase 12)
+     ├── SensorReading       (append-only)       (Hypertable — Phase 12)
+     ├── IrrigationEvent     (mutable)           (Hypertable — Phase 12)
+     ├── SatelliteObservation (mutable)           (Hypertable — Phase 12)
+     ├── Recommendation      (mutable, nullable crop)  (PostgreSQL — Phase 13)
+     └── Alert               (mutable, nullable crop + recommendation)  (PostgreSQL — Phase 13)
 ```
 
 ---
 
 ## Current Schema
 
-The production database after Phase 12 comprises **four reference tables**, **six TimescaleDB hypertables**, and `alembic_version`. Reference and master data (`farms`, `fields`, `crops`, `soil_profiles`) remain standard PostgreSQL tables. Operational time-series data for weather, telemetry, irrigation, yield, disease, and satellite domains is stored in TimescaleDB hypertables with composite primary keys `(id, time_column)` — implemented in Phase 12 (ADR-002). Application APIs and repository interfaces are unchanged.
+The production database after Phase 13 comprises **four reference tables**, **six TimescaleDB hypertables**, **two decision-layer tables**, and `alembic_version`. Reference and master data (`farms`, `fields`, `crops`, `soil_profiles`) remain standard PostgreSQL tables. Operational time-series data is stored in TimescaleDB hypertables with composite primary keys `(id, time_column)` — implemented in Phase 12 (ADR-002). The Phase 13 decision layer (`recommendations`, `alerts`) uses standard PostgreSQL tables. Application APIs and repository interfaces are unchanged for all prior domains.
 
 ```text
 Farm
@@ -67,19 +75,26 @@ Farm
      ├── WeatherRecord
      ├── SensorReading       (append-only)
      ├── IrrigationEvent     (mutable operational events)
-     └── SatelliteObservation (mutable Earth observation)
+     ├── SatelliteObservation (mutable Earth observation)
+     ├── Recommendation      (mutable, nullable crop context)
+     └── Alert               (mutable, nullable crop + recommendation context)
 ```
 
 **Reference tables (PostgreSQL):** `farms`, `fields`, `crops`, `soil_profiles`
 
 **Time-series hypertables (TimescaleDB):** `weather_records`, `sensor_readings`, `irrigation_events`, `yield_records`, `disease_observations`, `satellite_observations`
 
+**Decision-layer tables (PostgreSQL):** `recommendations`, `alerts`
+
 **Relationship summary:**
 
 * Farm (1) → (N) Fields
-* Field (1) → (N) Crops, WeatherRecords, SensorReadings, IrrigationEvents, SatelliteObservations, YieldRecords, DiseaseObservations
+* Field (1) → (N) Crops, WeatherRecords, SensorReadings, IrrigationEvents, SatelliteObservations, YieldRecords, DiseaseObservations, Recommendations, Alerts
 * Field (1) → (1) SoilProfile
 * Crop (1) → (N) YieldRecords, DiseaseObservations
+* Crop (0..N) → Recommendations (nullable `crop_id`; SET NULL on delete — ADR-013-01)
+* Crop (0..N) → Alerts (nullable `crop_id`; SET NULL on delete — ADR-013-02)
+* Recommendation (0..N) → Alerts (nullable `recommendation_id`; SET NULL on delete — ADR-013-02)
 * `field_id` is denormalized on `yield_records` and `disease_observations` for direct field-scoped queries (ADR-009-02, ADR-010-02)
 * `SatelliteObservation` is field-anchored only — no crop FK (ADR-011-01)
 
@@ -389,6 +404,12 @@ Field (1) → (N) YieldRecords  (ON DELETE CASCADE, denormalized FK)
 
 Field (1) → (N) DiseaseObservations  (ON DELETE CASCADE, denormalized FK)
 
+Field (1) → (N) SatelliteObservations  (ON DELETE CASCADE)
+
+Field (1) → (N) Recommendations  (ON DELETE CASCADE; `crop_id` nullable, SET NULL on crop delete)
+
+Field (1) → (N) Alerts  (ON DELETE CASCADE; `crop_id` nullable, SET NULL on crop delete; `recommendation_id` nullable, SET NULL on recommendation delete)
+
 `field_id` is denormalized in both `yield_records` and `disease_observations` to enable direct field-scoped queries without a JOIN through `crops` (ADR-009-02, ADR-010-02).
 
 
@@ -412,6 +433,8 @@ Field (1) → (N) DiseaseObservations  (ON DELETE CASCADE, denormalized FK)
 | `d4f5e6a7b8c9_enable_hypertable_compression_policies` | Columnar compression on six hypertables; six compression policies (ADR-003) |
 | `e5f6a7b8c9d0_create_continuous_aggregates` | Eight continuous aggregates + refresh policies (ADR-004) |
 | `f6a7b8c9d0e1_enable_retention_policies` | Eleven retention policies on raw + CA objects (ADR-005) |
+| `g1h2i3j4k5l6_create_recommendations_table` | recommendations table + `recommendation_type` + `recommendation_status` + `recommendation_priority` enums + indexes (Phase 13) |
+| `h2i3j4k5l6m7_create_alerts_table` | alerts table + `alert_type` + `alert_severity` enums + indexes (Phase 13) ← **HEAD** |
 
 ## Phase 12 – TimescaleDB Time-Series Foundation
 
@@ -468,10 +491,10 @@ Production activation requires archive-before-delete per ADR-005 governance.
 
 ## Future Database Evolution
 
-Planned database capabilities beyond Phase 12:
+Planned database capabilities beyond Phase 13:
 
 * GIS / PostGIS Support (field boundary polygons)
-* AI Recommendation Engine (inference output tables)
+* ML Engine tables (model registry, feature store, training run metadata — Phase 14)
 
 ---
 
@@ -783,6 +806,205 @@ SELECT create_hypertable(
     migrate_data => TRUE
 );
 ```
+
+---
+
+## Phase 13 — AI Decision Intelligence Layer
+
+Phase 13 delivered the Recommendation and Alert domains — AGRIFLOW-AI's structured decision layer. Both tables are standard PostgreSQL relations (not hypertables). They receive output from the AI feature pipelines built on Phase 12 continuous aggregates and provide the operator-facing interface for actionable intelligence.
+
+### `recommendation_type` Enum
+
+```sql
+CREATE TYPE recommendation_type AS ENUM (
+    'IRRIGATION',
+    'DISEASE_TREATMENT',
+    'FERTILIZATION',
+    'HARVEST_TIMING',
+    'SOIL_AMENDMENT',
+    'GENERAL'
+);
+```
+
+### `recommendation_status` Enum
+
+```sql
+CREATE TYPE recommendation_status AS ENUM (
+    'PENDING',
+    'ACTIVE',
+    'ACKNOWLEDGED',
+    'SUPERSEDED',
+    'EXPIRED',
+    'DISMISSED'
+);
+```
+
+Status lifecycle: `PENDING` → `ACTIVE` → `ACKNOWLEDGED` | `SUPERSEDED` | `EXPIRED` | `DISMISSED`
+
+### `recommendation_priority` Enum
+
+```sql
+CREATE TYPE recommendation_priority AS ENUM ('LOW', 'MEDIUM', 'HIGH');
+```
+
+### `recommendations` Table
+
+`Recommendation` is **field-anchored** (ADR-013-01). `crop_id` is nullable — the decision layer operates at field level; crop context is optional and preserved via SET NULL on crop delete.
+
+```sql
+CREATE TABLE recommendations (
+    id                UUID          NOT NULL DEFAULT gen_random_uuid(),
+    field_id          UUID          NOT NULL,   -- FK → fields.id ON DELETE CASCADE
+    crop_id           UUID,                     -- FK → crops.id ON DELETE SET NULL (nullable)
+    recommendation_type recommendation_type NOT NULL,
+    status            recommendation_status NOT NULL DEFAULT 'PENDING',
+    priority          recommendation_priority NOT NULL,
+    title             VARCHAR(500)  NOT NULL,
+    description       TEXT,
+    confidence_score  NUMERIC(4,3),             -- [0.000, 1.000]; ML model output
+    valid_from        TIMESTAMPTZ,              -- recommendation validity window start
+    valid_until       TIMESTAMPTZ,              -- recommendation validity window end
+    engine_version    VARCHAR(50),              -- ML model version for provenance
+    source_data       JSONB,                    -- supporting evidence snapshot
+    notes             TEXT,
+    created_at        TIMESTAMPTZ  NOT NULL DEFAULT now(),
+    updated_at        TIMESTAMPTZ  NOT NULL DEFAULT now(),
+    CONSTRAINT pk_recommendations PRIMARY KEY (id),
+    CONSTRAINT fk_recommendations_field_id
+        FOREIGN KEY (field_id) REFERENCES fields(id) ON DELETE CASCADE,
+    CONSTRAINT fk_recommendations_crop_id
+        FOREIGN KEY (crop_id) REFERENCES crops(id) ON DELETE SET NULL
+);
+```
+
+**Column notes:**
+
+| Column | Type | Notes |
+|---|---|---|
+| `field_id` | UUID FK | Primary domain anchor; CASCADE on field delete |
+| `crop_id` | UUID FK nullable | Crop context; SET NULL on crop delete (ADR-013-01) |
+| `recommendation_type` | ENUM | Drives downstream alert routing |
+| `status` | ENUM | Full lifecycle: PENDING → ACTIVE → terminal state |
+| `priority` | ENUM | LOW / MEDIUM / HIGH — operator triage |
+| `confidence_score` | NUMERIC(4,3) | ML output [0.000, 1.000]; service validates range (ADR-013-04) |
+| `valid_from` / `valid_until` | TIMESTAMPTZ | Validity window; service enforces `valid_until > valid_from` |
+| `engine_version` | VARCHAR | Model version for training data provenance (ADR-013-05) |
+| `source_data` | JSONB | Snapshot of triggering signals |
+
+**Indexes:**
+
+| Index | Columns | Purpose |
+|---|---|---|
+| `ix_recommendations_field_id` | `field_id` | All recommendations for a field |
+| `ix_recommendations_crop_id` | `crop_id` | Recommendations linked to a crop cycle |
+| `ix_recommendations_status` | `status` | Filter PENDING / ACTIVE recommendations |
+| `ix_recommendations_recommendation_type` | `recommendation_type` | Filter by category |
+| `ix_recommendations_field_id_status` | `(field_id, status)` | Active recommendations for a field |
+
+---
+
+### `alert_type` Enum
+
+```sql
+CREATE TYPE alert_type AS ENUM (
+    'SOIL_MOISTURE_LOW',
+    'SOIL_MOISTURE_HIGH',
+    'TEMPERATURE_EXTREME',
+    'FROST_RISK',
+    'DISEASE_RISK_HIGH',
+    'DISEASE_OUTBREAK',
+    'RAINFALL_DEFICIT',
+    'IRRIGATION_OVERDUE',
+    'YIELD_THRESHOLD',
+    'HARVEST_WINDOW'
+);
+```
+
+### `alert_severity` Enum
+
+```sql
+CREATE TYPE alert_severity AS ENUM ('INFO', 'WARNING', 'HIGH', 'CRITICAL');
+```
+
+### `alerts` Table
+
+`Alert` is **field-anchored** with a soft link to `Recommendation` (ADR-013-02). `crop_id` and `recommendation_id` are both nullable with SET NULL on delete — alert history is preserved even if the referenced crop or recommendation is deleted.
+
+`triggered_at` is the **event detection time** — the moment the alert condition was detected by the evaluation engine. This is distinct from `created_at` (row insert time) and is a mandatory column (ADR-013-03).
+
+```sql
+CREATE TABLE alerts (
+    id                  UUID          NOT NULL DEFAULT gen_random_uuid(),
+    field_id            UUID          NOT NULL,   -- FK → fields.id ON DELETE CASCADE
+    crop_id             UUID,                     -- FK → crops.id ON DELETE SET NULL (nullable)
+    recommendation_id   UUID,                     -- FK → recommendations.id ON DELETE SET NULL (nullable)
+    alert_type          alert_type    NOT NULL,
+    severity            alert_severity NOT NULL,
+    title               VARCHAR(500)  NOT NULL,
+    description         TEXT,
+    triggered_at        TIMESTAMPTZ   NOT NULL,   -- detection time (NOT row creation)
+    acknowledged_at     TIMESTAMPTZ,              -- operator acknowledgement timestamp
+    resolved_at         TIMESTAMPTZ,              -- resolution timestamp
+    source_value        NUMERIC(12,4),            -- triggering measurement value
+    threshold_value     NUMERIC(12,4),            -- threshold crossed
+    is_active           BOOLEAN       NOT NULL DEFAULT TRUE,
+    notes               TEXT,
+    created_at          TIMESTAMPTZ   NOT NULL DEFAULT now(),
+    updated_at          TIMESTAMPTZ   NOT NULL DEFAULT now(),
+    CONSTRAINT pk_alerts PRIMARY KEY (id),
+    CONSTRAINT fk_alerts_field_id
+        FOREIGN KEY (field_id) REFERENCES fields(id) ON DELETE CASCADE,
+    CONSTRAINT fk_alerts_crop_id
+        FOREIGN KEY (crop_id) REFERENCES crops(id) ON DELETE SET NULL,
+    CONSTRAINT fk_alerts_recommendation_id
+        FOREIGN KEY (recommendation_id) REFERENCES recommendations(id) ON DELETE SET NULL
+);
+```
+
+**Column notes:**
+
+| Column | Type | Notes |
+|---|---|---|
+| `field_id` | UUID FK | Primary domain anchor; CASCADE on field delete |
+| `crop_id` | UUID FK nullable | Crop context; SET NULL on crop delete (ADR-013-02) |
+| `recommendation_id` | UUID FK nullable | Soft link to originating recommendation; SET NULL on delete (ADR-013-02) |
+| `alert_type` | ENUM | 10-value set covering soil, weather, disease, irrigation, yield triggers |
+| `severity` | ENUM | INFO / WARNING / HIGH / CRITICAL — mirrors `disease_severity` escalation pattern |
+| `triggered_at` | TIMESTAMPTZ NOT NULL | Event detection time — distinct from `created_at` (ADR-013-03) |
+| `acknowledged_at` | TIMESTAMPTZ nullable | Operator acknowledgement timestamp |
+| `resolved_at` | TIMESTAMPTZ nullable | Resolution timestamp |
+| `source_value` | NUMERIC(12,4) nullable | Triggering measurement (e.g., 18.3% soil moisture) |
+| `threshold_value` | NUMERIC(12,4) nullable | Threshold that was crossed (e.g., 20.0% minimum) |
+| `is_active` | BOOLEAN | FALSE after resolution — enables active-only queries |
+
+**Indexes:**
+
+| Index | Columns | Purpose |
+|---|---|---|
+| `ix_alerts_field_id` | `field_id` | All alerts for a field |
+| `ix_alerts_crop_id` | `crop_id` | Alerts linked to a crop cycle |
+| `ix_alerts_alert_type` | `alert_type` | Filter by alert category |
+| `ix_alerts_severity` | `severity` | Filter HIGH/CRITICAL across the platform |
+| `ix_alerts_is_active` | `is_active` | Active-only dashboard queries |
+| `ix_alerts_triggered_at` | `triggered_at` | Time-range queries on detection time |
+| `ix_alerts_field_id_is_active` | `(field_id, is_active)` | Active alerts for a specific field |
+
+### Design Decisions (Phase 13)
+
+**SET NULL vs CASCADE for crop_id (ADR-013-01, ADR-013-02):**
+`recommendations.crop_id` and `alerts.crop_id` use SET NULL on crop delete. This preserves the decision record and its field-level context even when the associated crop cycle is deleted. Without this, deleting a crop (e.g., a cancelled season) would cascade-delete all recommendations and alerts generated for that crop — losing audit history and operator-acknowledged decisions.
+
+**`triggered_at` vs `created_at` (ADR-013-03):**
+Alert detection (engine evaluation) and row insert (API write) are distinct events. A batch evaluation engine may detect a condition and insert the row minutes later. `triggered_at` captures the actual detection time for temporal accuracy in dashboards and SLA calculations. `created_at` captures the row insert time for audit purposes.
+
+**`confidence_score NUMERIC(4,3)` (ADR-013-04):**
+Three decimal places gives 1,000 discrete confidence values (0.000 to 1.000). ML model output at 3dp is sufficient; `NUMERIC` gives exact arithmetic for threshold comparisons (e.g., `confidence_score >= 0.750`), unlike `FLOAT` which introduces binary representation noise at comparison boundaries.
+
+**`engine_version` on Recommendation (ADR-013-05):**
+Capturing the model version at recommendation creation enables training data provenance: "which model version generated this recommendation?" is answerable without inspecting logs. Required for model rollback impact analysis and A/B testing of recommendation quality.
+
+**Standard PostgreSQL, not TimescaleDB:**
+Recommendations and alerts are low-volume, mutable operational records — not partitioned time-series. Neither table has a mandatory append-only time column that makes hypertable partitioning beneficial. They remain standard PostgreSQL tables.
 
 ---
 

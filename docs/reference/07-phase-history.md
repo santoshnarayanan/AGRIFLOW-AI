@@ -1,8 +1,8 @@
 # AGRIFLOW-AI Phase History
 
-**Last Updated:** Phase 12 — TimescaleDB Time-Series Foundation Complete  
-**Current Project Phase:** Phase 13 — AI Recommendation Foundation (planned)  
-**Current Platform Status:** PostgreSQL 17.10 + TimescaleDB 2.28.1 analytical platform operational; six hypertables, compression, continuous aggregates, and retention policies active; zero API breaking changes; AI persistence foundation ready
+**Last Updated:** Phase 13 — AI Decision Intelligence Layer Complete  
+**Current Project Phase:** Phase 14 — Event-Driven Enterprise Platform (planned)  
+**Current Platform Status:** PostgreSQL 17.10 + TimescaleDB 2.28.1 + Decision Intelligence Layer operational; thirteen domains, six hypertables, eight continuous aggregates, Recommendation Engine and Alert Engine active; zero API breaking changes across all phases
 
 ---
 
@@ -1270,7 +1270,7 @@ DELETE /api/v1/disease-observations/{observation_id}            204 No Content
 ### Future Considerations
 
 * **TimescaleDB:** `disease_observations.observed_at TIMESTAMPTZ NOT NULL` is hypertable-ready; `create_hypertable('disease_observations', 'observed_at')` requires no application code changes.
-* **Disease Risk Scoring Engine (Phase 13):** `DiseaseObservation` severity labels and `observed_at` time-series are the primary training label source.
+* **Disease Risk Scoring Engine (Phase 14):** `DiseaseObservation` severity labels and `observed_at` time-series are the primary training label source for the ML model.
 * **Redpanda:** `DiseaseObservationService.create_observation()` contains a documented extension point for `DiseaseObservationCreated` domain events.
 * **GaaS PlantHealthAdvisor:** Disease observation list endpoints provide context for natural language crop health queries.
 
@@ -1475,15 +1475,17 @@ Hybrid PostgreSQL + TimescaleDB
 (reference tables → PostgreSQL)
 (time-series tables → hypertables)
       ↓
-Future
+Decision Intelligence (Phase 13) ✅
+(Recommendation Engine · Alert Engine · Farm CRUD)
       ↓
-Feature Store (Phase 13)
+Event-Driven Operations (Phase 14) 🔜
+(Redpanda · Domain Events · ML Engine Triggers)
       ↓
-Digital Twin (Phase 15)
+Feature Store / Digital Twin (Phase 15)
       ↓
-Farm Copilot / GaaS (Phase 15)
+Farm Copilot / GaaS (Phase 16)
       ↓
-Agentic AI (Phase 15+)
+Agentic AI (Phase 16+)
 ```
 
 **What changed:** Docker image, database extension, hypertable storage, compression, continuous aggregates, retention policies, composite PKs on six ORM models, background job ecosystem.
@@ -1518,7 +1520,7 @@ Phase 12 governance is recorded in five Architecture Decision Records. Summaries
 * **Faster analytical queries** — chunk exclusion and continuous aggregates accelerate time-window aggregations
 * **Reduced storage footprint** — columnar compression on cold data reduces long-term storage cost
 * **AI-ready persistence layer** — governed hypertables, rollups, and retention prepare bounded-cardinality reads for machine learning
-* **Feature Store foundation** — eight continuous aggregates supply pre-computed inputs for Phase 13 feature vector materialisation
+* **Feature Store foundation** — eight continuous aggregates supply pre-computed inputs for Phase 14 feature vector materialisation
 * **Digital Twin foundation** — time-series history at scale supports continuously updated virtual field models
 * **Foundation for Farm Copilot** — analytical rollups and governed data lifecycle enable contextual AI recommendations in Phase 15
 
@@ -1526,7 +1528,7 @@ Phase 12 governance is recorded in five Architecture Decision Records. Summaries
 
 #### Completed Phases
 
-Phases 1–12 complete. Phase 13 — AI Recommendation Foundation — is the next planned evolution.
+Phases 1–12 complete. Phase 13 (AI Decision Intelligence Layer) delivered the Recommendation and Alert domains and completed the Farm CRUD API. See Phase 13 section below.
 
 #### Domain Hierarchy
 
@@ -1588,10 +1590,171 @@ PostgreSQL 17.10 + TimescaleDB 2.28.1 (`timescale/timescaledb:2.28.1-pg17`)
 
 #### Current AI Readiness
 
-Phase 6 delivered P1 AI attributes (82% yield prediction coverage). Phases 7–11 delivered granular time-series labels across telemetry, irrigation, yield, disease, and satellite domains. Phase 12 completed the analytical persistence layer — hypertables, compression, continuous aggregates, and retention — required for Phase 13 Feature Store and Recommendation Engine implementation.
+Phase 6 delivered P1 AI attributes (82% yield prediction coverage). Phases 7–11 delivered granular time-series labels across telemetry, irrigation, yield, disease, and satellite domains. Phase 12 completed the analytical persistence layer — hypertables, compression, continuous aggregates, and retention — required for the Phase 13 Decision Intelligence layer (Recommendation Engine, Alert Engine) and the Phase 14 Feature Store.
 
 #### Current API Coverage
 
 All Phase 1–11 domain APIs remain unchanged. No new REST endpoints were introduced in Phase 12. See `docs/04-api-design.md` for the complete API inventory.
+
+---
+
+## Phase 13 – AI Decision Intelligence Layer
+
+Status: ✅ Complete
+
+Phase 13 delivered the Decision Intelligence layer — the Recommendation and Alert domains — on top of the TimescaleDB analytical foundation established in Phase 12. It also completed the Farm CRUD API. Decision records use standard PostgreSQL (not TimescaleDB hypertables), as they are low-volume mutable entities rather than high-frequency time-series observations.
+
+### Engineering Objectives
+
+* **Farm CRUD API completion** — POST, GET, GET{id}, PATCH, DELETE for the `farms` domain
+* **Recommendation domain** — ORM model, Pydantic schemas, repository, service, API router; 5 endpoints
+* **Alert domain** — ORM model, Pydantic schemas, repository, service, API router; 5 endpoints
+* **Decision Layer Pattern** — standard PostgreSQL for low-volume mutable AI decision records (not hypertable)
+* **Shared enum expansion** — five new enum types added to `app/core/enums.py` (total: 14 enums)
+* **Zero API breaking changes** — all Phase 1–12 endpoints remain unchanged
+
+### Database Changes
+
+**New enum types:**
+
+| Enum | Values |
+|---|---|
+| `recommendation_type` | IRRIGATION, FERTILIZATION, PEST_CONTROL, DISEASE_MANAGEMENT, HARVEST_TIMING, SOIL_AMENDMENT |
+| `recommendation_status` | PENDING, ACTIVE, ACKNOWLEDGED, APPLIED, DISMISSED, EXPIRED |
+| `recommendation_priority` | LOW, MEDIUM, HIGH, CRITICAL |
+| `alert_type` | SOIL_MOISTURE_LOW, SOIL_MOISTURE_HIGH, TEMPERATURE_HIGH, TEMPERATURE_LOW, DISEASE_RISK_HIGH, FROST_RISK, DROUGHT_RISK, FLOOD_RISK, PEST_ALERT, YIELD_ANOMALY |
+| `alert_severity` | INFO, WARNING, CRITICAL, EMERGENCY |
+
+**New tables:**
+
+`recommendations` — field-anchored FK, nullable `crop_id` (SET NULL on delete), `confidence_score NUMERIC(4,3)`, `engine_version VARCHAR(50)`, `valid_from`/`valid_until` validity window. 6 indexes.
+
+`alerts` — field-anchored FK, nullable `crop_id` (SET NULL on delete), nullable `recommendation_id` FK (SET NULL on delete — soft linkage), `triggered_at TIMESTAMPTZ NOT NULL` (event detection time, distinct from `created_at`). 6 indexes.
+
+### Architecture Decisions
+
+| ADR | Decision |
+|---|---|
+| ADR-013-01 | `crop_id` nullable with SET NULL on Recommendation — recommendations are field-level entities; crop context is optional |
+| ADR-013-02 | `crop_id` nullable with SET NULL on Alert — same reasoning as ADR-013-01 |
+| ADR-013-03 | `triggered_at` mandatory on Alert — records event detection time; distinct from `created_at` (row insertion time) |
+| ADR-013-04 | `confidence_score NUMERIC(4,3)` — exact decimal arithmetic for threshold comparisons; DOUBLE PRECISION would introduce floating-point drift |
+| ADR-013-05 | `engine_version VARCHAR(50)` on Recommendation — ML model provenance required for audit and reproducibility |
+
+### API Endpoints Added
+
+Farm Domain (completed Phase 13):
+
+```http
+POST   /api/v1/farms                    201 Created
+GET    /api/v1/farms                    200 OK
+GET    /api/v1/farms/{farm_id}          200 OK
+PATCH  /api/v1/farms/{farm_id}          200 OK
+DELETE /api/v1/farms/{farm_id}          204 No Content
+```
+
+Recommendation Domain:
+
+```http
+POST   /api/v1/fields/{field_id}/recommendations          201 Created
+GET    /api/v1/fields/{field_id}/recommendations          200 OK
+GET    /api/v1/recommendations/{recommendation_id}        200 OK
+PATCH  /api/v1/recommendations/{recommendation_id}        200 OK
+DELETE /api/v1/recommendations/{recommendation_id}       204 No Content
+```
+
+Alert Domain:
+
+```http
+POST   /api/v1/fields/{field_id}/alerts    201 Created
+GET    /api/v1/fields/{field_id}/alerts    200 OK
+GET    /api/v1/alerts/{alert_id}           200 OK
+PATCH  /api/v1/alerts/{alert_id}           200 OK
+DELETE /api/v1/alerts/{alert_id}          204 No Content
+```
+
+### Business Rules Implemented
+
+Recommendation Domain:
+
+* Field must exist before recommendation creation
+* `crop_id`, when supplied, must belong to the specified field (crop-field mismatch guard)
+* `confidence_score` must be in [0.0, 1.0]
+* `valid_until`, when supplied, must be after `valid_from`
+* `crop_id` nullable — recommendations are field-level; crop context optional
+
+Alert Domain:
+
+* Field must exist before alert creation
+* `crop_id`, when supplied, must belong to the specified field
+* `recommendation_id`, when supplied, must belong to the specified field
+* `triggered_at` mandatory and must be timezone-aware
+* `crop_id` and `recommendation_id` nullable — alerts are field-level entities
+
+### Lessons Learned
+
+* Decision intelligence records (recommendations, alerts) are qualitatively different from time-series observations — they are mutable, low-volume, and benefit from standard relational storage rather than hypertable partitioning.
+* The `triggered_at` vs `created_at` distinction on Alert is essential for event-driven architectures: `triggered_at` records when the condition was detected, `created_at` records when the row was inserted. These diverge when batch processing or back-filling.
+* Nullable FKs with SET NULL on delete (rather than CASCADE or RESTRICT) preserve field-level records when crop cycles end — this is the correct semantics for agricultural decision records that outlast individual crop seasons.
+* `NUMERIC(4,3)` for confidence scores avoids floating-point representation drift that would cause `confidence_score > 0.8` comparisons to behave differently from their authored intent.
+
+### Current Platform Status (Post Phase 13)
+
+#### Domain Hierarchy
+
+```text
+Farm                                                        (PostgreSQL — relational)
+└── Field                                                   (PostgreSQL — relational)
+     ├── Crop                                              (PostgreSQL — relational)
+     │    ├── YieldRecord                                 (Hypertable — Phase 12)
+     │    └── DiseaseObservation                          (Hypertable — Phase 12)
+     ├── SoilProfile         (1:1)                        (PostgreSQL — relational)
+     ├── WeatherRecord                                    (Hypertable — Phase 12)
+     ├── SensorReading       (append-only)                (Hypertable — Phase 12)
+     ├── IrrigationEvent     (mutable)                    (Hypertable — Phase 12)
+     ├── SatelliteObservation (mutable)                   (Hypertable — Phase 12)
+     ├── Recommendation      (mutable, nullable crop_id)  (PostgreSQL — Phase 13)
+     └── Alert               (mutable, nullable crop_id,  (PostgreSQL — Phase 13)
+                              nullable recommendation_id)
+
+TimescaleDB analytical platform  ✅ Phase 12 (compression · continuous aggregates · retention)
+Decision Intelligence layer      ✅ Phase 13 (Recommendation Engine · Alert Engine · Farm CRUD)
+```
+
+#### Current Database Tables
+
+* **Reference tables (PostgreSQL):** `farms`, `fields`, `crops`, `soil_profiles`
+* **Time-series hypertables (TimescaleDB):** `weather_records`, `sensor_readings`, `irrigation_events`, `yield_records`, `disease_observations`, `satellite_observations`
+* **Decision Intelligence (PostgreSQL):** `recommendations`, `alerts`
+* **System:** `alembic_version`
+
+#### Current Migration Head
+
+`h2i3j4k5l6m7_create_alerts_table`
+
+#### Shared Enum Module (Post Phase 13)
+
+`app/core/enums.py` contains 14 shared enum types:
+
+| Enum | Phase |
+|---|---|
+| `SensorType` | Phase 7 |
+| `IrrigationMethod` | Phase 8 |
+| `WaterSource` | Phase 8 |
+| `YieldMeasurementMethod` | Phase 9 |
+| `DiseaseSeverity` | Phase 10 |
+| `DiagnosisMethod` | Phase 10 |
+| `SatelliteProvider` | Phase 11 |
+| `SpectralIndex` | Phase 11 |
+| `ProcessingLevel` | Phase 11 |
+| `RecommendationType` | Phase 13 |
+| `RecommendationStatus` | Phase 13 |
+| `RecommendationPriority` | Phase 13 |
+| `AlertType` | Phase 13 |
+| `AlertSeverity` | Phase 13 |
+
+#### Current API Coverage
+
+All Phase 1–12 domain APIs remain unchanged. Phase 13 added 15 new REST endpoints across three domains (Farm, Recommendation, Alert). See `docs/04-api-design.md` for the complete API inventory.
 
 ---
