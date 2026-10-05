@@ -42,6 +42,50 @@ export interface Field {
   updated_at: string
 }
 
+// ─── Yield Record ─────────────────────────────────────────────────────────────
+
+export type YieldGrade = 'premium' | 'grade_a' | 'grade_b' | 'grade_c' | 'commercial' | 'reject'
+
+export interface YieldRecord {
+  id: number
+  field_id: number
+  crop_id: number | null
+  harvest_date: string
+  quantity: number
+  unit: string
+  quality_grade: YieldGrade | null
+  moisture_content: number | null
+  area_harvested: number | null
+  yield_per_hectare: number | null
+  notes: string | null
+  created_at: string
+  updated_at: string
+}
+
+export interface YieldRecordCreate {
+  field_id: number
+  crop_id?: number
+  harvest_date: string
+  quantity: number
+  unit: string
+  quality_grade?: YieldGrade
+  moisture_content?: number
+  area_harvested?: number
+  yield_per_hectare?: number
+  notes?: string
+}
+
+export interface YieldRecordUpdate {
+  crop_id?: number | null
+  quantity?: number
+  unit?: string
+  quality_grade?: YieldGrade | null
+  moisture_content?: number
+  area_harvested?: number
+  yield_per_hectare?: number
+  notes?: string
+}
+
 // ─── Irrigation Event ─────────────────────────────────────────────────────────
 
 export type IrrigationMethod =
