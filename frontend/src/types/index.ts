@@ -42,6 +42,36 @@ export interface Field {
   updated_at: string
 }
 
+// ─── Sensor Reading ───────────────────────────────────────────────────────────
+
+export type SensorType =
+  | 'soil_moisture' | 'soil_temperature'
+  | 'air_temperature' | 'air_humidity'
+  | 'light_intensity' | 'co2_level'
+  | 'electrical_conductivity' | 'leaf_wetness'
+
+export interface SensorReading {
+  id: number
+  field_id: number
+  sensor_id: string | null
+  sensor_type: SensorType
+  value: number
+  unit: string
+  quality_flag: string | null
+  recorded_at: string   // immutable once written — ADR enforced
+  created_at: string
+}
+
+export interface SensorReadingCreate {
+  field_id: number
+  sensor_id?: string
+  sensor_type: SensorType
+  value: number
+  unit: string
+  quality_flag?: string
+  recorded_at: string
+}
+
 // ─── Weather Observation ──────────────────────────────────────────────────────
 
 export interface WeatherObservation {
