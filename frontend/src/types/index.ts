@@ -42,6 +42,34 @@ export interface Field {
   updated_at: string
 }
 
+// ─── Weather Observation ──────────────────────────────────────────────────────
+
+export interface WeatherObservation {
+  id: number
+  field_id: number
+  temperature: number | null
+  humidity: number | null
+  rainfall: number | null
+  wind_speed: number | null
+  wind_direction: number | null
+  solar_radiation: number | null
+  atmospheric_pressure: number | null
+  recorded_at: string
+  created_at: string
+}
+
+export interface WeatherObservationCreate {
+  field_id: number
+  temperature?: number
+  humidity?: number
+  rainfall?: number
+  wind_speed?: number
+  wind_direction?: number
+  solar_radiation?: number
+  atmospheric_pressure?: number
+  recorded_at: string
+}
+
 // ─── Soil Profile ─────────────────────────────────────────────────────────────
 
 export type SoilTexture =
