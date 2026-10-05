@@ -3,6 +3,7 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { AppLayout } from '@/components/layout/AppLayout'
 import { Dashboard } from '@/pages/Dashboard'
 import { Farms } from '@/pages/Farms'
+import { Fields } from '@/pages/Fields'
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -29,7 +30,7 @@ export default function App() {
           <Route path="/" element={<AppLayout />}>
             <Route index element={<Dashboard />} />
             <Route path="farms" element={<Farms />} />
-            <Route path="fields" element={<ComingSoon label="Fields" />} />
+            <Route path="fields" element={<Fields />} />
             <Route path="crops" element={<ComingSoon label="Crops" />} />
             <Route path="soil-profiles" element={<ComingSoon label="Soil Profiles" />} />
             <Route path="weather" element={<ComingSoon label="Weather" />} />
