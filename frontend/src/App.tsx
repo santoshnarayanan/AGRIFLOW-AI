@@ -10,6 +10,7 @@ import { Weather } from '@/pages/Weather'
 import { Sensors } from '@/pages/Sensors'
 import { Irrigation } from '@/pages/Irrigation'
 import { Yield } from '@/pages/Yield'
+import { Disease } from '@/pages/Disease'
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -43,7 +44,7 @@ export default function App() {
             <Route path="sensors" element={<Sensors />} />
             <Route path="irrigation" element={<Irrigation />} />
             <Route path="yield" element={<Yield />} />
-            <Route path="disease" element={<ComingSoon label="Disease Observations" />} />
+            <Route path="disease" element={<Disease />} />
             <Route path="satellite" element={<ComingSoon label="Satellite" />} />
             <Route path="recommendations" element={<ComingSoon label="Recommendations" />} />
             <Route path="alerts" element={<ComingSoon label="Alerts" />} />

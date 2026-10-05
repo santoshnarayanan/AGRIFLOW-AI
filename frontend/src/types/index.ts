@@ -42,6 +42,50 @@ export interface Field {
   updated_at: string
 }
 
+// ─── Disease Observation ──────────────────────────────────────────────────────
+
+export type DiseaseSeverity = 'low' | 'moderate' | 'high' | 'critical'
+
+export interface DiseaseObservation {
+  id: number
+  field_id: number
+  crop_id: number | null
+  disease_name: string
+  severity: DiseaseSeverity
+  affected_area_percentage: number | null
+  symptoms: string | null
+  observed_at: string
+  treatment_applied: string | null
+  treatment_date: string | null
+  notes: string | null
+  created_at: string
+  updated_at: string
+}
+
+export interface DiseaseObservationCreate {
+  field_id: number
+  crop_id?: number
+  disease_name: string
+  severity: DiseaseSeverity
+  affected_area_percentage?: number
+  symptoms?: string
+  observed_at: string
+  treatment_applied?: string
+  treatment_date?: string
+  notes?: string
+}
+
+export interface DiseaseObservationUpdate {
+  crop_id?: number | null
+  disease_name?: string
+  severity?: DiseaseSeverity
+  affected_area_percentage?: number
+  symptoms?: string
+  treatment_applied?: string
+  treatment_date?: string
+  notes?: string
+}
+
 // ─── Yield Record ─────────────────────────────────────────────────────────────
 
 export type YieldGrade = 'premium' | 'grade_a' | 'grade_b' | 'grade_c' | 'commercial' | 'reject'
