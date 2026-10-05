@@ -42,6 +42,48 @@ export interface Field {
   updated_at: string
 }
 
+// ─── Crop ─────────────────────────────────────────────────────────────────────
+
+export type GrowthStage =
+  | 'seedling' | 'vegetative' | 'flowering'
+  | 'fruiting' | 'ripening' | 'harvested'
+
+export type CropStatus = 'planned' | 'active' | 'harvested' | 'failed'
+
+export interface Crop {
+  id: number
+  field_id: number
+  name: string
+  variety: string | null
+  growth_stage: GrowthStage
+  planting_date: string | null
+  expected_harvest_date: string | null
+  actual_harvest_date: string | null
+  status: CropStatus
+  created_at: string
+  updated_at: string
+}
+
+export interface CropCreate {
+  field_id: number
+  name: string
+  variety?: string
+  growth_stage?: GrowthStage
+  planting_date?: string
+  expected_harvest_date?: string
+  status?: CropStatus
+}
+
+export interface CropUpdate {
+  name?: string
+  variety?: string
+  growth_stage?: GrowthStage
+  planting_date?: string
+  expected_harvest_date?: string
+  actual_harvest_date?: string
+  status?: CropStatus
+}
+
 // ─── Alert ────────────────────────────────────────────────────────────────────
 
 export type AlertType =

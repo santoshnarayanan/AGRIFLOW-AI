@@ -4,6 +4,7 @@ import { AppLayout } from '@/components/layout/AppLayout'
 import { Dashboard } from '@/pages/Dashboard'
 import { Farms } from '@/pages/Farms'
 import { Fields } from '@/pages/Fields'
+import { Crops } from '@/pages/Crops'
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -31,7 +32,7 @@ export default function App() {
             <Route index element={<Dashboard />} />
             <Route path="farms" element={<Farms />} />
             <Route path="fields" element={<Fields />} />
-            <Route path="crops" element={<ComingSoon label="Crops" />} />
+            <Route path="crops" element={<Crops />} />
             <Route path="soil-profiles" element={<ComingSoon label="Soil Profiles" />} />
             <Route path="weather" element={<ComingSoon label="Weather" />} />
             <Route path="sensors" element={<ComingSoon label="Sensors" />} />
