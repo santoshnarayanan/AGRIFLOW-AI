@@ -42,6 +42,51 @@ export interface Field {
   updated_at: string
 }
 
+// ─── Satellite Analysis ───────────────────────────────────────────────────────
+
+export type SatelliteSource =
+  | 'sentinel_2' | 'landsat_8' | 'landsat_9' | 'planet' | 'modis' | 'spot'
+
+export interface SatelliteAnalysis {
+  id: number
+  field_id: number
+  acquisition_date: string
+  satellite_source: SatelliteSource | null
+  cloud_cover_percentage: number | null
+  ndvi: number | null
+  ndwi: number | null
+  ndre: number | null
+  evi: number | null
+  image_url: string | null
+  notes: string | null
+  created_at: string
+  updated_at: string
+}
+
+export interface SatelliteAnalysisCreate {
+  field_id: number
+  acquisition_date: string
+  satellite_source?: SatelliteSource
+  cloud_cover_percentage?: number
+  ndvi?: number
+  ndwi?: number
+  ndre?: number
+  evi?: number
+  image_url?: string
+  notes?: string
+}
+
+export interface SatelliteAnalysisUpdate {
+  satellite_source?: SatelliteSource
+  cloud_cover_percentage?: number
+  ndvi?: number
+  ndwi?: number
+  ndre?: number
+  evi?: number
+  image_url?: string
+  notes?: string
+}
+
 // ─── Disease Observation ──────────────────────────────────────────────────────
 
 export type DiseaseSeverity = 'low' | 'moderate' | 'high' | 'critical'
