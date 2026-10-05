@@ -42,6 +42,45 @@ export interface Field {
   updated_at: string
 }
 
+// ─── Irrigation Event ─────────────────────────────────────────────────────────
+
+export type IrrigationMethod =
+  | 'drip' | 'sprinkler' | 'flood' | 'furrow' | 'center_pivot' | 'subsurface'
+
+export interface IrrigationEvent {
+  id: number
+  field_id: number
+  crop_id: number | null
+  start_time: string
+  end_time: string | null
+  duration_minutes: number | null
+  water_amount: number | null
+  irrigation_method: IrrigationMethod
+  notes: string | null
+  created_at: string
+  updated_at: string
+}
+
+export interface IrrigationEventCreate {
+  field_id: number
+  crop_id?: number
+  start_time: string
+  end_time?: string
+  duration_minutes?: number
+  water_amount?: number
+  irrigation_method: IrrigationMethod
+  notes?: string
+}
+
+export interface IrrigationEventUpdate {
+  crop_id?: number | null
+  end_time?: string
+  duration_minutes?: number
+  water_amount?: number
+  irrigation_method?: IrrigationMethod
+  notes?: string
+}
+
 // ─── Sensor Reading ───────────────────────────────────────────────────────────
 
 export type SensorType =
