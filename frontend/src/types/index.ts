@@ -42,6 +42,53 @@ export interface Field {
   updated_at: string
 }
 
+// ─── Soil Profile ─────────────────────────────────────────────────────────────
+
+export type SoilTexture =
+  | 'sandy' | 'sandy_loam' | 'loam' | 'silt_loam'
+  | 'silt' | 'clay_loam' | 'clay' | 'peat'
+
+export interface SoilProfile {
+  id: number
+  field_id: number
+  ph_level: number | null
+  nitrogen_content: number | null
+  phosphorus_content: number | null
+  potassium_content: number | null
+  organic_matter: number | null
+  moisture_content: number | null
+  texture: SoilTexture | null
+  notes: string | null
+  recorded_at: string | null
+  created_at: string
+  updated_at: string
+}
+
+export interface SoilProfileCreate {
+  field_id: number
+  ph_level?: number
+  nitrogen_content?: number
+  phosphorus_content?: number
+  potassium_content?: number
+  organic_matter?: number
+  moisture_content?: number
+  texture?: SoilTexture
+  notes?: string
+  recorded_at?: string
+}
+
+export interface SoilProfileUpdate {
+  ph_level?: number
+  nitrogen_content?: number
+  phosphorus_content?: number
+  potassium_content?: number
+  organic_matter?: number
+  moisture_content?: number
+  texture?: SoilTexture
+  notes?: string
+  recorded_at?: string
+}
+
 // ─── Crop ─────────────────────────────────────────────────────────────────────
 
 export type GrowthStage =
