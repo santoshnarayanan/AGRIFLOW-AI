@@ -15,8 +15,13 @@ These documents complement:
 
 | Phase | Title | Reference |
 |-------|--------|-----------|
-| **14** | Frontend UI (React) — routes, API clients, Phase 13 screens | [14-frontend-ui.md](./14-frontend-ui.md) |
 | **13** | Enterprise Decision & Recommendation Platform | [13-decision-intelligence.md](./13-decision-intelligence.md) |
 | 12 | TimescaleDB analytical platform | *Planned — use Phase 12 handbooks under `docs/phases/phase12/`* |
 | 11 | Satellite observation | *Planned* |
 | 10 | Disease observation | *Planned* |
+
+## Supplementary references (not numbered phases)
+
+| Topic | Reference |
+|-------|-----------|
+| Frontend UI (React) — routes, API clients, Phase 13 screens | [frontend-ui.md](./frontend-ui.md) |
