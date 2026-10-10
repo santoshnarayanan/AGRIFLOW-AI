@@ -383,27 +383,76 @@ export interface Alert {
   created_at: string
 }
 
-// ─── Recommendation ───────────────────────────────────────────────────────────
+// ─── Recommendation (Phase 13 — matches FastAPI schemas) ─────────────────────
 
 export type RecommendationType =
-  | 'irrigation' | 'fertilization' | 'pest_control'
-  | 'harvest_timing' | 'planting_schedule' | 'soil_amendment'
+  | 'IRRIGATION'
+  | 'DISEASE_TREATMENT'
+  | 'FERTILIZATION'
+  | 'HARVEST_TIMING'
+  | 'SOIL_AMENDMENT'
+  | 'GENERAL'
 
 export type RecommendationStatus =
-  | 'pending' | 'acknowledged' | 'implemented'
-  | 'rejected' | 'expired' | 'superseded'
+  | 'PENDING'
+  | 'ACTIVE'
+  | 'ACKNOWLEDGED'
+  | 'SUPERSEDED'
+  | 'EXPIRED'
+  | 'DISMISSED'
 
-export type RecommendationPriority = 'critical' | 'high' | 'medium'
+export type RecommendationPriority = 'LOW' | 'MEDIUM' | 'HIGH' | 'CRITICAL'
 
 export interface Recommendation {
-  id: number
-  field_id: number
-  crop_id: number | null
+  id: string
+  field_id: string
+  crop_id: string | null
   recommendation_type: RecommendationType
   status: RecommendationStatus
   priority: RecommendationPriority
-  confidence_score: number
+  title: string
+  description: string | null
+  recommended_action: string
+  recommended_value: number | null
+  recommended_unit: string | null
+  confidence_score: number | null
+  evidence_summary: string | null
   engine_version: string | null
-  message: string
+  valid_from: string
+  valid_until: string | null
+  acknowledged_at: string | null
+  notes: string | null
   created_at: string
+  updated_at: string
+}
+
+export interface RecommendationCreate {
+  crop_id?: string | null
+  recommendation_type: RecommendationType
+  priority?: RecommendationPriority
+  title: string
+  description?: string | null
+  recommended_action: string
+  recommended_value?: number | null
+  recommended_unit?: string | null
+  confidence_score?: number | null
+  evidence_summary?: string | null
+  engine_version?: string | null
+  valid_from: string
+  valid_until?: string | null
+  notes?: string | null
+}
+
+export interface RecommendationUpdate {
+  status?: RecommendationStatus
+  priority?: RecommendationPriority
+  title?: string
+  description?: string | null
+  recommended_action?: string
+  recommended_value?: number | null
+  recommended_unit?: string | null
+  confidence_score?: number | null
+  evidence_summary?: string | null
+  valid_until?: string | null
+  notes?: string | null
 }
