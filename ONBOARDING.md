@@ -269,6 +269,8 @@ AGRIFLOW-AI/
 | How do I run this locally? | `docs/reference/05-local-setup.md` |
 | What phases are planned and what's the roadmap? | `docs/reference/06-roadmap.md` |
 | What exactly was built in each phase? | `docs/reference/07-phase-history.md` |
+| Phase 13 implementation (code map, APIs, rules)? | `docs/reference/phase-implementations/13-decision-intelligence.md` |
+| Phase 10–13 implementation index? | `docs/reference/phase-implementations/README.md` |
 | Why was a specific design decision made? | `docs/reference/08-architecture-handbook.md` §ADR + `docs/reference/architecture-implementation-history.md` §7 |
 | How do the domains relate visually? | `docs/reference/09-architecture-diagrams.md` (16 Mermaid diagrams) |
 | How does this compare to enterprise platforms (Palantir Foundry)? | `docs/reference/palantir-alignment.md` |
