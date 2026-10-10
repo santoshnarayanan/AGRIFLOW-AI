@@ -155,15 +155,15 @@ interface SoilFormProps {
   isPending: boolean
   onCancel: () => void
   mode: 'create' | 'edit'
-  lockedFieldId?: number
-  preselectedFarmId?: number
+  lockedFieldId?: string
+  preselectedFarmId?: string
 }
 
 function SoilForm({
   defaultValues, onSubmit, isPending, onCancel, mode, lockedFieldId, preselectedFarmId,
 }: SoilFormProps) {
   const { data: farms } = useFarms()
-  const [formFarmId, setFormFarmId] = useState<number | undefined>(preselectedFarmId)
+  const [formFarmId, setFormFarmId] = useState<string | undefined>(preselectedFarmId)
   const { data: fields } = useFields(formFarmId)
 
   const { register, handleSubmit, control, formState: { errors } } = useForm<SoilFormValues>({
@@ -187,10 +187,10 @@ function SoilForm({
         <div className="grid grid-cols-2 gap-3">
           <div className="space-y-2">
             <Label>Farm</Label>
-            <Select value={formFarmId ? String(formFarmId) : ''} onValueChange={(v) => setFormFarmId(Number(v))}>
+            <Select value={formFarmId ? String(formFarmId) : ''} onValueChange={(v) => setFormFarmId(v)}>
               <SelectTrigger><SelectValue placeholder="Select farm…" /></SelectTrigger>
               <SelectContent>
-                {farms?.map((f) => <SelectItem key={f.id} value={String(f.id)}>{f.name}</SelectItem>)}
+                {farms?.map((f) => <SelectItem key={f.id} value={String(f.id)}>{f.farm_name}</SelectItem>)}
               </SelectContent>
             </Select>
           </div>
@@ -322,8 +322,8 @@ function DeleteSoilDialog({ profile, open, onClose }: {
 
 export function SoilProfiles() {
   const { data: farms, isLoading: farmsLoading } = useFarms()
-  const [selectedFarmId, setSelectedFarmId] = useState<number | undefined>()
-  const [selectedFieldId, setSelectedFieldId] = useState<number | undefined>()
+  const [selectedFarmId, setSelectedFarmId] = useState<string | undefined>()
+  const [selectedFieldId, setSelectedFieldId] = useState<string | undefined>()
   const [createOpen, setCreateOpen] = useState(false)
   const [editProfile, setEditProfile] = useState<SoilProfile | null>(null)
   const [deleteProfile, setDeleteProfile] = useState<SoilProfile | null>(null)
@@ -334,13 +334,13 @@ export function SoilProfiles() {
   const { mutate: updateProfile, isPending: updating } = useUpdateSoilProfile()
 
   function handleFarmChange(v: string) {
-    setSelectedFarmId(v === 'all' ? undefined : Number(v))
+    setSelectedFarmId(v === 'all' ? undefined : v)
     setSelectedFieldId(undefined)
   }
 
   function handleCreate(values: SoilFormValues) {
     const payload: SoilProfileCreate = {
-      field_id: Number(values.field_id),
+      field_id: values.field_id,
       ph_level: numOrUndef(values.ph_level),
       nitrogen_content: numOrUndef(values.nitrogen_content),
       phosphorus_content: numOrUndef(values.phosphorus_content),
@@ -410,7 +410,7 @@ export function SoilProfiles() {
             <SelectTrigger className="w-44"><SelectValue placeholder="All farms" /></SelectTrigger>
             <SelectContent>
               <SelectItem value="all">All farms</SelectItem>
-              {farms?.map((f) => <SelectItem key={f.id} value={String(f.id)}>{f.name}</SelectItem>)}
+              {farms?.map((f) => <SelectItem key={f.id} value={String(f.id)}>{f.farm_name}</SelectItem>)}
             </SelectContent>
           </Select>
         )}
@@ -419,7 +419,7 @@ export function SoilProfiles() {
             <span className="text-muted-foreground">›</span>
             <span className="text-sm font-medium text-muted-foreground">Field:</span>
             <Select value={selectedFieldId ? String(selectedFieldId) : 'all'}
-              onValueChange={(v) => setSelectedFieldId(v === 'all' ? undefined : Number(v))}>
+              onValueChange={(v) => setSelectedFieldId(v === 'all' ? undefined : v)}>
               <SelectTrigger className="w-44"><SelectValue placeholder="All fields" /></SelectTrigger>
               <SelectContent>
                 <SelectItem value="all">All fields</SelectItem>
@@ -486,7 +486,7 @@ export function SoilProfiles() {
             {selectedField
               ? `Soil Profiles — ${selectedField.name}`
               : selectedFarm
-              ? `Soil Profiles — ${selectedFarm.name}`
+              ? `Soil Profiles — ${selectedFarm.farm_name}`
               : 'All Soil Profiles'}
           </CardTitle>
         </CardHeader>
@@ -536,7 +536,7 @@ export function SoilProfiles() {
                           <p className="font-medium text-sm">
                             {field?.name ?? `Field #${p.field_id}`}
                           </p>
-                          <p className="text-xs text-muted-foreground">{farm?.name ?? ''}</p>
+                          <p className="text-xs text-muted-foreground">{farm?.farm_name ?? ''}</p>
                         </div>
                       </TableCell>
                       <TableCell><PhBar ph={p.ph_level} /></TableCell>

@@ -6,7 +6,6 @@ import {
   LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip,
   ResponsiveContainer, Legend,
 } from 'recharts'
-import type { TooltipProps } from 'recharts'
 import { Cpu, Activity, Clock, Zap, Plus, Trash2, AlertTriangle, Lock } from 'lucide-react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
@@ -87,7 +86,11 @@ function qualityVariant(flag: string | null): 'success' | 'warning' | 'destructi
 
 // ─── Chart tooltip ────────────────────────────────────────────────────────────
 
-function ChartTooltip({ active, payload, label }: TooltipProps<number, string>) {
+function ChartTooltip({ active, payload, label }: {
+  active?: boolean
+  payload?: Array<{ dataKey?: string; name?: string; value?: number; color?: string }>
+  label?: string
+}) {
   if (!active || !payload?.length) return null
   return (
     <div className="rounded-lg border bg-card p-3 shadow-lg text-sm">
@@ -147,7 +150,7 @@ function LogReadingDialog({ open, onOpenChange }: LogDialogProps) {
 
   const watchedFarm = watch('farm_id')
   const watchedType = watch('sensor_type')
-  const { data: fields = [] } = useFields(watchedFarm ? Number(watchedFarm) : undefined)
+  const { data: fields = [] } = useFields(watchedFarm || undefined)
 
   useEffect(() => { setValue('field_id', '') }, [watchedFarm, setValue])
   useEffect(() => {
@@ -158,7 +161,7 @@ function LogReadingDialog({ open, onOpenChange }: LogDialogProps) {
 
   const onSubmit = (values: ReadingFormValues) => {
     createReading.mutate({
-      field_id: Number(values.field_id),
+      field_id: values.field_id,
       sensor_type: values.sensor_type as SensorType,
       sensor_id: values.sensor_id || undefined,
       value: Number(values.value),
@@ -192,7 +195,7 @@ function LogReadingDialog({ open, onOpenChange }: LogDialogProps) {
                 <Select value={field.value} onValueChange={field.onChange}>
                   <SelectTrigger><SelectValue placeholder="Select farm" /></SelectTrigger>
                   <SelectContent>
-                    {farms.map(f => <SelectItem key={f.id} value={String(f.id)}>{f.name}</SelectItem>)}
+                    {farms.map(f => <SelectItem key={f.id} value={String(f.id)}>{f.farm_name}</SelectItem>)}
                   </SelectContent>
                 </Select>
               )} />
@@ -413,7 +416,7 @@ function TypeSummaryGrid({ readings }: TypeSummaryProps) {
 // ─── Main page ────────────────────────────────────────────────────────────────
 
 export function Sensors() {
-  const [selectedFarmId, setSelectedFarmId] = useState<number | undefined>()
+  const [selectedFarmId, setSelectedFarmId] = useState<string | undefined>()
   const [selectedFieldId, setSelectedFieldId] = useState<number | undefined>()
   const [selectedType, setSelectedType] = useState<SensorType | 'all'>('all')
   const [logOpen, setLogOpen] = useState(false)
@@ -480,7 +483,7 @@ export function Sensors() {
         <Select
           value={selectedFarmId ? String(selectedFarmId) : 'all'}
           onValueChange={v => {
-            setSelectedFarmId(v !== 'all' ? Number(v) : undefined)
+            setSelectedFarmId(v !== 'all' ? v : undefined)
             setSelectedFieldId(undefined)
           }}
         >
@@ -489,7 +492,7 @@ export function Sensors() {
           </SelectTrigger>
           <SelectContent>
             <SelectItem value="all">All farms</SelectItem>
-            {farms.map(f => <SelectItem key={f.id} value={String(f.id)}>{f.name}</SelectItem>)}
+            {farms.map(f => <SelectItem key={f.id} value={String(f.id)}>{f.farm_name}</SelectItem>)}
           </SelectContent>
         </Select>
 

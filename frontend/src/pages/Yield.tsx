@@ -6,7 +6,6 @@ import {
   ComposedChart, Bar, Line, XAxis, YAxis, CartesianGrid,
   Tooltip as RechartsTooltip, ResponsiveContainer, Legend, Cell,
 } from 'recharts'
-import type { TooltipProps } from 'recharts'
 import { Wheat, TrendingUp, Layers, BarChart3, Plus, Pencil, Trash2, AlertTriangle } from 'lucide-react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
@@ -24,7 +23,7 @@ import { useFarms } from '@/api/farms'
 import { useFields } from '@/api/fields'
 import { useCrops } from '@/api/crops'
 import { useYieldRecords, useCreateYieldRecord, useUpdateYieldRecord, useDeleteYieldRecord } from '@/api/yield'
-import { formatDate, formatDateTime } from '@/lib/utils'
+import { formatDate } from '@/lib/utils'
 import type { YieldGrade, YieldRecord } from '@/types'
 
 // ─── Yield meta ───────────────────────────────────────────────────────────────
@@ -38,15 +37,6 @@ const GRADE_LABEL: Record<YieldGrade, string> = {
   grade_c: 'Grade C',
   commercial: 'Commercial',
   reject: 'Reject',
-}
-
-const GRADE_COLOR: Record<YieldGrade, string> = {
-  premium: '#8b5cf6',
-  grade_a: '#22c55e',
-  grade_b: '#84cc16',
-  grade_c: '#f59e0b',
-  commercial: '#3b82f6',
-  reject: '#ef4444',
 }
 
 const GRADE_BADGE: Record<YieldGrade, string> = {
@@ -73,7 +63,11 @@ function formatQty(value: number, unit: string) {
 
 // ─── Chart tooltip ────────────────────────────────────────────────────────────
 
-function ChartTooltip({ active, payload, label }: TooltipProps<number, string>) {
+function ChartTooltip({ active, payload, label }: {
+  active?: boolean
+  payload?: Array<{ dataKey?: string; name?: string; value?: number; color?: string }>
+  label?: string
+}) {
   if (!active || !payload?.length) return null
   return (
     <div className="rounded-lg border bg-card p-3 shadow-lg text-sm">
@@ -182,7 +176,7 @@ const defaultValues: RecordFormValues = {
 
 function recordToFormValues(
   r: YieldRecord,
-  allFields: { id: number; farm_id: number }[],
+  allFields: import('@/types').Field[],
 ): RecordFormValues {
   const field = allFields.find(f => f.id === r.field_id)
   return {
@@ -206,7 +200,7 @@ interface RecordDialogProps {
   open: boolean
   onOpenChange: (v: boolean) => void
   editing: YieldRecord | null
-  allFields: { id: number; name: string; farm_id: number }[]
+  allFields: import('@/types').Field[]
 }
 
 function RecordDialog({ open, onOpenChange, editing, allFields }: RecordDialogProps) {
@@ -225,8 +219,8 @@ function RecordDialog({ open, onOpenChange, editing, allFields }: RecordDialogPr
   const watchedQty = watch('quantity')
   const watchedArea = watch('area_harvested')
 
-  const { data: fields = [] } = useFields(watchedFarm ? Number(watchedFarm) : undefined)
-  const { data: crops = [] } = useCrops(watchedField ? Number(watchedField) : undefined)
+  const { data: fields = [] } = useFields(watchedFarm || undefined)
+  const { data: crops = [] } = useCrops(watchedField || undefined)
 
   useEffect(() => {
     if (editing) reset(recordToFormValues(editing, allFields))
@@ -270,7 +264,7 @@ function RecordDialog({ open, onOpenChange, editing, allFields }: RecordDialogPr
       )
     } else {
       createRecord.mutate(
-        { ...payload, field_id: Number(values.field_id) },
+        { ...payload, field_id: values.field_id },
         { onSuccess: () => { onOpenChange(false); reset(defaultValues) } },
       )
     }
@@ -292,7 +286,7 @@ function RecordDialog({ open, onOpenChange, editing, allFields }: RecordDialogPr
               <Label>Farm</Label>
               {editing ? (
                 <Input
-                  value={farms.find(f => f.id === allFields.find(fi => fi.id === editing.field_id)?.farm_id)?.name ?? '—'}
+                  value={farms.find(f => f.id === allFields.find(fi => fi.id === editing.field_id)?.farm_id)?.farm_name ?? '—'}
                   readOnly className="bg-muted text-muted-foreground"
                 />
               ) : (
@@ -300,7 +294,7 @@ function RecordDialog({ open, onOpenChange, editing, allFields }: RecordDialogPr
                   <Select value={field.value} onValueChange={field.onChange}>
                     <SelectTrigger><SelectValue placeholder="Select farm" /></SelectTrigger>
                     <SelectContent>
-                      {farms.map(f => <SelectItem key={f.id} value={String(f.id)}>{f.name}</SelectItem>)}
+                      {farms.map(f => <SelectItem key={f.id} value={String(f.id)}>{f.farm_name}</SelectItem>)}
                     </SelectContent>
                   </Select>
                 )} />
@@ -478,7 +472,7 @@ function DeleteDialog({ record, onOpenChange }: DeleteDialogProps) {
 // ─── Main page ────────────────────────────────────────────────────────────────
 
 export function Yield() {
-  const [selectedFarmId, setSelectedFarmId] = useState<number | undefined>()
+  const [selectedFarmId, setSelectedFarmId] = useState<string | undefined>()
   const [selectedFieldId, setSelectedFieldId] = useState<number | undefined>()
   const [dialogOpen, setDialogOpen] = useState(false)
   const [editing, setEditing] = useState<YieldRecord | null>(null)
@@ -561,14 +555,14 @@ export function Yield() {
         <Select
           value={selectedFarmId ? String(selectedFarmId) : 'all'}
           onValueChange={v => {
-            setSelectedFarmId(v !== 'all' ? Number(v) : undefined)
+            setSelectedFarmId(v !== 'all' ? v : undefined)
             setSelectedFieldId(undefined)
           }}
         >
           <SelectTrigger className="w-44"><SelectValue placeholder="All farms" /></SelectTrigger>
           <SelectContent>
             <SelectItem value="all">All farms</SelectItem>
-            {farms.map(f => <SelectItem key={f.id} value={String(f.id)}>{f.name}</SelectItem>)}
+            {farms.map(f => <SelectItem key={f.id} value={String(f.id)}>{f.farm_name}</SelectItem>)}
           </SelectContent>
         </Select>
 

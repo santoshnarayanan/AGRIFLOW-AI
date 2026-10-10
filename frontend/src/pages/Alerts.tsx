@@ -159,7 +159,7 @@ function AlertDialog({
     () => allFields.filter((f) => fieldIdStr(f.farm_id) === watchFarmId),
     [allFields, watchFarmId],
   )
-  const { data: crops = [] } = useCrops(watchFieldId ? Number(watchFieldId) : undefined)
+  const { data: crops = [] } = useCrops(watchFieldId || undefined)
   const { data: fieldRecs = [] } = useFieldRecommendations(watchFieldId || undefined)
 
   useEffect(() => {
@@ -495,7 +495,7 @@ export function Alerts() {
 
   const { data: farms = [] } = useFarms()
   const { data: fieldsInFarm = [] } = useFields(
-    selectedFarmId ? Number(selectedFarmId) : undefined,
+    selectedFarmId,
   )
   const { data: allFields = [] } = useFields()
 

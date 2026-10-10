@@ -190,7 +190,7 @@ function RecommendationDialog({
     [allFields, watchFarmId],
   )
   const { data: crops = [] } = useCrops(
-    watchFieldId ? Number(watchFieldId) : undefined,
+    watchFieldId || undefined,
   )
 
   useEffect(() => {
@@ -572,7 +572,7 @@ export function Recommendations() {
 
   const { data: farms = [] } = useFarms()
   const { data: fieldsInFarm = [] } = useFields(
-    selectedFarmId ? Number(selectedFarmId) : undefined,
+    selectedFarmId,
   )
   const { data: allFields = [] } = useFields()
 

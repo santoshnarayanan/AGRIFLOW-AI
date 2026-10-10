@@ -116,13 +116,13 @@ interface WeatherFormProps {
   onSubmit: (values: WeatherFormValues) => void
   isPending: boolean
   onCancel: () => void
-  preselectedFieldId?: number
-  preselectedFarmId?: number
+  preselectedFieldId?: string
+  preselectedFarmId?: string
 }
 
 function WeatherForm({ onSubmit, isPending, onCancel, preselectedFieldId, preselectedFarmId }: WeatherFormProps) {
   const { data: farms } = useFarms()
-  const [formFarmId, setFormFarmId] = useState<number | undefined>(preselectedFarmId)
+  const [formFarmId, setFormFarmId] = useState<string | undefined>(preselectedFarmId)
   const { data: fields } = useFields(formFarmId)
 
   // Default recorded_at to current datetime-local string
@@ -153,10 +153,10 @@ function WeatherForm({ onSubmit, isPending, onCancel, preselectedFieldId, presel
         <div className="grid grid-cols-2 gap-3">
           <div className="space-y-2">
             <Label>Farm</Label>
-            <Select value={formFarmId ? String(formFarmId) : ''} onValueChange={(v) => setFormFarmId(Number(v))}>
+            <Select value={formFarmId ? String(formFarmId) : ''} onValueChange={(v) => setFormFarmId(v)}>
               <SelectTrigger><SelectValue placeholder="Select farm…" /></SelectTrigger>
               <SelectContent>
-                {farms?.map((f) => <SelectItem key={f.id} value={String(f.id)}>{f.name}</SelectItem>)}
+                {farms?.map((f) => <SelectItem key={f.id} value={String(f.id)}>{f.farm_name}</SelectItem>)}
               </SelectContent>
             </Select>
           </div>
@@ -276,8 +276,8 @@ function WeatherStat({
 
 export function Weather() {
   const { data: farms, isLoading: farmsLoading } = useFarms()
-  const [selectedFarmId, setSelectedFarmId] = useState<number | undefined>()
-  const [selectedFieldId, setSelectedFieldId] = useState<number | undefined>()
+  const [selectedFarmId, setSelectedFarmId] = useState<string | undefined>()
+  const [selectedFieldId, setSelectedFieldId] = useState<string | undefined>()
   const [logOpen, setLogOpen] = useState(false)
   const [deleteId, setDeleteId] = useState<number | null>(null)
 
@@ -298,7 +298,7 @@ export function Weather() {
   const { mutate: deleteObs } = useDeleteWeather()
 
   function handleFarmChange(v: string) {
-    setSelectedFarmId(v === 'all' ? undefined : Number(v))
+    setSelectedFarmId(v === 'all' ? undefined : v)
     setSelectedFieldId(undefined)
   }
 
@@ -308,7 +308,7 @@ export function Weather() {
     solar_radiation: string; atmospheric_pressure: string
   }) {
     const payload: WeatherObservationCreate = {
-      field_id: Number(values.field_id),
+      field_id: values.field_id,
       recorded_at: new Date(values.recorded_at).toISOString(),
       temperature: optNum(values.temperature),
       humidity: optNum(values.humidity),
@@ -352,7 +352,7 @@ export function Weather() {
             <SelectTrigger className="w-44"><SelectValue placeholder="All farms" /></SelectTrigger>
             <SelectContent>
               <SelectItem value="all">All farms</SelectItem>
-              {farms?.map((f) => <SelectItem key={f.id} value={String(f.id)}>{f.name}</SelectItem>)}
+              {farms?.map((f) => <SelectItem key={f.id} value={String(f.id)}>{f.farm_name}</SelectItem>)}
             </SelectContent>
           </Select>
         )}
@@ -360,7 +360,7 @@ export function Weather() {
           <>
             <span className="text-muted-foreground">›</span>
             <Select value={selectedFieldId ? String(selectedFieldId) : 'all'}
-              onValueChange={(v) => setSelectedFieldId(v === 'all' ? undefined : Number(v))}>
+              onValueChange={(v) => setSelectedFieldId(v === 'all' ? undefined : v)}>
               <SelectTrigger className="w-44"><SelectValue placeholder="All fields" /></SelectTrigger>
               <SelectContent>
                 <SelectItem value="all">All fields</SelectItem>
@@ -466,7 +466,7 @@ export function Weather() {
               {selectedField
                 ? `Observations — ${selectedField.name}`
                 : selectedFarm
-                ? `Observations — ${selectedFarm.name}`
+                ? `Observations — ${selectedFarm.farm_name}`
                 : 'All Observations'}
             </CardTitle>
             {observations && (
