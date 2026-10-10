@@ -1602,6 +1602,8 @@ All Phase 1–11 domain APIs remain unchanged. No new REST endpoints were introd
 
 Status: ✅ Complete
 
+**Implementation reference:** [phase-implementations/13-decision-intelligence.md](./phase-implementations/13-decision-intelligence.md) (code map, endpoints, business rules, verification).
+
 Phase 13 delivered the Decision Intelligence layer — the Recommendation and Alert domains — on top of the TimescaleDB analytical foundation established in Phase 12. It also completed the Farm CRUD API. Decision records use standard PostgreSQL (not TimescaleDB hypertables), as they are low-volume mutable entities rather than high-frequency time-series observations.
 
 ### Engineering Objectives
