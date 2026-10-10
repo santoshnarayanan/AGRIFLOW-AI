@@ -7,39 +7,88 @@ export interface PaginatedResponse<T> {
   size: number
 }
 
+/** Backend list endpoints use limit/offset (see app.schemas.common.PaginatedResponse). */
+export interface OffsetPaginatedResponse<T> {
+  items: T[]
+  total: number
+  limit: number
+  offset: number
+}
+
 // ─── Farm ─────────────────────────────────────────────────────────────────────
 
 export interface Farm {
-  id: number
-  name: string
-  location: string | null
-  area: number | null
+  id: string
+  farm_code: string
+  farm_name: string
+  owner_name: string
+  country: string
+  state: string
+  city: string
+  latitude: string | number
+  longitude: string | number
+  total_area_hectares: string | number
+  is_active: boolean
   created_at: string
   updated_at: string
 }
 
 export interface FarmCreate {
-  name: string
-  location?: string
-  area?: number
+  farm_code: string
+  farm_name: string
+  owner_name: string
+  country: string
+  state: string
+  city: string
+  latitude: number
+  longitude: number
+  total_area_hectares: number
+  is_active?: boolean
 }
 
 export interface FarmUpdate {
-  name?: string
-  location?: string
-  area?: number
+  farm_name?: string
+  owner_name?: string
+  country?: string
+  state?: string
+  city?: string
+  latitude?: number
+  longitude?: number
+  total_area_hectares?: number
+  is_active?: boolean
 }
 
 // ─── Field ────────────────────────────────────────────────────────────────────
 
 export interface Field {
-  id: number
-  farm_id: number
+  id: string
+  farm_id: string
   name: string
-  area: number | null
-  location: string | null
+  area_hectares: string | number | null
+  soil_type: string | null
+  latitude: string | number | null
+  longitude: string | number | null
+  elevation_m: string | number | null
   created_at: string
   updated_at: string
+}
+
+export interface FieldCreate {
+  name: string
+  area_hectares?: number
+  soil_type?: string
+  latitude?: number
+  longitude?: number
+  elevation_m?: number
+}
+
+export interface FieldUpdate {
+  name?: string
+  area_hectares?: number
+  soil_type?: string
+  latitude?: number
+  longitude?: number
+  elevation_m?: number
 }
 
 // ─── Satellite Analysis ───────────────────────────────────────────────────────
@@ -49,7 +98,7 @@ export type SatelliteSource =
 
 export interface SatelliteAnalysis {
   id: number
-  field_id: number
+  field_id: string
   acquisition_date: string
   satellite_source: SatelliteSource | null
   cloud_cover_percentage: number | null
@@ -64,7 +113,7 @@ export interface SatelliteAnalysis {
 }
 
 export interface SatelliteAnalysisCreate {
-  field_id: number
+  field_id: string
   acquisition_date: string
   satellite_source?: SatelliteSource
   cloud_cover_percentage?: number
@@ -93,7 +142,7 @@ export type DiseaseSeverity = 'low' | 'moderate' | 'high' | 'critical'
 
 export interface DiseaseObservation {
   id: number
-  field_id: number
+  field_id: string
   crop_id: number | null
   disease_name: string
   severity: DiseaseSeverity
@@ -108,7 +157,7 @@ export interface DiseaseObservation {
 }
 
 export interface DiseaseObservationCreate {
-  field_id: number
+  field_id: string
   crop_id?: number
   disease_name: string
   severity: DiseaseSeverity
@@ -137,7 +186,7 @@ export type YieldGrade = 'premium' | 'grade_a' | 'grade_b' | 'grade_c' | 'commer
 
 export interface YieldRecord {
   id: number
-  field_id: number
+  field_id: string
   crop_id: number | null
   harvest_date: string
   quantity: number
@@ -152,7 +201,7 @@ export interface YieldRecord {
 }
 
 export interface YieldRecordCreate {
-  field_id: number
+  field_id: string
   crop_id?: number
   harvest_date: string
   quantity: number
@@ -182,7 +231,7 @@ export type IrrigationMethod =
 
 export interface IrrigationEvent {
   id: number
-  field_id: number
+  field_id: string
   crop_id: number | null
   start_time: string
   end_time: string | null
@@ -195,7 +244,7 @@ export interface IrrigationEvent {
 }
 
 export interface IrrigationEventCreate {
-  field_id: number
+  field_id: string
   crop_id?: number
   start_time: string
   end_time?: string
@@ -224,7 +273,7 @@ export type SensorType =
 
 export interface SensorReading {
   id: number
-  field_id: number
+  field_id: string
   sensor_id: string | null
   sensor_type: SensorType
   value: number
@@ -235,7 +284,7 @@ export interface SensorReading {
 }
 
 export interface SensorReadingCreate {
-  field_id: number
+  field_id: string
   sensor_id?: string
   sensor_type: SensorType
   value: number
@@ -248,7 +297,7 @@ export interface SensorReadingCreate {
 
 export interface WeatherObservation {
   id: number
-  field_id: number
+  field_id: string
   temperature: number | null
   humidity: number | null
   rainfall: number | null
@@ -261,7 +310,7 @@ export interface WeatherObservation {
 }
 
 export interface WeatherObservationCreate {
-  field_id: number
+  field_id: string
   temperature?: number
   humidity?: number
   rainfall?: number
@@ -280,7 +329,7 @@ export type SoilTexture =
 
 export interface SoilProfile {
   id: number
-  field_id: number
+  field_id: string
   ph_level: number | null
   nitrogen_content: number | null
   phosphorus_content: number | null
@@ -295,7 +344,7 @@ export interface SoilProfile {
 }
 
 export interface SoilProfileCreate {
-  field_id: number
+  field_id: string
   ph_level?: number
   nitrogen_content?: number
   phosphorus_content?: number
@@ -328,8 +377,8 @@ export type GrowthStage =
 export type CropStatus = 'planned' | 'active' | 'harvested' | 'failed'
 
 export interface Crop {
-  id: number
-  field_id: number
+  id: string
+  field_id: string
   name: string
   variety: string | null
   growth_stage: GrowthStage
@@ -342,7 +391,6 @@ export interface Crop {
 }
 
 export interface CropCreate {
-  field_id: number
   name: string
   variety?: string
   growth_stage?: GrowthStage

@@ -5,7 +5,7 @@ import { apiClient } from './client'
 const WEATHER_KEY = ['weather'] as const
 
 interface WeatherParams {
-  fieldId?: number
+  fieldId?: string
   from?: string
   to?: string
   limit?: number

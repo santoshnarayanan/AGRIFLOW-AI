@@ -9,6 +9,7 @@ import { useFields } from '@/api/fields'
 import { useAlertsForFieldIds } from '@/api/alerts'
 import { useRecommendationsForFieldIds } from '@/api/recommendations'
 import { formatDateTime } from '@/lib/utils'
+import { decimalFromApi, formatFarmLocation, farmDisplayName } from '@/lib/farm'
 import type { AlertSeverity } from '@/types'
 
 const severityVariant: Record<AlertSeverity, 'critical' | 'destructive' | 'warning' | 'info'> = {
@@ -237,13 +238,13 @@ export function Dashboard() {
               <TableBody>
                 {farms?.map((farm) => (
                   <TableRow key={farm.id}>
-                    <TableCell className="font-medium">
-                      {(farm as { farm_name?: string; name?: string }).farm_name
-                        ?? (farm as { name?: string }).name
-                        ?? farm.id}
+                    <TableCell className="font-medium">{farmDisplayName(farm)}</TableCell>
+                    <TableCell className="text-muted-foreground">{formatFarmLocation(farm)}</TableCell>
+                    <TableCell>
+                      {decimalFromApi(farm.total_area_hectares) != null
+                        ? `${decimalFromApi(farm.total_area_hectares)} ha`
+                        : '—'}
                     </TableCell>
-                    <TableCell className="text-muted-foreground">{farm.location ?? '—'}</TableCell>
-                    <TableCell>{farm.area != null ? `${farm.area} ha` : '—'}</TableCell>
                     <TableCell className="text-xs text-muted-foreground">
                       {formatDateTime(farm.created_at)}
                     </TableCell>

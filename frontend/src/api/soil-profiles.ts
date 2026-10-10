@@ -4,7 +4,7 @@ import { apiClient } from './client'
 
 const SOIL_KEY = ['soil-profiles'] as const
 
-async function fetchSoilProfiles(fieldId?: number): Promise<SoilProfile[]> {
+async function fetchSoilProfiles(fieldId?: string): Promise<SoilProfile[]> {
   const params = fieldId ? { field_id: fieldId } : {}
   const { data } = await apiClient.get<SoilProfile[]>('/soil-profiles/', { params })
   return data
@@ -24,7 +24,7 @@ async function deleteSoilProfile(id: number): Promise<void> {
   await apiClient.delete(`/soil-profiles/${id}`)
 }
 
-export function useSoilProfiles(fieldId?: number) {
+export function useSoilProfiles(fieldId?: string) {
   return useQuery({
     queryKey: fieldId ? [...SOIL_KEY, 'field', fieldId] : SOIL_KEY,
     queryFn: () => fetchSoilProfiles(fieldId),

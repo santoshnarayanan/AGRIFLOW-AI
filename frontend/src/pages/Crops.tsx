@@ -113,8 +113,8 @@ interface CropFormProps {
   isPending: boolean
   onCancel: () => void
   mode: 'create' | 'edit'
-  lockedFieldId?: number
-  preselectedFarmId?: number
+  lockedFieldId?: string
+  preselectedFarmId?: string
 }
 
 function CropForm({
@@ -127,7 +127,7 @@ function CropForm({
   preselectedFarmId,
 }: CropFormProps) {
   const { data: farms } = useFarms()
-  const [formFarmId, setFormFarmId] = useState<number | undefined>(preselectedFarmId)
+  const [formFarmId, setFormFarmId] = useState<string | undefined>(preselectedFarmId)
   const { data: fields } = useFields(formFarmId)
 
   const { register, handleSubmit, control, formState: { errors } } = useForm<CropFormValues>({
@@ -162,14 +162,14 @@ function CropForm({
             <Label>Farm</Label>
             <Select
               value={formFarmId ? String(formFarmId) : ''}
-              onValueChange={(v) => setFormFarmId(Number(v))}
+              onValueChange={(v) => setFormFarmId(v)}
             >
               <SelectTrigger>
                 <SelectValue placeholder="Select farm…" />
               </SelectTrigger>
               <SelectContent>
                 {farms?.map((f) => (
-                  <SelectItem key={f.id} value={String(f.id)}>{f.name}</SelectItem>
+                  <SelectItem key={f.id} value={String(f.id)}>{f.farm_name}</SelectItem>
                 ))}
               </SelectContent>
             </Select>
@@ -325,8 +325,8 @@ function DeleteCropDialog({
 export function Crops() {
   const { data: farms, isLoading: farmsLoading } = useFarms()
 
-  const [selectedFarmId, setSelectedFarmId] = useState<number | undefined>()
-  const [selectedFieldId, setSelectedFieldId] = useState<number | undefined>()
+  const [selectedFarmId, setSelectedFarmId] = useState<string | undefined>()
+  const [selectedFieldId, setSelectedFieldId] = useState<string | undefined>()
   const [createOpen, setCreateOpen] = useState(false)
   const [editCrop, setEditCrop] = useState<Crop | null>(null)
   const [deleteCrop, setDeleteCrop] = useState<Crop | null>(null)
@@ -338,13 +338,12 @@ export function Crops() {
 
   // Reset field selection when farm changes
   function handleFarmChange(farmId: string) {
-    setSelectedFarmId(farmId === 'all' ? undefined : Number(farmId))
+    setSelectedFarmId(farmId === 'all' ? undefined : farmId)
     setSelectedFieldId(undefined)
   }
 
   function handleCreate(values: CropFormValues) {
     const payload: CropCreate = {
-      field_id: Number(values.field_id),
       name: values.name,
       variety: values.variety || undefined,
       growth_stage: values.growth_stage as GrowthStage,
@@ -352,7 +351,10 @@ export function Crops() {
       planting_date: values.planting_date || undefined,
       expected_harvest_date: values.expected_harvest_date || undefined,
     }
-    createCrop(payload, { onSuccess: () => setCreateOpen(false) })
+    createCrop(
+      { fieldId: values.field_id, payload },
+      { onSuccess: () => setCreateOpen(false) },
+    )
   }
 
   function handleEdit(values: CropFormValues) {
@@ -395,7 +397,7 @@ export function Crops() {
             <SelectContent>
               <SelectItem value="all">All farms</SelectItem>
               {farms?.map((f) => (
-                <SelectItem key={f.id} value={String(f.id)}>{f.name}</SelectItem>
+                <SelectItem key={f.id} value={String(f.id)}>{f.farm_name}</SelectItem>
               ))}
             </SelectContent>
           </Select>
@@ -407,7 +409,7 @@ export function Crops() {
             <span className="text-sm font-medium text-muted-foreground">Field:</span>
             <Select
               value={selectedFieldId ? String(selectedFieldId) : 'all'}
-              onValueChange={(v) => setSelectedFieldId(v === 'all' ? undefined : Number(v))}
+              onValueChange={(v) => setSelectedFieldId(v === 'all' ? undefined : v)}
             >
               <SelectTrigger className="w-44">
                 <SelectValue placeholder="All fields" />
@@ -469,7 +471,7 @@ export function Crops() {
               {selectedField
                 ? `Crops — ${selectedField.name}`
                 : selectedFarm
-                ? `Crops — ${selectedFarm.name}`
+                ? `Crops — ${selectedFarm.farm_name}`
                 : 'All Crops'}
             </CardTitle>
             {crops && crops.length > 0 && (
@@ -533,7 +535,7 @@ export function Crops() {
                             {field?.name ?? `Field #${crop.field_id}`}
                           </p>
                           <p className="text-xs text-muted-foreground">
-                            {farms?.find((f) => f.id === field?.farm_id)?.name ?? ''}
+                            {farms?.find((f) => f.id === field?.farm_id)?.farm_name ?? ''}
                           </p>
                         </div>
                       </TableCell>

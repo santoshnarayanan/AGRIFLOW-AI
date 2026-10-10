@@ -6,7 +6,6 @@ import {
   ComposedChart, Bar, Line, XAxis, YAxis, CartesianGrid,
   Tooltip as RechartsTooltip, ResponsiveContainer, Legend,
 } from 'recharts'
-import type { TooltipProps } from 'recharts'
 import { Droplets, Clock, Activity, CalendarDays, Plus, Pencil, Trash2, AlertTriangle } from 'lucide-react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
@@ -78,7 +77,11 @@ function formatDuration(minutes: number | null) {
 
 // ─── Chart tooltip ────────────────────────────────────────────────────────────
 
-function ChartTooltip({ active, payload, label }: TooltipProps<number, string>) {
+function ChartTooltip({ active, payload, label }: {
+  active?: boolean
+  payload?: Array<{ dataKey?: string; name?: string; value?: number; color?: string }>
+  label?: string
+}) {
   if (!active || !payload?.length) return null
   return (
     <div className="rounded-lg border bg-card p-3 shadow-lg text-sm">
@@ -125,9 +128,8 @@ const defaultValues: EventFormValues = {
   end_time: '', duration_minutes: '', water_amount: '', notes: '',
 }
 
-function eventToFormValues(e: IrrigationEvent, farms: { id: number; farm_id: number }[]): EventFormValues {
-  // Find farm_id for the field (we pass fields to resolve farm)
-  const match = farms.find(f => f.id === e.field_id)
+function eventToFormValues(e: IrrigationEvent, fields: import('@/types').Field[]): EventFormValues {
+  const match = fields.find((f) => f.id === e.field_id)
   return {
     farm_id: match ? String(match.farm_id) : '',
     field_id: String(e.field_id),
@@ -147,7 +149,7 @@ interface EventDialogProps {
   open: boolean
   onOpenChange: (v: boolean) => void
   editing: IrrigationEvent | null
-  allFields: { id: number; name: string; farm_id: number }[]
+  allFields: import('@/types').Field[]
 }
 
 function EventDialog({ open, onOpenChange, editing, allFields }: EventDialogProps) {
@@ -164,8 +166,8 @@ function EventDialog({ open, onOpenChange, editing, allFields }: EventDialogProp
   const watchedFarm = watch('farm_id')
   const watchedField = watch('field_id')
 
-  const { data: fields = [] } = useFields(watchedFarm ? Number(watchedFarm) : undefined)
-  const { data: crops = [] } = useCrops(watchedField ? Number(watchedField) : undefined)
+  const { data: fields = [] } = useFields(watchedFarm || undefined)
+  const { data: crops = [] } = useCrops(watchedField || undefined)
 
   // Populate form when editing
   useEffect(() => {
@@ -203,7 +205,7 @@ function EventDialog({ open, onOpenChange, editing, allFields }: EventDialogProp
       )
     } else {
       createEvent.mutate(
-        { ...payload, field_id: Number(values.field_id) },
+        { ...payload, field_id: values.field_id },
         { onSuccess: () => { onOpenChange(false); reset(defaultValues) } },
       )
     }
@@ -225,7 +227,7 @@ function EventDialog({ open, onOpenChange, editing, allFields }: EventDialogProp
               <Label>Farm</Label>
               {editing ? (
                 <Input
-                  value={farms.find(f => f.id === allFields.find(fi => fi.id === editing.field_id)?.farm_id)?.name ?? '—'}
+                  value={farms.find(f => f.id === allFields.find(fi => fi.id === editing.field_id)?.farm_id)?.farm_name ?? '—'}
                   readOnly
                   className="bg-muted text-muted-foreground"
                 />
@@ -234,7 +236,7 @@ function EventDialog({ open, onOpenChange, editing, allFields }: EventDialogProp
                   <Select value={field.value} onValueChange={field.onChange}>
                     <SelectTrigger><SelectValue placeholder="Select farm" /></SelectTrigger>
                     <SelectContent>
-                      {farms.map(f => <SelectItem key={f.id} value={String(f.id)}>{f.name}</SelectItem>)}
+                      {farms.map(f => <SelectItem key={f.id} value={String(f.id)}>{f.farm_name}</SelectItem>)}
                     </SelectContent>
                   </Select>
                 )} />
@@ -399,7 +401,7 @@ function DeleteDialog({ event, onOpenChange }: DeleteDialogProps) {
 // ─── Main page ────────────────────────────────────────────────────────────────
 
 export function Irrigation() {
-  const [selectedFarmId, setSelectedFarmId] = useState<number | undefined>()
+  const [selectedFarmId, setSelectedFarmId] = useState<string | undefined>()
   const [selectedFieldId, setSelectedFieldId] = useState<number | undefined>()
   const [dialogOpen, setDialogOpen] = useState(false)
   const [editing, setEditing] = useState<IrrigationEvent | null>(null)
@@ -475,7 +477,7 @@ export function Irrigation() {
         <Select
           value={selectedFarmId ? String(selectedFarmId) : 'all'}
           onValueChange={v => {
-            setSelectedFarmId(v !== 'all' ? Number(v) : undefined)
+            setSelectedFarmId(v !== 'all' ? v : undefined)
             setSelectedFieldId(undefined)
           }}
         >
@@ -484,7 +486,7 @@ export function Irrigation() {
           </SelectTrigger>
           <SelectContent>
             <SelectItem value="all">All farms</SelectItem>
-            {farms.map(f => <SelectItem key={f.id} value={String(f.id)}>{f.name}</SelectItem>)}
+            {farms.map(f => <SelectItem key={f.id} value={String(f.id)}>{f.farm_name}</SelectItem>)}
           </SelectContent>
         </Select>
 

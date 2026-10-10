@@ -6,7 +6,6 @@ import {
   LineChart, Line, XAxis, YAxis, CartesianGrid,
   Tooltip as RechartsTooltip, ResponsiveContainer, Legend, ReferenceLine,
 } from 'recharts'
-import type { TooltipProps } from 'recharts'
 import { Satellite as SatelliteIcon, Cloud, TrendingUp, TrendingDown, Minus, ImageIcon, Plus, Pencil, Trash2, AlertTriangle } from 'lucide-react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
@@ -96,7 +95,11 @@ function NdviBar({ value }: { value: number }) {
 
 // ─── Chart tooltip ────────────────────────────────────────────────────────────
 
-function ChartTooltip({ active, payload, label }: TooltipProps<number, string>) {
+function ChartTooltip({ active, payload, label }: {
+  active?: boolean
+  payload?: Array<{ dataKey?: string; name?: string; value?: number; color?: string }>
+  label?: string
+}) {
   if (!active || !payload?.length) return null
   return (
     <div className="rounded-lg border bg-card p-3 shadow-lg text-sm">
@@ -146,7 +149,7 @@ const defaultValues: AnalysisFormValues = {
 
 function analysisToFormValues(
   a: SatelliteAnalysis,
-  allFields: { id: number; farm_id: number }[],
+  allFields: import('@/types').Field[],
 ): AnalysisFormValues {
   const field = allFields.find(f => f.id === a.field_id)
   return {
@@ -170,7 +173,7 @@ interface AnalysisDialogProps {
   open: boolean
   onOpenChange: (v: boolean) => void
   editing: SatelliteAnalysis | null
-  allFields: { id: number; name: string; farm_id: number }[]
+  allFields: import('@/types').Field[]
 }
 
 function AnalysisDialog({ open, onOpenChange, editing, allFields }: AnalysisDialogProps) {
@@ -185,7 +188,7 @@ function AnalysisDialog({ open, onOpenChange, editing, allFields }: AnalysisDial
   const { register, handleSubmit, control, watch, setValue, reset, formState: { errors } } = form
 
   const watchedFarm = watch('farm_id')
-  const { data: fields = [] } = useFields(watchedFarm ? Number(watchedFarm) : undefined)
+  const { data: fields = [] } = useFields(watchedFarm || undefined)
 
   useEffect(() => {
     if (editing) reset(analysisToFormValues(editing, allFields))
@@ -216,7 +219,7 @@ function AnalysisDialog({ open, onOpenChange, editing, allFields }: AnalysisDial
       )
     } else {
       createAnalysis.mutate(
-        { ...payload, field_id: Number(values.field_id) },
+        { ...payload, field_id: values.field_id },
         { onSuccess: () => { onOpenChange(false); reset(defaultValues) } },
       )
     }
@@ -239,7 +242,7 @@ function AnalysisDialog({ open, onOpenChange, editing, allFields }: AnalysisDial
               <Label>Farm</Label>
               {editing ? (
                 <Input
-                  value={farms.find(f => f.id === allFields.find(fi => fi.id === editing.field_id)?.farm_id)?.name ?? '—'}
+                  value={farms.find(f => f.id === allFields.find(fi => fi.id === editing.field_id)?.farm_id)?.farm_name ?? '—'}
                   readOnly className="bg-muted text-muted-foreground"
                 />
               ) : (
@@ -247,7 +250,7 @@ function AnalysisDialog({ open, onOpenChange, editing, allFields }: AnalysisDial
                   <Select value={field.value} onValueChange={field.onChange}>
                     <SelectTrigger><SelectValue placeholder="Select farm" /></SelectTrigger>
                     <SelectContent>
-                      {farms.map(f => <SelectItem key={f.id} value={String(f.id)}>{f.name}</SelectItem>)}
+                      {farms.map(f => <SelectItem key={f.id} value={String(f.id)}>{f.farm_name}</SelectItem>)}
                     </SelectContent>
                   </Select>
                 )} />
@@ -478,7 +481,7 @@ function LatestHealthPanel({ latest }: { latest: SatelliteAnalysis | null }) {
 // ─── Main page ────────────────────────────────────────────────────────────────
 
 export function Satellite() {
-  const [selectedFarmId, setSelectedFarmId] = useState<number | undefined>()
+  const [selectedFarmId, setSelectedFarmId] = useState<string | undefined>()
   const [selectedFieldId, setSelectedFieldId] = useState<number | undefined>()
   const [visibleIndices, setVisibleIndices] = useState<Record<IndexKey, boolean>>({
     ndvi: true, ndwi: true, ndre: false, evi: false,
@@ -570,14 +573,14 @@ export function Satellite() {
         <Select
           value={selectedFarmId ? String(selectedFarmId) : 'all'}
           onValueChange={v => {
-            setSelectedFarmId(v !== 'all' ? Number(v) : undefined)
+            setSelectedFarmId(v !== 'all' ? v : undefined)
             setSelectedFieldId(undefined)
           }}
         >
           <SelectTrigger className="w-44"><SelectValue placeholder="All farms" /></SelectTrigger>
           <SelectContent>
             <SelectItem value="all">All farms</SelectItem>
-            {farms.map(f => <SelectItem key={f.id} value={String(f.id)}>{f.name}</SelectItem>)}
+            {farms.map(f => <SelectItem key={f.id} value={String(f.id)}>{f.farm_name}</SelectItem>)}
           </SelectContent>
         </Select>
 

@@ -6,7 +6,7 @@ import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid,
   Tooltip as RechartsTooltip, ResponsiveContainer, Legend,
 } from 'recharts'
-import type { TooltipProps } from 'recharts'
+import { ChartTooltip } from '@/components/charts/ChartTooltip'
 import { Bug, AlertTriangle, Microscope, CalendarDays, Plus, Pencil, Trash2 } from 'lucide-react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
@@ -66,22 +66,6 @@ function toDatetimeLocal(iso: string) {
   const d = new Date(iso)
   const p = (n: number) => String(n).padStart(2, '0')
   return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}T${p(d.getHours())}:${p(d.getMinutes())}`
-}
-
-// ─── Chart tooltip ────────────────────────────────────────────────────────────
-
-function ChartTooltip({ active, payload, label }: TooltipProps<number, string>) {
-  if (!active || !payload?.length) return null
-  return (
-    <div className="rounded-lg border bg-card p-3 shadow-lg text-sm">
-      <p className="mb-2 text-xs font-medium text-muted-foreground">{label}</p>
-      {payload.map(p => p.value ? (
-        <p key={p.dataKey} className="font-medium" style={{ color: p.color }}>
-          {p.name}: {p.value}
-        </p>
-      ) : null)}
-    </div>
-  )
 }
 
 // ─── Disease frequency table ──────────────────────────────────────────────────
@@ -185,7 +169,7 @@ const defaultValues: ObsFormValues = {
 
 function obsToFormValues(
   o: DiseaseObservation,
-  allFields: { id: number; farm_id: number }[],
+  allFields: import('@/types').Field[],
 ): ObsFormValues {
   const field = allFields.find(f => f.id === o.field_id)
   return {
@@ -210,7 +194,7 @@ interface ObsDialogProps {
   open: boolean
   onOpenChange: (v: boolean) => void
   editing: DiseaseObservation | null
-  allFields: { id: number; name: string; farm_id: number }[]
+  allFields: import('@/types').Field[]
 }
 
 function ObsDialog({ open, onOpenChange, editing, allFields }: ObsDialogProps) {
@@ -227,8 +211,8 @@ function ObsDialog({ open, onOpenChange, editing, allFields }: ObsDialogProps) {
   const watchedFarm = watch('farm_id')
   const watchedField = watch('field_id')
 
-  const { data: fields = [] } = useFields(watchedFarm ? Number(watchedFarm) : undefined)
-  const { data: crops = [] } = useCrops(watchedField ? Number(watchedField) : undefined)
+  const { data: fields = [] } = useFields(watchedFarm || undefined)
+  const { data: crops = [] } = useCrops(watchedField || undefined)
 
   useEffect(() => {
     if (editing) reset(obsToFormValues(editing, allFields))
@@ -259,7 +243,7 @@ function ObsDialog({ open, onOpenChange, editing, allFields }: ObsDialogProps) {
       )
     } else {
       createObs.mutate(
-        { ...payload, field_id: Number(values.field_id) },
+        { ...payload, field_id: values.field_id },
         { onSuccess: () => { onOpenChange(false); reset(defaultValues) } },
       )
     }
@@ -288,7 +272,7 @@ function ObsDialog({ open, onOpenChange, editing, allFields }: ObsDialogProps) {
               <Label>Farm</Label>
               {editing ? (
                 <Input
-                  value={farms.find(f => f.id === allFields.find(fi => fi.id === editing.field_id)?.farm_id)?.name ?? '—'}
+                  value={farms.find(f => f.id === allFields.find(fi => fi.id === editing.field_id)?.farm_id)?.farm_name ?? '—'}
                   readOnly className="bg-muted text-muted-foreground"
                 />
               ) : (
@@ -296,7 +280,7 @@ function ObsDialog({ open, onOpenChange, editing, allFields }: ObsDialogProps) {
                   <Select value={field.value} onValueChange={field.onChange}>
                     <SelectTrigger><SelectValue placeholder="Select farm" /></SelectTrigger>
                     <SelectContent>
-                      {farms.map(f => <SelectItem key={f.id} value={String(f.id)}>{f.name}</SelectItem>)}
+                      {farms.map(f => <SelectItem key={f.id} value={String(f.id)}>{f.farm_name}</SelectItem>)}
                     </SelectContent>
                   </Select>
                 )} />
@@ -478,7 +462,7 @@ function DeleteDialog({ obs, onOpenChange }: DeleteDialogProps) {
 // ─── Main page ────────────────────────────────────────────────────────────────
 
 export function Disease() {
-  const [selectedFarmId, setSelectedFarmId] = useState<number | undefined>()
+  const [selectedFarmId, setSelectedFarmId] = useState<string | undefined>()
   const [selectedFieldId, setSelectedFieldId] = useState<number | undefined>()
   const [severityFilter, setSeverityFilter] = useState<DiseaseSeverity | 'all'>('all')
   const [dialogOpen, setDialogOpen] = useState(false)
@@ -556,14 +540,14 @@ export function Disease() {
         <Select
           value={selectedFarmId ? String(selectedFarmId) : 'all'}
           onValueChange={v => {
-            setSelectedFarmId(v !== 'all' ? Number(v) : undefined)
+            setSelectedFarmId(v !== 'all' ? v : undefined)
             setSelectedFieldId(undefined)
           }}
         >
           <SelectTrigger className="w-44"><SelectValue placeholder="All farms" /></SelectTrigger>
           <SelectContent>
             <SelectItem value="all">All farms</SelectItem>
-            {farms.map(f => <SelectItem key={f.id} value={String(f.id)}>{f.name}</SelectItem>)}
+            {farms.map(f => <SelectItem key={f.id} value={String(f.id)}>{f.farm_name}</SelectItem>)}
           </SelectContent>
         </Select>
 
