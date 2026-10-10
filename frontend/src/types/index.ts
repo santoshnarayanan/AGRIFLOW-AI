@@ -361,26 +361,62 @@ export interface CropUpdate {
   status?: CropStatus
 }
 
-// ─── Alert ────────────────────────────────────────────────────────────────────
+// ─── Alert (Phase 13 — matches FastAPI schemas) ──────────────────────────────
 
 export type AlertType =
-  | 'soil_moisture_low' | 'soil_moisture_high'
-  | 'temperature_extreme' | 'frost_risk' | 'drought_risk'
-  | 'disease_risk_high' | 'pest_detected'
-  | 'irrigation_required' | 'yield_anomaly' | 'sensor_malfunction'
+  | 'SOIL_MOISTURE_LOW'
+  | 'SOIL_MOISTURE_HIGH'
+  | 'DISEASE_RISK_HIGH'
+  | 'DISEASE_OUTBREAK'
+  | 'FROST_RISK'
+  | 'HEAT_STRESS'
+  | 'DROUGHT_STRESS'
+  | 'SENSOR_ANOMALY'
+  | 'IRRIGATION_OVERDUE'
+  | 'HARVEST_WINDOW_OPEN'
 
-export type AlertSeverity = 'critical' | 'high' | 'medium' | 'low'
+export type AlertSeverity = 'INFO' | 'WARNING' | 'HIGH' | 'CRITICAL'
 
 export interface Alert {
-  id: number
-  field_id: number
-  crop_id: number | null
+  id: string
+  field_id: string
+  crop_id: string | null
+  recommendation_id: string | null
   alert_type: AlertType
   severity: AlertSeverity
+  title: string
   message: string
   triggered_at: string
-  is_resolved: boolean
+  expires_at: string | null
+  is_acknowledged: boolean
+  acknowledged_at: string | null
+  source_metric: string | null
+  source_value: number | null
+  threshold_value: number | null
   created_at: string
+  updated_at: string
+}
+
+export interface AlertCreate {
+  crop_id?: string | null
+  recommendation_id?: string | null
+  alert_type: AlertType
+  severity: AlertSeverity
+  title: string
+  message: string
+  triggered_at: string
+  expires_at?: string | null
+  source_metric?: string | null
+  source_value?: number | null
+  threshold_value?: number | null
+}
+
+export interface AlertUpdate {
+  severity?: AlertSeverity
+  title?: string
+  message?: string
+  is_acknowledged?: boolean
+  expires_at?: string | null
 }
 
 // ─── Recommendation (Phase 13 — matches FastAPI schemas) ─────────────────────

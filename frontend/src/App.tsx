@@ -13,6 +13,7 @@ import { Yield } from '@/pages/Yield'
 import { Disease } from '@/pages/Disease'
 import { Satellite } from '@/pages/Satellite'
 import { Recommendations } from '@/pages/Recommendations'
+import { Alerts } from '@/pages/Alerts'
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -22,14 +23,6 @@ const queryClient = new QueryClient({
     },
   },
 })
-
-function ComingSoon({ label }: { label: string }) {
-  return (
-    <div className="flex h-64 items-center justify-center rounded-lg border-2 border-dashed border-muted">
-      <p className="text-muted-foreground">{label} — coming in next sprint</p>
-    </div>
-  )
-}
 
 export default function App() {
   return (
@@ -49,7 +42,7 @@ export default function App() {
             <Route path="disease" element={<Disease />} />
             <Route path="satellite" element={<Satellite />} />
             <Route path="recommendations" element={<Recommendations />} />
-            <Route path="alerts" element={<ComingSoon label="Alerts" />} />
+            <Route path="alerts" element={<Alerts />} />
           </Route>
         </Routes>
       </BrowserRouter>
