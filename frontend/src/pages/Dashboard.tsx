@@ -1,18 +1,25 @@
+import { useMemo } from 'react'
 import { Tractor, Layers, BellRing, Lightbulb, TrendingUp, AlertTriangle } from 'lucide-react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Skeleton } from '@/components/ui/skeleton'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { useFarms } from '@/api/farms'
-import { useAlerts } from '@/api/alerts'
+import { useFields } from '@/api/fields'
+import { useAlertsForFieldIds } from '@/api/alerts'
+import { useRecommendationsForFieldIds } from '@/api/recommendations'
 import { formatDateTime } from '@/lib/utils'
 import type { AlertSeverity } from '@/types'
 
 const severityVariant: Record<AlertSeverity, 'critical' | 'destructive' | 'warning' | 'info'> = {
-  critical: 'critical',
-  high: 'destructive',
-  medium: 'warning',
-  low: 'info',
+  CRITICAL: 'critical',
+  HIGH: 'destructive',
+  WARNING: 'warning',
+  INFO: 'info',
+}
+
+function fieldIdStr(id: number | string): string {
+  return String(id)
 }
 
 function StatCard({
@@ -54,16 +61,24 @@ function StatCard({
 
 export function Dashboard() {
   const { data: farms, isLoading: farmsLoading } = useFarms()
-  const { data: allAlerts, isLoading: alertsLoading } = useAlerts(100)
+  const { data: allFields = [], isLoading: fieldsLoading } = useFields()
+  const fieldIds = useMemo(() => allFields.map((f) => fieldIdStr(f.id)), [allFields])
+
+  const { data: allAlerts = [], isLoading: alertsLoading } = useAlertsForFieldIds(fieldIds)
+  const { data: recommendations = [], isLoading: recsLoading } = useRecommendationsForFieldIds(fieldIds)
 
   const totalFarms = farms?.length ?? 0
-  const recentAlerts = allAlerts?.slice(0, 5) ?? []
-  const activeAlerts = allAlerts?.filter((a) => !a.is_resolved).length ?? 0
-  const criticalCount = allAlerts?.filter((a) => a.severity === 'critical' && !a.is_resolved).length ?? 0
+  const recentAlerts = allAlerts.slice(0, 5)
+  const activeAlerts = allAlerts.filter((a) => !a.is_acknowledged).length
+  const criticalCount = allAlerts.filter(
+    (a) => a.severity === 'CRITICAL' && !a.is_acknowledged,
+  ).length
+  const pendingRecs = recommendations.filter(
+    (r) => r.status === 'PENDING' || r.status === 'ACTIVE',
+  ).length
 
   return (
     <div className="space-y-6">
-      {/* KPI Cards */}
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
         <StatCard
           label="Total Farms"
@@ -79,27 +94,27 @@ export function Dashboard() {
           icon={BellRing}
           color={criticalCount > 0 ? 'bg-red-500' : 'bg-amber-500'}
           sub={criticalCount > 0 ? `${criticalCount} critical` : 'No critical alerts'}
-          loading={alertsLoading}
+          loading={alertsLoading || fieldsLoading}
         />
         <StatCard
-          label="AI Recommendations"
-          value="—"
+          label="Open Recommendations"
+          value={pendingRecs}
           icon={Lightbulb}
           color="bg-blue-500"
-          sub="Pending review"
+          sub="Pending or active"
+          loading={recsLoading || fieldsLoading}
         />
         <StatCard
           label="Fields Monitored"
-          value="—"
+          value={allFields.length}
           icon={Layers}
           color="bg-violet-500"
           sub="Across all farms"
+          loading={fieldsLoading}
         />
       </div>
 
-      {/* Severity breakdown + Alerts table */}
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
-        {/* Alert severity breakdown */}
         <Card>
           <CardHeader className="pb-3">
             <CardTitle className="text-base">Alert Severity Breakdown</CardTitle>
@@ -108,20 +123,20 @@ export function Dashboard() {
             {alertsLoading ? (
               Array.from({ length: 4 }).map((_, i) => <Skeleton key={i} className="h-10 w-full" />)
             ) : (
-              (['critical', 'high', 'medium', 'low'] as AlertSeverity[]).map((sev) => {
-                const count = allAlerts?.filter((a) => a.severity === sev && !a.is_resolved).length ?? 0
-                const total = allAlerts?.filter((a) => !a.is_resolved).length || 1
+              (['CRITICAL', 'HIGH', 'WARNING', 'INFO'] as AlertSeverity[]).map((sev) => {
+                const count = allAlerts.filter((a) => a.severity === sev && !a.is_acknowledged).length
+                const total = activeAlerts || 1
                 const pct = Math.round((count / total) * 100)
                 const barColors: Record<AlertSeverity, string> = {
-                  critical: 'bg-red-500',
-                  high: 'bg-orange-400',
-                  medium: 'bg-amber-400',
-                  low: 'bg-blue-400',
+                  CRITICAL: 'bg-red-500',
+                  HIGH: 'bg-orange-400',
+                  WARNING: 'bg-amber-400',
+                  INFO: 'bg-blue-400',
                 }
                 return (
                   <div key={sev}>
                     <div className="mb-1 flex items-center justify-between text-sm">
-                      <span className="capitalize font-medium">{sev}</span>
+                      <span className="font-medium">{sev}</span>
                       <span className="text-muted-foreground">{count} active</span>
                     </div>
                     <div className="h-2 w-full rounded-full bg-muted">
@@ -137,7 +152,6 @@ export function Dashboard() {
           </CardContent>
         </Card>
 
-        {/* Recent Alerts */}
         <Card className="lg:col-span-2">
           <CardHeader className="pb-3">
             <div className="flex items-center justify-between">
@@ -164,7 +178,7 @@ export function Dashboard() {
               <Table>
                 <TableHeader>
                   <TableRow>
-                    <TableHead>Type</TableHead>
+                    <TableHead>Title</TableHead>
                     <TableHead>Severity</TableHead>
                     <TableHead>Message</TableHead>
                     <TableHead>Triggered</TableHead>
@@ -173,11 +187,11 @@ export function Dashboard() {
                 <TableBody>
                   {recentAlerts.map((alert) => (
                     <TableRow key={alert.id}>
-                      <TableCell className="font-medium capitalize">
-                        {alert.alert_type.replace(/_/g, ' ')}
+                      <TableCell className="font-medium max-w-[140px] truncate">
+                        {alert.title}
                       </TableCell>
                       <TableCell>
-                        <Badge variant={severityVariant[alert.severity]} className="capitalize">
+                        <Badge variant={severityVariant[alert.severity]}>
                           {alert.severity}
                         </Badge>
                       </TableCell>
@@ -196,7 +210,6 @@ export function Dashboard() {
         </Card>
       </div>
 
-      {/* Farm quick list */}
       <Card>
         <CardHeader className="pb-3">
           <CardTitle className="text-base">Registered Farms</CardTitle>
@@ -224,7 +237,11 @@ export function Dashboard() {
               <TableBody>
                 {farms?.map((farm) => (
                   <TableRow key={farm.id}>
-                    <TableCell className="font-medium">{farm.name}</TableCell>
+                    <TableCell className="font-medium">
+                      {(farm as { farm_name?: string; name?: string }).farm_name
+                        ?? (farm as { name?: string }).name
+                        ?? farm.id}
+                    </TableCell>
                     <TableCell className="text-muted-foreground">{farm.location ?? '—'}</TableCell>
                     <TableCell>{farm.area != null ? `${farm.area} ha` : '—'}</TableCell>
                     <TableCell className="text-xs text-muted-foreground">
