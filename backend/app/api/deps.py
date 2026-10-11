@@ -38,6 +38,7 @@ from app.db.repositories.weather_record import WeatherRecordRepository
 from app.db.repositories.yield_record import YieldRecordRepository
 from app.db.session import AsyncSessionFactory
 from app.events.publisher import NoOpDomainEventPublisher, OutboxDomainEventPublisher
+from app.ml.service import MLEngineService
 from app.services.alert import AlertService
 from app.services.crop import CropService
 from app.services.domain_event_outbox import DomainEventOutboxService
@@ -268,3 +269,12 @@ def get_alert_service(
 
 
 AlertServiceDep = Annotated[AlertService, Depends(get_alert_service)]
+
+
+def get_ml_engine_service(
+    recommendation_service: RecommendationServiceDep,
+) -> MLEngineService:
+    return MLEngineService(recommendation_service)
+
+
+MLEngineServiceDep = Annotated[MLEngineService, Depends(get_ml_engine_service)]

@@ -100,6 +100,23 @@ class DomainEventOutboxRepository(BaseRepository[DomainEventOutbox]):
         )
         await self._session.flush()
 
+    async def requeue_for_relay(self, outbox_id: uuid.UUID) -> DomainEventOutbox | None:
+        """Reset publish state so the outbox relay will send the envelope again."""
+        row = await self.get_by_id(outbox_id)
+        if row is None:
+            return None
+        await self._session.execute(
+            update(DomainEventOutbox)
+            .where(DomainEventOutbox.id == outbox_id)
+            .values(
+                published_at=None,
+                publish_attempts=0,
+                last_error=None,
+            )
+        )
+        await self._session.flush()
+        return await self.get_by_id(outbox_id)
+
     async def mark_failed(self, outbox_id: uuid.UUID, error: str) -> None:
         row = await self.get_by_id(outbox_id)
         if row is None:

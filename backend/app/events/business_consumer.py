@@ -22,7 +22,7 @@ from app.db.repositories.domain_event_consumer_inbox import (
 )
 from app.db.session import AsyncSessionFactory
 from app.events.catalog import EVENT_CATALOG
-from app.events.handlers.alert_evaluation import handle_domain_event
+from app.events.handlers.dispatch import handle_domain_event
 from app.events.schemas import DomainEventEnvelopeV1
 
 logger = get_logger(__name__)

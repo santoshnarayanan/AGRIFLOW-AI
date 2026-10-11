@@ -36,3 +36,16 @@ class DomainEventOutboxService:
 
     async def get_entry(self, outbox_id: uuid.UUID) -> DomainEventOutbox | None:
         return await self._outbox.get_by_id(outbox_id)
+
+    async def replay_entry(self, outbox_id: uuid.UUID) -> DomainEventOutbox | None:
+        """Re-queue a single outbox row for the relay worker."""
+        return await self._outbox.requeue_for_relay(outbox_id)
+
+    async def replay_entries(self, outbox_ids: list[uuid.UUID]) -> list[uuid.UUID]:
+        """Re-queue many rows; returns ids that were found and reset."""
+        replayed: list[uuid.UUID] = []
+        for outbox_id in outbox_ids:
+            row = await self._outbox.requeue_for_relay(outbox_id)
+            if row is not None:
+                replayed.append(outbox_id)
+        return replayed

@@ -146,6 +146,7 @@ services:
       REDPANDA_ENABLED: "true"
       REDPANDA_BROKERS: redpanda:9092
       ALERT_EVALUATION_ENABLED: "true"
+      ML_ENGINE_AUTO_RUN_ENABLED: ${ML_ENGINE_AUTO_RUN_ENABLED:-false}
       LOG_FORMAT: console
       LOG_LEVEL: INFO
     command: python -m app.events.business_consumer

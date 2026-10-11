@@ -44,3 +44,23 @@ class OutboxEntryResponse(BaseModel):
 class OutboxEntryListResponse(BaseModel):
     entries: list[OutboxEntryResponse]
     count: int = Field(ge=0)
+
+
+class OutboxReplayRequest(BaseModel):
+    outbox_ids: list[UUID] = Field(
+        ...,
+        min_length=1,
+        max_length=100,
+        description="Outbox row ids to re-queue for the relay",
+    )
+
+
+class OutboxReplayResponse(BaseModel):
+    replayed_ids: list[UUID]
+    count: int = Field(ge=0)
+    note: str = Field(
+        default=(
+            "Consumers with idempotency inbox may skip re-delivered messages unless "
+            "inbox rows are cleared manually."
+        ),
+    )
