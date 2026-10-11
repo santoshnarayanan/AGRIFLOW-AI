@@ -10,6 +10,7 @@ from fastapi import APIRouter
 from app.api.alerts.router import router as alerts_router
 from app.api.crops.router import router as crops_router
 from app.api.events.router import router as events_router
+from app.api.features.router import router as features_router
 from app.api.ml.router import router as ml_router
 from app.api.disease_observations.router import router as disease_observations_router
 from app.api.farms.router import router as farms_router
@@ -49,3 +50,6 @@ api_router.include_router(alerts_router)
 # ── Phase 14: Event-Driven Enterprise Platform ────────────────────────────────
 api_router.include_router(events_router)
 api_router.include_router(ml_router)
+
+# ── Phase 15: Enterprise Intelligence Platform ────────────────────────────────
+api_router.include_router(features_router)

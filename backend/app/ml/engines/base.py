@@ -20,6 +20,8 @@ class EngineRunContext:
     trigger_event_type: str | None = None
     trigger_aggregate_id: uuid.UUID | None = None
     notes: str | None = None
+    feature_snapshot_id: uuid.UUID | None = None
+    features: dict[str, float | str] | None = None
 
 
 class MLPredictionEngineStub(ABC):

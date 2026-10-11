@@ -34,6 +34,17 @@ def test_irrigation_stub_has_quantified_action() -> None:
     assert payload.recommended_unit == "mm"
 
 
+def test_yield_stub_boosts_confidence_with_feature_store() -> None:
+    field_id = uuid.uuid4()
+    spec = get_engine_spec(MLEngineId.YIELD_FORECAST)
+    ctx = EngineRunContext(
+        features={"ndvi_90d_max": 0.72, "gdd_30d_sum": 340.0},
+        notes="Feature Store: ndvi_90d_max=0.72",
+    )
+    payload = YieldForecastEngineStub().build_recommendation(field_id, spec, context=ctx)
+    assert payload.confidence_score == Decimal("0.670")
+
+
 def test_disease_stub_uses_disease_treatment_type() -> None:
     field_id = uuid.uuid4()
     spec = get_engine_spec(MLEngineId.DISEASE_RISK)

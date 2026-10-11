@@ -21,6 +21,7 @@ from app.db.base import AuditableModel, Base
 if TYPE_CHECKING:
     from app.db.models.alert import Alert
     from app.db.models.crop import Crop
+    from app.db.models.field_feature_snapshot import FieldFeatureSnapshot
     from app.db.models.disease_observation import DiseaseObservation
     from app.db.models.farm import Farm
     from app.db.models.irrigation_event import IrrigationEvent
@@ -123,6 +124,11 @@ class Field(AuditableModel, Base):
         back_populates="field",
         cascade="all, delete-orphan",
         order_by="desc(Alert.triggered_at)",
+    )
+    feature_snapshots: Mapped[list[FieldFeatureSnapshot]] = relationship(
+        back_populates="field",
+        cascade="all, delete-orphan",
+        order_by="desc(FieldFeatureSnapshot.as_of)",
     )
 
     def __repr__(self) -> str:
