@@ -37,6 +37,7 @@ from app.db.session import AsyncSessionFactory
 from app.events.publisher import NoOpDomainEventPublisher, OutboxDomainEventPublisher
 from app.services.alert import AlertService
 from app.services.crop import CropService
+from app.services.domain_event_outbox import DomainEventOutboxService
 from app.services.disease_observation import DiseaseObservationService
 from app.services.farm import FarmService
 from app.services.field import FieldService
@@ -76,6 +77,16 @@ def get_domain_event_publisher(
 DomainEventPublisherDep = Annotated[
     OutboxDomainEventPublisher | NoOpDomainEventPublisher,
     Depends(get_domain_event_publisher),
+]
+
+
+def get_domain_event_outbox_service(session: SessionDep) -> DomainEventOutboxService:
+    return DomainEventOutboxService(DomainEventOutboxRepository(session))
+
+
+DomainEventOutboxServiceDep = Annotated[
+    DomainEventOutboxService,
+    Depends(get_domain_event_outbox_service),
 ]
 
 

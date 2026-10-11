@@ -6,7 +6,7 @@ import uuid
 from datetime import datetime, timezone
 from typing import Any
 
-from sqlalchemy import select, update
+from sqlalchemy import func, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.db.models.domain_event_outbox import DomainEventOutbox
@@ -35,6 +35,53 @@ class DomainEventOutboxRepository(BaseRepository[DomainEventOutbox]):
                 "payload": payload,
             }
         )
+
+    async def get_stats(self) -> dict[str, int]:
+        pending = await self._session.scalar(
+            select(func.count())
+            .select_from(DomainEventOutbox)
+            .where(DomainEventOutbox.published_at.is_(None))
+        )
+        published = await self._session.scalar(
+            select(func.count())
+            .select_from(DomainEventOutbox)
+            .where(DomainEventOutbox.published_at.is_not(None))
+        )
+        failed = await self._session.scalar(
+            select(func.count())
+            .select_from(DomainEventOutbox)
+            .where(
+                DomainEventOutbox.published_at.is_(None),
+                DomainEventOutbox.publish_attempts > 0,
+            )
+        )
+        return {
+            "pending": int(pending or 0),
+            "published": int(published or 0),
+            "failed": int(failed or 0),
+            "total": int((pending or 0) + (published or 0)),
+        }
+
+    async def list_by_status(
+        self,
+        *,
+        status: str = "pending",
+        limit: int = 50,
+    ) -> list[DomainEventOutbox]:
+        query = select(DomainEventOutbox).order_by(DomainEventOutbox.created_at.desc())
+        if status == "pending":
+            query = query.where(DomainEventOutbox.published_at.is_(None))
+        elif status == "published":
+            query = query.where(DomainEventOutbox.published_at.is_not(None))
+        elif status == "failed":
+            query = query.where(
+                DomainEventOutbox.published_at.is_(None),
+                DomainEventOutbox.publish_attempts > 0,
+            )
+        elif status != "all":
+            raise ValueError(f"Unsupported outbox status filter: {status}")
+        result = await self._session.execute(query.limit(limit))
+        return list(result.scalars().all())
 
     async def list_pending(self, *, limit: int = 100) -> list[DomainEventOutbox]:
         result = await self._session.execute(
