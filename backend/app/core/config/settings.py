@@ -72,6 +72,13 @@ class Settings(BaseSettings):
     # Business consumers (Phase 14)
     ALERT_EVALUATION_ENABLED: bool = True
     SOIL_MOISTURE_LOW_THRESHOLD_PERCENT: float = 20.0
+    ML_ENGINE_AUTO_RUN_ENABLED: bool = False
+
+    # Outbox operations API (optional; required in staging/production)
+    EVENTS_OPS_API_KEY: str | None = Field(
+        default=None,
+        description="Shared secret for X-Events-Ops-Key on outbox ops and replay routes",
+    )
 
 
 @lru_cache(maxsize=1)

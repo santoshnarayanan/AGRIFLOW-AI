@@ -1,0 +1,1 @@
+"""Stub prediction engine implementations."""
