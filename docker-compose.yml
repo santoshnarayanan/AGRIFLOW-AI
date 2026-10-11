@@ -75,6 +75,7 @@ services:
     environment:
       # Override localhost with the compose service name
       POSTGRES_HOST: db
+      POSTGRES_PORT: "5432"
       APP_ENV: development
       LOG_FORMAT: console
       LOG_LEVEL: DEBUG
@@ -103,6 +104,7 @@ services:
       - ./backend/.env
     environment:
       POSTGRES_HOST: db
+      POSTGRES_PORT: "5432"
       EVENTS_ENABLED: "true"
       REDPANDA_ENABLED: "true"
       REDPANDA_BROKERS: redpanda:9092
@@ -143,6 +145,7 @@ services:
       - ./backend/.env
     environment:
       POSTGRES_HOST: db
+      POSTGRES_PORT: "5432"
       REDPANDA_ENABLED: "true"
       REDPANDA_BROKERS: redpanda:9092
       ALERT_EVALUATION_ENABLED: "true"

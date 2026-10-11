@@ -5,11 +5,12 @@ All secrets are sourced from environment / .env file — never hardcoded.
 Azure Key Vault or Docker secrets can inject values as env vars at runtime.
 """
 
+import os
 from functools import lru_cache
 from typing import Literal
 
-from pydantic import AnyUrl, Field, PostgresDsn, model_validator
-from pydantic_settings import BaseSettings, SettingsConfigDict
+from pydantic import Field, model_validator
+from pydantic_settings import BaseSettings, PydanticBaseSettingsSource, SettingsConfigDict
 
 
 class Settings(BaseSettings):
@@ -19,6 +20,34 @@ class Settings(BaseSettings):
         case_sensitive=False,
         extra="ignore",
     )
+
+    @classmethod
+    def settings_customise_sources(
+        cls,
+        settings_cls: type[BaseSettings],
+        init_settings: PydanticBaseSettingsSource,
+        env_settings: PydanticBaseSettingsSource,
+        dotenv_settings: PydanticBaseSettingsSource,
+        file_secret_settings: PydanticBaseSettingsSource,
+    ) -> tuple[PydanticBaseSettingsSource, ...]:
+        """
+        In development, ``backend/.env`` wins over process/OS env vars so a
+        stale global ``POSTGRES_PORT`` does not override Podman host port 25432.
+        Production/staging keep the usual env-var precedence (12-factor).
+        """
+        if os.getenv("APP_ENV", "development").lower() == "development":
+            return (
+                init_settings,
+                dotenv_settings,
+                env_settings,
+                file_secret_settings,
+            )
+        return (
+            init_settings,
+            env_settings,
+            dotenv_settings,
+            file_secret_settings,
+        )
 
     # ── Application ──────────────────────────────────────────────────────────
     APP_NAME: str = "AGRIFLOW-AI"
@@ -87,6 +116,10 @@ class Settings(BaseSettings):
     # ── CQRS read models (Phase 15) ─────────────────────────────────────────────
     READ_MODEL_PROJECTION_VERSION: str = "v1"
     READ_MODEL_AUTO_REFRESH_ON_READ: bool = True
+
+    # ── Digital Twin (Phase 15) ────────────────────────────────────────────────
+    DIGITAL_TWIN_STATE_VERSION: str = "twin-v1"
+    DIGITAL_TWIN_AUTO_SYNC_ON_READ: bool = True
 
 
 @lru_cache(maxsize=1)
