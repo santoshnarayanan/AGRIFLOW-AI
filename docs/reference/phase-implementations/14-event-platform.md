@@ -1,6 +1,6 @@
 # Phase 14 — Event platform implementation reference
 
-**Status:** Backend + UI MVP complete — replay/ML engines remain future work  
+**Status:** Event platform MVP complete (all catalog producers wired) — ML prediction engines & replay tooling remain roadmap  
 **ADR:** [ADR-006](../../../adr/ADR-006-domain-events-transactional-outbox.md)  
 **Migration:** `i3j4k5l6m7n8` (`domain_event_outbox`)
 
@@ -65,6 +65,15 @@ Config: `ALERT_EVALUATION_ENABLED`, `SOIL_MOISTURE_LOW_THRESHOLD_PERCENT`, `REDP
 | Envelope contract test | `backend/app/tests/test_domain_event_envelope.py` |
 | Outbox stats extension | `events_processed` on `GET /events/outbox/stats` |
 | React UI | `/events` — catalog table, outbox stats, outbox entries (`frontend/src/pages/Events.tsx`) |
+
+## Delivered (slice 5 — decision intelligence producers)
+
+| Producer event | Service trigger |
+|----------------|-----------------|
+| `RecommendationCreated` | `RecommendationService.create_recommendation` |
+| `AlertTriggered` | `AlertService.create_alert` (API and alert-evaluation consumer when `EVENTS_ENABLED`) |
+
+Topics: `agriflow.domain.recommendation-created.v1`, `agriflow.domain.alert-triggered.v1`.
 
 ## Remaining (optional / Phase 15+)
 

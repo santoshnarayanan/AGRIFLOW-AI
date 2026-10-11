@@ -196,11 +196,11 @@ Service `create_*` methods include comments marking where **domain event publish
 
 | Service method | Intended event (Phase 14) |
 |----------------|---------------------------|
-| `RecommendationService.create_recommendation` | `RecommendationCreated` |
-| `AlertService.create_alert` | `AlertTriggered` |
-| (Phases 7–11 services) | e.g. `SensorReadingCreated`, `YieldRecordCreated`, … |
+| `RecommendationService.create_recommendation` | `RecommendationCreated` ✅ (Phase 14) |
+| `AlertService.create_alert` | `AlertTriggered` ✅ (Phase 14) |
+| (Phases 7–11 services) | e.g. `SensorReadingCreated`, `YieldRecordCreated`, … ✅ |
 
-No event infrastructure is implemented in Phase 13; APIs and persistence are the contract for Phase 14 ML engines and streaming.
+Phase 14 transactional outbox + catalog entries implement the publishing contract; see [14-event-platform.md](./14-event-platform.md).
 
 **Explicitly deferred from Phase 13:** automated API tests; alert deduplication; websocket push; automated ML pipelines writing recommendations.
 

@@ -10,8 +10,10 @@ from pydantic import BaseModel
 
 from app.core.config import get_settings
 from app.core.logging.logger import get_logger
+from app.db.models.alert import Alert
 from app.db.models.crop import Crop, CropStatus
 from app.db.models.disease_observation import DiseaseObservation
+from app.db.models.recommendation import Recommendation
 from app.db.models.irrigation_event import IrrigationEvent
 from app.db.models.satellite_observation import SatelliteObservation
 from app.db.models.sensor_reading import SensorReading
@@ -20,10 +22,12 @@ from app.db.models.yield_record import YieldRecord
 from app.db.repositories.domain_event_outbox import DomainEventOutboxRepository
 from app.events.catalog import get_catalog_entry
 from app.events.schemas import (
+    AlertTriggeredPayloadV1,
     CropLifecycleChangedPayloadV1,
     DiseaseObservedPayloadV1,
     DomainEventEnvelopeV1,
     IrrigationCompletedPayloadV1,
+    RecommendationCreatedPayloadV1,
     SatelliteObservedPayloadV1,
     SensorReadingCreatedPayloadV1,
     WeatherRecordCreatedPayloadV1,
@@ -62,6 +66,12 @@ class DomainEventPublisher(ABC):
         new_status: CropStatus,
     ) -> None: ...
 
+    @abstractmethod
+    async def recommendation_created(self, recommendation: Recommendation) -> None: ...
+
+    @abstractmethod
+    async def alert_triggered(self, alert: Alert) -> None: ...
+
 
 class NoOpDomainEventPublisher(DomainEventPublisher):
     async def sensor_reading_created(self, reading: SensorReading) -> None:
@@ -89,6 +99,12 @@ class NoOpDomainEventPublisher(DomainEventPublisher):
         previous_status: CropStatus,
         new_status: CropStatus,
     ) -> None:
+        return
+
+    async def recommendation_created(self, recommendation: Recommendation) -> None:
+        return
+
+    async def alert_triggered(self, alert: Alert) -> None:
         return
 
 
@@ -261,5 +277,49 @@ class OutboxDomainEventPublisher(DomainEventPublisher):
             event_type=DomainEventType.CROP_LIFECYCLE_CHANGED,
             aggregate_type=AggregateType.CROP,
             aggregate_id=crop.id,
+            body=body,
+        )
+
+    async def recommendation_created(self, recommendation: Recommendation) -> None:
+        confidence: float | None = None
+        if recommendation.confidence_score is not None:
+            confidence = float(recommendation.confidence_score)
+
+        body = RecommendationCreatedPayloadV1(
+            recommendation_id=recommendation.id,
+            field_id=recommendation.field_id,
+            crop_id=recommendation.crop_id,
+            recommendation_type=recommendation.recommendation_type,
+            status=recommendation.status,
+            priority=recommendation.priority,
+            title=recommendation.title,
+            confidence_score=confidence,
+            engine_version=recommendation.engine_version,
+            valid_from=recommendation.valid_from,
+            valid_until=recommendation.valid_until,
+        )
+        await self._enqueue(
+            event_type=DomainEventType.RECOMMENDATION_CREATED,
+            aggregate_type=AggregateType.RECOMMENDATION,
+            aggregate_id=recommendation.id,
+            body=body,
+        )
+
+    async def alert_triggered(self, alert: Alert) -> None:
+        body = AlertTriggeredPayloadV1(
+            alert_id=alert.id,
+            field_id=alert.field_id,
+            crop_id=alert.crop_id,
+            recommendation_id=alert.recommendation_id,
+            alert_type=alert.alert_type,
+            severity=alert.severity,
+            title=alert.title,
+            triggered_at=alert.triggered_at,
+            is_acknowledged=alert.is_acknowledged,
+        )
+        await self._enqueue(
+            event_type=DomainEventType.ALERT_TRIGGERED,
+            aggregate_type=AggregateType.ALERT,
+            aggregate_id=alert.id,
             body=body,
         )

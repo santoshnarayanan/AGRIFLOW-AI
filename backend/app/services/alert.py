@@ -21,6 +21,7 @@ from app.db.models.alert import Alert
 from app.db.repositories.alert import AlertRepository
 from app.db.repositories.field import FieldRepository
 from app.db.repositories.recommendation import RecommendationRepository
+from app.events.publisher import DomainEventPublisher, NoOpDomainEventPublisher
 from app.schemas.alert import AlertCreate, AlertUpdate
 from app.services.field import FieldNotFoundError
 
@@ -59,10 +60,12 @@ class AlertService:
         alert_repository: AlertRepository,
         field_repository: FieldRepository,
         recommendation_repository: RecommendationRepository,
+        event_publisher: DomainEventPublisher | None = None,
     ) -> None:
         self._alerts = alert_repository
         self._fields = field_repository
         self._recommendations = recommendation_repository
+        self._event_publisher = event_publisher or NoOpDomainEventPublisher()
 
     # ── Create ─────────────────────────────────────────────────────────────────
 
@@ -117,11 +120,7 @@ class AlertService:
         alert = await self._alerts.create(data)
         log.info("alert_service.create.success", alert_id=str(alert.id))
 
-        # ── Future extension point ─────────────────────────────────────────────
-        # AlertTriggered domain event → Redpanda (Phase 14)
-        # Digital Twin field health state update (Phase 15)
-        # Temporal alert escalation workflow trigger (Phase 16)
-        # ──────────────────────────────────────────────────────────────────────
+        await self._event_publisher.alert_triggered(alert)
 
         return alert
 

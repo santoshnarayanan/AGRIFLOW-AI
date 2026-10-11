@@ -16,8 +16,10 @@ from app.core.config import get_settings
 from app.core.enums import AlertSeverity, AlertType, SensorType
 from app.core.logging.logger import get_logger
 from app.db.repositories.alert import AlertRepository
+from app.db.repositories.domain_event_outbox import DomainEventOutboxRepository
 from app.db.repositories.field import FieldRepository
 from app.db.repositories.recommendation import RecommendationRepository
+from app.events.publisher import NoOpDomainEventPublisher, OutboxDomainEventPublisher
 from app.events.schemas import DomainEventEnvelopeV1, SensorReadingCreatedPayloadV1
 from app.events.types import DomainEventType
 from app.schemas.alert import AlertCreate
@@ -55,10 +57,17 @@ async def handle_domain_event(session: AsyncSession, envelope: DomainEventEnvelo
         )
         return
 
+    event_publisher = NoOpDomainEventPublisher()
+    if settings.EVENTS_ENABLED:
+        event_publisher = OutboxDomainEventPublisher(
+            DomainEventOutboxRepository(session),
+        )
+
     alert_service = AlertService(
         alert_repository=alert_repo,
         field_repository=FieldRepository(session),
         recommendation_repository=RecommendationRepository(session),
+        event_publisher=event_publisher,
     )
 
     triggered_at = payload.recorded_at
