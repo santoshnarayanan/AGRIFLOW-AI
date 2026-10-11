@@ -38,6 +38,7 @@ from typing import Any
 
 from app.core.logging.logger import get_logger
 from app.db.models.disease_observation import DiseaseObservation
+from app.events.publisher import DomainEventPublisher, NoOpDomainEventPublisher
 from app.db.repositories.crop import CropRepository
 from app.db.repositories.disease_observation import DiseaseObservationRepository
 from app.schemas.disease_observation import (
@@ -86,9 +87,11 @@ class DiseaseObservationService:
         self,
         disease_observation_repository: DiseaseObservationRepository,
         crop_repository: CropRepository,
+        event_publisher: DomainEventPublisher | None = None,
     ) -> None:
         self._observations = disease_observation_repository
         self._crops = crop_repository
+        self._event_publisher = event_publisher or NoOpDomainEventPublisher()
 
     # ── Create ─────────────────────────────────────────────────────────────────
 
@@ -142,16 +145,7 @@ class DiseaseObservationService:
             field_id=str(field_id),
         )
 
-        # ── Future extension point ─────────────────────────────────────────────
-        # This is the intended boundary for the following integrations.
-        # Do NOT implement here; wire in a dedicated event-publishing adapter:
-        #
-        # - DiseaseObservationCreated event → Redpanda / Kafka topic
-        # - Digital Twin crop health state update
-        # - CQRS read-model projection
-        # - Phase 13 Disease Risk Scoring Engine feature pipeline trigger
-        # - GaaS PlantHealthAdvisor tool layer
-        # ──────────────────────────────────────────────────────────────────────
+        await self._event_publisher.disease_observed(observation)
 
         return observation
 

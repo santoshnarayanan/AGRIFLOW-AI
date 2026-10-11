@@ -19,8 +19,8 @@ from typing import Annotated
 from fastapi import Depends
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.db.repositories.alert import AlertRepository
 from app.core.config import get_settings
+from app.db.repositories.alert import AlertRepository
 from app.db.repositories.crop import CropRepository
 from app.db.repositories.domain_event_outbox import DomainEventOutboxRepository
 from app.db.repositories.disease_observation import DiseaseObservationRepository
@@ -62,6 +62,23 @@ async def get_session() -> AsyncGenerator[AsyncSession, None]:
 SessionDep = Annotated[AsyncSession, Depends(get_session)]
 
 
+# ── Domain events (Phase 14) ──────────────────────────────────────────────────
+
+
+def get_domain_event_publisher(
+    session: SessionDep,
+) -> OutboxDomainEventPublisher | NoOpDomainEventPublisher:
+    if not get_settings().EVENTS_ENABLED:
+        return NoOpDomainEventPublisher()
+    return OutboxDomainEventPublisher(DomainEventOutboxRepository(session))
+
+
+DomainEventPublisherDep = Annotated[
+    OutboxDomainEventPublisher | NoOpDomainEventPublisher,
+    Depends(get_domain_event_publisher),
+]
+
+
 # ── Domain service factories ──────────────────────────────────────────────────
 
 
@@ -76,22 +93,30 @@ def get_field_service(session: SessionDep) -> FieldService:
 FieldServiceDep = Annotated[FieldService, Depends(get_field_service)]
 
 
-def get_crop_service(session: SessionDep) -> CropService:
+def get_crop_service(
+    session: SessionDep,
+    event_publisher: DomainEventPublisherDep,
+) -> CropService:
     """Construct a ``CropService`` wired to the request-scoped session."""
     return CropService(
         crop_repository=CropRepository(session),
         field_repository=FieldRepository(session),
+        event_publisher=event_publisher,
     )
 
 
 CropServiceDep = Annotated[CropService, Depends(get_crop_service)]
 
 
-def get_disease_observation_service(session: SessionDep) -> DiseaseObservationService:
+def get_disease_observation_service(
+    session: SessionDep,
+    event_publisher: DomainEventPublisherDep,
+) -> DiseaseObservationService:
     """Construct a ``DiseaseObservationService`` wired to the request-scoped session."""
     return DiseaseObservationService(
         disease_observation_repository=DiseaseObservationRepository(session),
         crop_repository=CropRepository(session),
+        event_publisher=event_publisher,
     )
 
 
@@ -111,40 +136,45 @@ def get_soil_profile_service(session: SessionDep) -> SoilProfileService:
 SoilProfileServiceDep = Annotated[SoilProfileService, Depends(get_soil_profile_service)]
 
 
-def get_weather_record_service(session: SessionDep) -> WeatherRecordService:
+def get_weather_record_service(
+    session: SessionDep,
+    event_publisher: DomainEventPublisherDep,
+) -> WeatherRecordService:
     """Construct a ``WeatherRecordService`` wired to the request-scoped session."""
     return WeatherRecordService(
         weather_record_repository=WeatherRecordRepository(session),
         field_repository=FieldRepository(session),
+        event_publisher=event_publisher,
     )
 
 
 WeatherRecordServiceDep = Annotated[WeatherRecordService, Depends(get_weather_record_service)]
 
 
-def _domain_event_publisher(session: SessionDep) -> OutboxDomainEventPublisher | NoOpDomainEventPublisher:
-    if not get_settings().EVENTS_ENABLED:
-        return NoOpDomainEventPublisher()
-    return OutboxDomainEventPublisher(DomainEventOutboxRepository(session))
-
-
-def get_sensor_reading_service(session: SessionDep) -> SensorReadingService:
+def get_sensor_reading_service(
+    session: SessionDep,
+    event_publisher: DomainEventPublisherDep,
+) -> SensorReadingService:
     """Construct a ``SensorReadingService`` wired to the request-scoped session."""
     return SensorReadingService(
         sensor_reading_repository=SensorReadingRepository(session),
         field_repository=FieldRepository(session),
-        event_publisher=_domain_event_publisher(session),
+        event_publisher=event_publisher,
     )
 
 
 SensorReadingServiceDep = Annotated[SensorReadingService, Depends(get_sensor_reading_service)]
 
 
-def get_satellite_observation_service(session: SessionDep) -> SatelliteObservationService:
+def get_satellite_observation_service(
+    session: SessionDep,
+    event_publisher: DomainEventPublisherDep,
+) -> SatelliteObservationService:
     """Construct a ``SatelliteObservationService`` wired to the request-scoped session."""
     return SatelliteObservationService(
         satellite_observation_repository=SatelliteObservationRepository(session),
         field_repository=FieldRepository(session),
+        event_publisher=event_publisher,
     )
 
 
@@ -153,22 +183,30 @@ SatelliteObservationServiceDep = Annotated[
 ]
 
 
-def get_irrigation_event_service(session: SessionDep) -> IrrigationEventService:
+def get_irrigation_event_service(
+    session: SessionDep,
+    event_publisher: DomainEventPublisherDep,
+) -> IrrigationEventService:
     """Construct an ``IrrigationEventService`` wired to the request-scoped session."""
     return IrrigationEventService(
         irrigation_event_repository=IrrigationEventRepository(session),
         field_repository=FieldRepository(session),
+        event_publisher=event_publisher,
     )
 
 
 IrrigationEventServiceDep = Annotated[IrrigationEventService, Depends(get_irrigation_event_service)]
 
 
-def get_yield_record_service(session: SessionDep) -> YieldRecordService:
+def get_yield_record_service(
+    session: SessionDep,
+    event_publisher: DomainEventPublisherDep,
+) -> YieldRecordService:
     """Construct a ``YieldRecordService`` wired to the request-scoped session."""
     return YieldRecordService(
         yield_record_repository=YieldRecordRepository(session),
         crop_repository=CropRepository(session),
+        event_publisher=event_publisher,
     )
 
 

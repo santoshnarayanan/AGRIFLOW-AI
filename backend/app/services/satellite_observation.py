@@ -54,6 +54,7 @@ from typing import Any
 from app.core.enums import ProcessingLevel, SatelliteProvider, SpectralIndex
 from app.core.logging.logger import get_logger
 from app.db.models.satellite_observation import SatelliteObservation
+from app.events.publisher import DomainEventPublisher, NoOpDomainEventPublisher
 from app.db.repositories.field import FieldRepository
 from app.db.repositories.satellite_observation import SatelliteObservationRepository
 from app.schemas.satellite_observation import (
@@ -134,9 +135,11 @@ class SatelliteObservationService:
         self,
         satellite_observation_repository: SatelliteObservationRepository,
         field_repository: FieldRepository,
+        event_publisher: DomainEventPublisher | None = None,
     ) -> None:
         self._observations = satellite_observation_repository
         self._fields = field_repository
+        self._event_publisher = event_publisher or NoOpDomainEventPublisher()
 
     # ── Create ─────────────────────────────────────────────────────────────────
 
@@ -201,18 +204,7 @@ class SatelliteObservationService:
             observation_id=str(observation.id),
         )
 
-        # ── Future extension point ─────────────────────────────────────────────
-        # This is the intended boundary for the following integrations.
-        # Do NOT implement here; wire in a dedicated event-publishing adapter:
-        #
-        # - SatelliteObservationCreated event → Redpanda / Kafka topic
-        # - Digital Twin field canopy health state update
-        # - CQRS read-model projection
-        # - Phase 12 Yield Prediction Engine feature pipeline trigger
-        # - Phase 13 Disease Risk Engine NDRE/NDVI signal trigger
-        # - Phase 14 Irrigation Recommendation NDWI signal trigger
-        # - GaaS SatelliteAdvisor tool layer
-        # ──────────────────────────────────────────────────────────────────────
+        await self._event_publisher.satellite_observed(observation)
 
         return observation
 

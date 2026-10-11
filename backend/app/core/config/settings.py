@@ -64,6 +64,7 @@ class Settings(BaseSettings):
     REDPANDA_ENABLED: bool = False
     REDPANDA_BROKERS: str = "localhost:19092"
     REDPANDA_CLIENT_ID: str = "agriflow-outbox-relay"
+    REDPANDA_CONSUMER_GROUP_ID: str = "agriflow-domain-event-audit"
     OUTBOX_RELAY_POLL_INTERVAL_SECONDS: float = 2.0
     OUTBOX_RELAY_BATCH_SIZE: int = 100
 
