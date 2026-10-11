@@ -5,6 +5,7 @@ import uuid
 from fastapi import APIRouter, HTTPException, status
 
 from app.api.deps import DigitalTwinServiceDep
+from app.core.security.platform_auth import PlatformOperatorDep
 from app.digital_twin.catalog import TWIN_STATE_SECTIONS, state_schema_version
 from app.schemas.digital_twin import (
     DigitalTwinCatalogResponse,
@@ -58,6 +59,7 @@ async def get_field_digital_twin_state(
 async def synchronize_field_digital_twin(
     field_id: uuid.UUID,
     digital_twin_service: DigitalTwinServiceDep,
+    _: PlatformOperatorDep,
 ) -> DigitalTwinSynchronizeResponse:
     try:
         state = await digital_twin_service.synchronize_field(field_id)
@@ -78,6 +80,7 @@ async def synchronize_field_digital_twin(
 )
 async def synchronize_platform_digital_twin(
     digital_twin_service: DigitalTwinServiceDep,
+    _: PlatformOperatorDep,
 ) -> DigitalTwinPlatformSynchronizeResponse:
     count = await digital_twin_service.synchronize_platform()
     from app.core.config import get_settings

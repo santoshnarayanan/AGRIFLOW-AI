@@ -5,6 +5,7 @@ import uuid
 from fastapi import APIRouter, HTTPException, Query, status
 
 from app.api.deps import FeatureStoreServiceDep
+from app.core.security.platform_auth import PlatformOperatorDep
 from app.features.catalog import FEATURE_CATALOG, registry_version
 from app.schemas.feature_store import (
     FeatureCatalogItemResponse,
@@ -51,6 +52,7 @@ async def materialize_field_features(
     field_id: uuid.UUID,
     body: FeatureMaterializeRequest,
     feature_store: FeatureStoreServiceDep,
+    _: PlatformOperatorDep,
 ) -> FieldFeatureSnapshotResponse:
     """Compute features from continuous aggregates and persist a snapshot."""
     try:

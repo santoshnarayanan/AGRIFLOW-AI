@@ -1,12 +1,12 @@
 # Phase 15 — Enterprise Intelligence Platform implementation reference
 
-**Status:** In progress — slice 3 (Digital Twin foundation) delivered  
-**ADR:** [ADR-007](../../../adr/ADR-007-ai-feature-store.md), [ADR-008](../../../adr/ADR-008-cqrs-dashboard-read-models.md), [ADR-009](../../../adr/ADR-009-digital-twin-field-state-foundation.md)  
-**Migrations:** `k5l6m7n8o9p0`, `l6m7n8o9p0q1`, `m7n8o9p0q1r2` (`field_digital_twin_states`)
+**Status:** Complete (slices 1–5)  
+**ADR:** [ADR-007](../../../adr/ADR-007-ai-feature-store.md), [ADR-008](../../../adr/ADR-008-cqrs-dashboard-read-models.md), [ADR-009](../../../adr/ADR-009-digital-twin-field-state-foundation.md), [ADR-010](../../../adr/ADR-010-platform-jwt-rbac.md)  
+**Migrations:** `k5l6m7n8o9p0`, `l6m7n8o9p0q1`, `m7n8o9p0q1r2`, `n8o9p0q1r2s3` (`platform_users`)
 
 ## Primary objective
 
-Optimized operational intelligence for dashboards, AI, and Digital Twin — starting with governed ML feature materialisation.
+Optimized operational intelligence for dashboards, AI, and Digital Twin — governed ML features, CQRS read models, twin state, event-driven refresh, and platform operator auth.
 
 ## Delivered (slice 1 — Feature Store foundation)
 
@@ -32,10 +32,6 @@ Optimized operational intelligence for dashboards, AI, and Digital Twin — star
 | REST API | `GET/POST /api/v1/read-models/dashboard`, farm/field dashboard + refresh |
 | Dashboard UI (KPI cards) | `frontend/src/pages/Dashboard.tsx` via `usePlatformDashboard` |
 
-## Configuration
-
-See `backend/.env.example` — Feature Store and `READ_MODEL_PROJECTION_VERSION`, `READ_MODEL_AUTO_REFRESH_ON_READ`.
-
 ## Delivered (slice 3 — Digital Twin foundation)
 
 | Component | Location |
@@ -46,12 +42,35 @@ See `backend/.env.example` — Feature Store and `READ_MODEL_PROJECTION_VERSION`
 | REST API | `GET /api/v1/digital-twin/catalog`, field `state` + `synchronize` |
 | Latest telemetry query | `SensorReadingRepository.latest_per_sensor_type` |
 
-## Upcoming slices
+## Delivered (slice 4 — Event-driven projection + Feature Store UI)
 
-| Slice | Focus |
-|-------|--------|
-| 4 | Event-driven snapshot refresh + frontend Feature Store UI |
-| 5 | Full JWT/RBAC (replace ops-only patterns where applicable) |
+| Component | Location |
+|-----------|----------|
+| Intelligence projection handler | `backend/app/events/handlers/intelligence_projection.py` |
+| Consumer dispatch wiring | `backend/app/events/handlers/dispatch.py` |
+| Config flag | `INTELLIGENCE_EVENT_PROJECTION_ENABLED` |
+| Feature Store UI | `frontend/src/pages/FeatureStore.tsx`, `frontend/src/api/features.ts` |
+| Tests | `backend/app/tests/test_intelligence_projection.py` |
+
+On field-scoped domain events: materialise feature snapshot → refresh field dashboard read model → synchronise digital twin.
+
+## Delivered (slice 5 — JWT / RBAC)
+
+| Component | Location |
+|-----------|----------|
+| Platform users ORM + migration | `platform_user.py`, `n8o9p0q1r2s3` |
+| JWT + password utilities | `app/core/security/jwt_tokens.py`, `passwords.py` |
+| Operator dependency | `app/core/security/platform_auth.py` |
+| Auth API | `POST /api/v1/auth/login`, `GET /api/v1/auth/me` |
+| Protected operator routes | features materialize, read-model refresh, digital-twin sync, events outbox ops |
+| Frontend login + bearer header | `frontend/src/stores/authStore.ts`, `frontend/src/api/auth.ts`, `api/client.ts` |
+| Tests | `test_platform_auth.py`, `test_jwt_tokens.py` |
+
+Bootstrap admin (after migration): `admin@agriflow.local` / `changeme-admin` — rotate in production.
+
+## Configuration
+
+See `backend/.env.example` — Feature Store, read models, digital twin, `INTELLIGENCE_EVENT_PROJECTION_ENABLED`, `AUTH_REQUIRED`, `ACCESS_TOKEN_EXPIRE_MINUTES`, optional `EVENTS_OPS_API_KEY`.
 
 ## Phase 16 handoff
 

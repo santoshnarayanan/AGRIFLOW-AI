@@ -607,3 +607,60 @@ export interface OutboxEntryListResponse {
   entries: OutboxEntry[]
   count: number
 }
+
+// ─── Authentication (Phase 15) ─────────────────────────────────────────────
+
+export type PlatformRole = 'VIEWER' | 'OPERATOR' | 'ADMIN'
+
+export interface LoginRequest {
+  email: string
+  password: string
+}
+
+export interface TokenResponse {
+  access_token: string
+  token_type: string
+  expires_in_minutes: number
+}
+
+export interface PlatformUser {
+  id: string
+  email: string
+  role: PlatformRole
+  is_active: boolean
+}
+
+// ─── Feature Store (Phase 15) ───────────────────────────────────────────────
+
+export interface FeatureCatalogItem {
+  feature_id: string
+  display_name: string
+  description: string
+  unit: string
+  window_days: number
+  primary_source: string
+  secondary_source?: string | null
+}
+
+export interface FeatureCatalogResponse {
+  registry_version: string
+  features: FeatureCatalogItem[]
+  count: number
+}
+
+export interface FieldFeatureSnapshot {
+  id: string
+  field_id: string
+  crop_id: string | null
+  registry_version: string
+  as_of: string
+  features: Record<string, unknown>
+  materialization_notes: string | null
+  created_at: string
+  updated_at: string
+}
+
+export interface FieldFeatureSnapshotListResponse {
+  snapshots: FieldFeatureSnapshot[]
+  count: number
+}

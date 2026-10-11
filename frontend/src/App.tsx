@@ -15,6 +15,7 @@ import { Satellite } from '@/pages/Satellite'
 import { Recommendations } from '@/pages/Recommendations'
 import { Alerts } from '@/pages/Alerts'
 import { Events } from '@/pages/Events'
+import { FeatureStore } from '@/pages/FeatureStore'
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -45,6 +46,7 @@ export default function App() {
             <Route path="recommendations" element={<Recommendations />} />
             <Route path="alerts" element={<Alerts />} />
             <Route path="events" element={<Events />} />
+            <Route path="features" element={<FeatureStore />} />
           </Route>
         </Routes>
       </BrowserRouter>

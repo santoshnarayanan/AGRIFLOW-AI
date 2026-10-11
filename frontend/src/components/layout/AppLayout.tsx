@@ -16,6 +16,8 @@ const pageMeta: Record<string, { title: string; description: string }> = {
   '/satellite': { title: 'Satellite', description: 'NDVI, EVI and satellite indices' },
   '/recommendations': { title: 'Recommendations', description: 'AI-generated agronomic recommendations' },
   '/alerts': { title: 'Alerts', description: 'System and agronomic alerts' },
+  '/events': { title: 'Domain Events', description: 'Event catalog and transactional outbox' },
+  '/features': { title: 'Feature Store', description: 'ML feature registry and field snapshots' },
 }
 
 export function AppLayout() {

@@ -5,7 +5,7 @@ from uuid import UUID
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 
 from app.api.deps import DomainEventOutboxServiceDep
-from app.api.security.events_ops import require_events_ops_key
+from app.core.security.platform_auth import PlatformOperatorDep
 from app.events.catalog import EVENT_CATALOG
 from app.schemas.domain_event import (
     EventCatalogItemResponse,
@@ -19,7 +19,6 @@ from app.schemas.domain_event import (
 
 router = APIRouter(prefix="/events", tags=["Domain Events"])
 
-_events_ops_dep = Depends(require_events_ops_key)
 
 
 @router.get("/catalog", response_model=EventCatalogResponse)
@@ -41,7 +40,7 @@ async def get_event_catalog() -> EventCatalogResponse:
 @router.get("/outbox/stats", response_model=OutboxStatsResponse)
 async def get_outbox_stats(
     outbox_service: DomainEventOutboxServiceDep,
-    _: None = _events_ops_dep,
+    _: PlatformOperatorDep,
 ) -> OutboxStatsResponse:
     """Operational counts for the transactional outbox (pending / published / failed)."""
     stats = await outbox_service.get_stats()
@@ -51,7 +50,7 @@ async def get_outbox_stats(
 @router.get("/outbox/entries", response_model=OutboxEntryListResponse)
 async def list_outbox_entries(
     outbox_service: DomainEventOutboxServiceDep,
-    _: None = _events_ops_dep,
+    _: PlatformOperatorDep,
     status: str = Query(
         default="pending",
         pattern="^(pending|published|failed|all)$",
@@ -82,7 +81,7 @@ async def list_outbox_entries(
 async def get_outbox_entry(
     outbox_id: UUID,
     outbox_service: DomainEventOutboxServiceDep,
-    _: None = _events_ops_dep,
+    _: PlatformOperatorDep,
 ) -> OutboxEntryResponse:
     """Return a single outbox row including full envelope payload metadata."""
     row = await outbox_service.get_entry(outbox_id)
@@ -111,7 +110,7 @@ async def get_outbox_entry(
 async def replay_outbox_entry(
     outbox_id: UUID,
     outbox_service: DomainEventOutboxServiceDep,
-    _: None = _events_ops_dep,
+    _: PlatformOperatorDep,
 ) -> OutboxReplayResponse:
     """Reset publish state so the relay re-sends the stored envelope to Redpanda."""
     row = await outbox_service.replay_entry(outbox_id)
@@ -127,7 +126,7 @@ async def replay_outbox_entry(
 async def replay_outbox_entries(
     body: OutboxReplayRequest,
     outbox_service: DomainEventOutboxServiceDep,
-    _: None = _events_ops_dep,
+    _: PlatformOperatorDep,
 ) -> OutboxReplayResponse:
     """Batch replay for operations backfill."""
     replayed = await outbox_service.replay_entries(body.outbox_ids)

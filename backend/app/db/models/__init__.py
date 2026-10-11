@@ -10,6 +10,7 @@ from app.db.models.field_dashboard_read_model import FieldDashboardReadModel
 from app.db.models.field_digital_twin_state import FieldDigitalTwinState
 from app.db.models.field_feature_snapshot import FieldFeatureSnapshot
 from app.db.models.irrigation_event import IrrigationEvent
+from app.db.models.platform_user import PlatformUser
 from app.db.models.recommendation import Recommendation
 from app.db.models.satellite_observation import SatelliteObservation
 from app.db.models.sensor_reading import SensorReading
@@ -29,6 +30,7 @@ __all__ = [
     "FieldDigitalTwinState",
     "FieldFeatureSnapshot",
     "IrrigationEvent",
+    "PlatformUser",
     "Recommendation",
     "SatelliteObservation",
     "SensorReading",
