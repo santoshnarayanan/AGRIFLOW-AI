@@ -51,6 +51,7 @@ from app.core.logging.logger import get_logger
 from app.db.models.sensor_reading import SensorReading
 from app.db.repositories.field import FieldRepository
 from app.db.repositories.sensor_reading import SensorReadingRepository
+from app.events.publisher import DomainEventPublisher, NoOpDomainEventPublisher
 from app.schemas.sensor_reading import SensorReadingCreate
 from app.services.field import FieldNotFoundError  # shared domain exception
 
@@ -101,9 +102,11 @@ class SensorReadingService:
         self,
         sensor_reading_repository: SensorReadingRepository,
         field_repository: FieldRepository,
+        event_publisher: DomainEventPublisher | None = None,
     ) -> None:
         self._readings = sensor_reading_repository
         self._fields = field_repository
+        self._event_publisher = event_publisher or NoOpDomainEventPublisher()
 
     # ── Create ─────────────────────────────────────────────────────────────────
 
@@ -147,16 +150,8 @@ class SensorReadingService:
             sensor_reading_id=str(reading.id),
         )
 
-        # ── Future extension point (ADR-007-26) ───────────────────────────────
-        # This is the intended boundary for the following integrations.
-        # Do NOT implement here; wire in a dedicated event-publishing adapter:
-        #
-        # - SensorReadingCreated event → Redpanda / Kafka topic
-        # - Digital Twin field-state update
-        # - CQRS read-model projection (e.g. latest reading per sensor_type)
-        # - GaaS orchestration trigger
-        # - Temporal workflow initiation (e.g. alert evaluation pipeline)
-        # ─────────────────────────────────────────────────────────────────────
+        # Phase 14 — transactional outbox (ADR-006); relay publishes to Redpanda.
+        await self._event_publisher.sensor_reading_created(reading)
 
         return reading
 
