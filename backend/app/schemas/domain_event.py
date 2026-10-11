@@ -23,6 +23,10 @@ class OutboxStatsResponse(BaseModel):
     published: int = Field(ge=0)
     failed: int = Field(ge=0)
     total: int = Field(ge=0)
+    events_processed: int = Field(
+        ge=0,
+        description="Business consumer idempotency ledger row count",
+    )
 
 
 class OutboxEntryResponse(BaseModel):

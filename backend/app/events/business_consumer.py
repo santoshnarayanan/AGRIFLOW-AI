@@ -17,6 +17,9 @@ from pydantic import ValidationError
 
 from app.core.config import get_settings
 from app.core.logging import configure_logging, get_logger
+from app.db.repositories.domain_event_consumer_inbox import (
+    DomainEventConsumerInboxRepository,
+)
 from app.db.session import AsyncSessionFactory
 from app.events.catalog import EVENT_CATALOG
 from app.events.handlers.alert_evaluation import handle_domain_event
@@ -67,8 +70,23 @@ class DomainEventBusinessConsumer:
             logger.warning("business_consumer.invalid_envelope", error=str(exc))
             return
 
+        group_id = self._settings.REDPANDA_BUSINESS_CONSUMER_GROUP_ID
+
         async with AsyncSessionFactory() as session:
             async with session.begin():
+                inbox = DomainEventConsumerInboxRepository(session)
+                claimed = await inbox.try_claim(
+                    event_id=envelope.event_id,
+                    consumer_group_id=group_id,
+                    event_type=envelope.event_type,
+                )
+                if not claimed:
+                    logger.debug(
+                        "business_consumer.duplicate_skipped",
+                        event_id=str(envelope.event_id),
+                        consumer_group_id=group_id,
+                    )
+                    return
                 await handle_domain_event(session, envelope)
 
     def stop(self) -> None:

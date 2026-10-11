@@ -1,6 +1,6 @@
-# Phase 14 — Event platform implementation reference (in progress)
+# Phase 14 — Event platform implementation reference
 
-**Status:** Started — transactional outbox + first producer  
+**Status:** Backend + UI MVP complete — replay/ML engines remain future work  
 **ADR:** [ADR-006](../../../adr/ADR-006-domain-events-transactional-outbox.md)  
 **Migration:** `i3j4k5l6m7n8` (`domain_event_outbox`)
 
@@ -56,8 +56,19 @@ Shared DI: `DomainEventPublisherDep` in `app/api/deps.py`.
 
 Config: `ALERT_EVALUATION_ENABLED`, `SOIL_MOISTURE_LOW_THRESHOLD_PERCENT`, `REDPANDA_BUSINESS_CONSUMER_GROUP_ID`.
 
-## Next slices
+## Delivered (slice 4 — idempotency, tests, frontend)
 
-- Phase 14 frontend (catalog + outbox ops screens)
-- Consumer idempotency store (`event_id` processed log)
-- Contract tests for envelope JSON
+| Component | Location |
+|-----------|----------|
+| Consumer idempotency | `domain_event_consumer_inbox` migration `j4k5l6m7n8o9` |
+| Business consumer dedup | `DomainEventConsumerInboxRepository.try_claim` in `business_consumer.py` |
+| Envelope contract test | `backend/app/tests/test_domain_event_envelope.py` |
+| Outbox stats extension | `events_processed` on `GET /events/outbox/stats` |
+| React UI | `/events` — catalog table, outbox stats, outbox entries (`frontend/src/pages/Events.tsx`) |
+
+## Remaining (optional / Phase 15+)
+
+- Event replay / backfill tooling
+- Formal schema versioning policy and compatibility CI
+- Predictive ML engines (roadmap near-term; not part of event-platform MVP)
+- Auth on outbox ops endpoints
