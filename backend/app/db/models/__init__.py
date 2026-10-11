@@ -6,6 +6,7 @@ from app.db.models.domain_event_outbox import DomainEventOutbox
 from app.db.models.disease_observation import DiseaseObservation
 from app.db.models.farm import Farm
 from app.db.models.field import Field
+from app.db.models.field_dashboard_read_model import FieldDashboardReadModel
 from app.db.models.field_feature_snapshot import FieldFeatureSnapshot
 from app.db.models.irrigation_event import IrrigationEvent
 from app.db.models.recommendation import Recommendation
@@ -23,6 +24,7 @@ __all__ = [
     "DiseaseObservation",
     "Farm",
     "Field",
+    "FieldDashboardReadModel",
     "FieldFeatureSnapshot",
     "IrrigationEvent",
     "Recommendation",

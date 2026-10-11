@@ -84,6 +84,10 @@ class Settings(BaseSettings):
     FEATURE_STORE_REGISTRY_VERSION: str = "cdd-v1.0.0"
     FEATURE_STORE_GDD_BASE_C: float = 10.0
 
+    # ── CQRS read models (Phase 15) ─────────────────────────────────────────────
+    READ_MODEL_PROJECTION_VERSION: str = "v1"
+    READ_MODEL_AUTO_REFRESH_ON_READ: bool = True
+
 
 @lru_cache(maxsize=1)
 def get_settings() -> Settings:

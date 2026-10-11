@@ -459,6 +459,32 @@ export interface AlertCreate {
   threshold_value?: number | null
 }
 
+// ─── Read models (Phase 15) ───────────────────────────────────────────────────
+
+export interface FieldPressureSummary {
+  field_id: string
+  farm_id: string
+  field_name: string
+  open_alerts_count: number
+  critical_alerts_count: number
+  active_recommendations_count: number
+}
+
+export interface PlatformDashboardReadModel {
+  is_materialized: boolean
+  projection_version: string
+  refreshed_at: string | null
+  total_farms: number
+  total_fields: number
+  materialized_fields: number
+  open_alerts: number
+  critical_alerts: number
+  active_recommendations: number
+  fields_with_feature_snapshots: number
+  alert_severity_breakdown: Record<string, number>
+  top_fields_by_pressure: FieldPressureSummary[]
+}
+
 export interface AlertUpdate {
   severity?: AlertSeverity
   title?: string

@@ -58,3 +58,10 @@ class FieldRepository(BaseRepository[Field]):
             .offset(offset)
         )
         return list(result.scalars().all())
+
+    async def list_all(self, *, limit: int = 5000, offset: int = 0) -> list[Field]:
+        """Return all fields (used by CQRS projection refresh)."""
+        result = await self._session.execute(
+            select(Field).order_by(Field.name).limit(limit).offset(offset)
+        )
+        return list(result.scalars().all())
