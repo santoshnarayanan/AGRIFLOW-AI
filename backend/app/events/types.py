@@ -13,6 +13,8 @@ class DomainEventType(StrEnum):
     DISEASE_OBSERVED = "DiseaseObserved"
     SATELLITE_OBSERVED = "SatelliteObserved"
     CROP_LIFECYCLE_CHANGED = "CropLifecycleChanged"
+    RECOMMENDATION_CREATED = "RecommendationCreated"
+    ALERT_TRIGGERED = "AlertTriggered"
 
 
 class AggregateType(StrEnum):
@@ -25,3 +27,5 @@ class AggregateType(StrEnum):
     DISEASE_OBSERVATION = "disease_observation"
     SATELLITE_OBSERVATION = "satellite_observation"
     CROP = "crop"
+    RECOMMENDATION = "recommendation"
+    ALERT = "alert"

@@ -56,6 +56,18 @@ EVENT_CATALOG: dict[DomainEventType, EventCatalogEntry] = {
         schema_version="1.0",
         description="Crop status transition (e.g. PLANTED → GROWING).",
     ),
+    DomainEventType.RECOMMENDATION_CREATED: EventCatalogEntry(
+        event_type=DomainEventType.RECOMMENDATION_CREATED,
+        topic="agriflow.domain.recommendation-created.v1",
+        schema_version="1.0",
+        description="Decision intelligence recommendation persisted for a field.",
+    ),
+    DomainEventType.ALERT_TRIGGERED: EventCatalogEntry(
+        event_type=DomainEventType.ALERT_TRIGGERED,
+        topic="agriflow.domain.alert-triggered.v1",
+        schema_version="1.0",
+        description="Operational alert raised for a field (sensor, engine, or operator).",
+    ),
 }
 
 

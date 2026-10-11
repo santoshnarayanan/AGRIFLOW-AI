@@ -6,9 +6,14 @@ from uuid import UUID
 from pydantic import BaseModel, ConfigDict, Field
 
 from app.core.enums import (
+    AlertSeverity,
+    AlertType,
     DiagnosisMethod,
     DiseaseSeverity,
     IrrigationMethod,
+    RecommendationPriority,
+    RecommendationStatus,
+    RecommendationType,
     SatelliteProvider,
     SensorType,
     SpectralIndex,
@@ -92,6 +97,36 @@ class CropLifecycleChangedPayloadV1(BaseModel):
     previous_status: CropStatus
     new_status: CropStatus
     changed_at: datetime
+
+
+class RecommendationCreatedPayloadV1(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    recommendation_id: UUID
+    field_id: UUID
+    crop_id: UUID | None = None
+    recommendation_type: RecommendationType
+    status: RecommendationStatus
+    priority: RecommendationPriority
+    title: str
+    confidence_score: float | None = None
+    engine_version: str | None = None
+    valid_from: datetime
+    valid_until: datetime | None = None
+
+
+class AlertTriggeredPayloadV1(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    alert_id: UUID
+    field_id: UUID
+    crop_id: UUID | None = None
+    recommendation_id: UUID | None = None
+    alert_type: AlertType
+    severity: AlertSeverity
+    title: str
+    triggered_at: datetime
+    is_acknowledged: bool = False
 
 
 class DomainEventEnvelopeV1(BaseModel):

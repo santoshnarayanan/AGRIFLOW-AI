@@ -238,24 +238,32 @@ def get_farm_service(session: SessionDep) -> FarmService:
 FarmServiceDep = Annotated[FarmService, Depends(get_farm_service)]
 
 
-def get_recommendation_service(session: SessionDep) -> RecommendationService:
+def get_recommendation_service(
+    session: SessionDep,
+    event_publisher: DomainEventPublisherDep,
+) -> RecommendationService:
     """Construct a ``RecommendationService`` wired to the request-scoped session."""
     return RecommendationService(
         recommendation_repository=RecommendationRepository(session),
         field_repository=FieldRepository(session),
         crop_repository=CropRepository(session),
+        event_publisher=event_publisher,
     )
 
 
 RecommendationServiceDep = Annotated[RecommendationService, Depends(get_recommendation_service)]
 
 
-def get_alert_service(session: SessionDep) -> AlertService:
+def get_alert_service(
+    session: SessionDep,
+    event_publisher: DomainEventPublisherDep,
+) -> AlertService:
     """Construct an ``AlertService`` wired to the request-scoped session."""
     return AlertService(
         alert_repository=AlertRepository(session),
         field_repository=FieldRepository(session),
         recommendation_repository=RecommendationRepository(session),
+        event_publisher=event_publisher,
     )
 
 

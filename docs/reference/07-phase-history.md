@@ -1,8 +1,8 @@
 # AGRIFLOW-AI Phase History
 
-**Last Updated:** Phase 13 — AI Decision Intelligence Layer Complete  
-**Current Project Phase:** Phase 14 — Event-Driven Enterprise Platform (planned)  
-**Current Platform Status:** PostgreSQL 17.10 + TimescaleDB 2.28.1 + Decision Intelligence Layer operational; thirteen domains, six hypertables, eight continuous aggregates, Recommendation Engine and Alert Engine active; zero API breaking changes across all phases
+**Last Updated:** Phase 14 — Event platform MVP (in progress)  
+**Current Project Phase:** Phase 14 — Event-Driven Enterprise Platform (event backbone delivered; ML engines pending)  
+**Current Platform Status:** PostgreSQL 17.10 + TimescaleDB 2.28.1 + Decision Intelligence + transactional outbox domain events (Redpanda relay/consumers); thirteen operational domains; zero API breaking changes across all phases
 
 ---
 
@@ -1478,8 +1478,8 @@ Hybrid PostgreSQL + TimescaleDB
 Decision Intelligence (Phase 13) ✅
 (Recommendation Engine · Alert Engine · Farm CRUD)
       ↓
-Event-Driven Operations (Phase 14) 🔜
-(Redpanda · Domain Events · ML Engine Triggers)
+Event-Driven Operations (Phase 14) 🚧
+(Redpanda · Outbox · Catalog · Consumers · Ops UI ✅ · ML Engine Triggers 🔜)
       ↓
 Feature Store / Digital Twin (Phase 15)
       ↓

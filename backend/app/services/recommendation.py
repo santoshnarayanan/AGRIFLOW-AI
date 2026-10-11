@@ -25,6 +25,7 @@ from app.db.models.recommendation import Recommendation
 from app.db.repositories.crop import CropRepository
 from app.db.repositories.field import FieldRepository
 from app.db.repositories.recommendation import RecommendationRepository
+from app.events.publisher import DomainEventPublisher, NoOpDomainEventPublisher
 from app.schemas.recommendation import RecommendationCreate, RecommendationUpdate
 from app.services.field import FieldNotFoundError
 
@@ -63,10 +64,12 @@ class RecommendationService:
         recommendation_repository: RecommendationRepository,
         field_repository: FieldRepository,
         crop_repository: CropRepository,
+        event_publisher: DomainEventPublisher | None = None,
     ) -> None:
         self._recommendations = recommendation_repository
         self._fields = field_repository
         self._crops = crop_repository
+        self._event_publisher = event_publisher or NoOpDomainEventPublisher()
 
     # ── Create ─────────────────────────────────────────────────────────────────
 
@@ -125,11 +128,7 @@ class RecommendationService:
             recommendation_id=str(rec.id),
         )
 
-        # ── Future extension point ─────────────────────────────────────────────
-        # RecommendationCreated domain event → Redpanda (Phase 14)
-        # Feature Store feature vector update (Phase 15)
-        # Farm Copilot GaaS tool trigger (Phase 16)
-        # ──────────────────────────────────────────────────────────────────────
+        await self._event_publisher.recommendation_created(rec)
 
         return rec
 
