@@ -1,6 +1,6 @@
 # Phase 14 — Event platform implementation reference
 
-**Status:** Event platform MVP complete (all catalog producers wired) — ML prediction engines & replay tooling remain roadmap  
+**Status:** Phase 14 complete — event platform, stub ML engines, ops auth, and replay delivered; production ML training moves to Phase 15 Feature Store  
 **ADR:** [ADR-006](../../../adr/ADR-006-domain-events-transactional-outbox.md)  
 **Migration:** `i3j4k5l6m7n8` (`domain_event_outbox`)
 
@@ -75,9 +75,20 @@ Config: `ALERT_EVALUATION_ENABLED`, `SOIL_MOISTURE_LOW_THRESHOLD_PERCENT`, `REDP
 
 Topics: `agriflow.domain.recommendation-created.v1`, `agriflow.domain.alert-triggered.v1`.
 
-## Remaining (optional / Phase 15+)
+## Delivered (slice 6 — ML stubs, replay, ops auth)
 
-- Event replay / backfill tooling
-- Formal schema versioning policy and compatibility CI
-- Predictive ML engines (roadmap near-term; not part of event-platform MVP)
-- Auth on outbox ops endpoints
+| Component | Location |
+|-----------|----------|
+| ML engine stubs | `backend/app/ml/` — yield, irrigation, disease risk |
+| Engine catalog API | `GET /api/v1/ml/engines` |
+| Manual engine run | `POST /api/v1/ml/fields/{field_id}/engines/{engine_id}/run` |
+| Event-driven stubs | `ML_ENGINE_AUTO_RUN_ENABLED` + `handlers/ml_engine_evaluation.py` |
+| Outbox replay | `POST /events/outbox/entries/{id}/replay`, `POST /events/outbox/replay` |
+| Ops API key | `EVENTS_OPS_API_KEY` + `X-Events-Ops-Key` on outbox routes |
+| Contract tests | `test_event_catalog_contract.py`, `test_ml_engine_stubs.py` |
+
+## Phase 15 handoff
+
+- Replace stubs with Feature Store–backed models and training pipelines
+- Consumer inbox reset strategy for intentional event replay
+- Full platform authentication (JWT/RBAC) beyond ops shared secret
