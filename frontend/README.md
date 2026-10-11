@@ -1,32 +1,67 @@
-# React + TypeScript + Vite
+# AGRIFLOW-AI Frontend
 
-This template provides a minimal setup to get React working in Vite with HMR and some Oxlint rules.
+React + TypeScript single-page application for the AGRIFLOW-AI agricultural intelligence platform. It talks to the FastAPI backend at `/api/v1` (Vite dev proxy in development).
 
-Currently, two official plugins are available:
+## Stack
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
+| Layer | Technology |
+|--------|------------|
+| UI | React 19, TypeScript |
+| Build | Vite 8 |
+| Routing | React Router |
+| Server state | TanStack Query |
+| HTTP | Axios (`src/api/client.ts`) |
+| Styling | Tailwind CSS, shadcn/ui primitives |
+| Client state | Zustand (`appStore`, `authStore`) |
 
-## React Compiler
+## Routes
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+| Path | Screen | Notes |
+|------|--------|--------|
+| `/` | Dashboard | Platform KPIs via CQRS read models (Phase 15) |
+| `/farms` … `/satellite` | Core domains | Farm, field, crop, environmental, operations |
+| `/recommendations`, `/alerts` | Decision intelligence | Phase 13 |
+| `/events` | Domain Events | Outbox stats and catalog (Phase 14) |
+| `/features` | Feature Store | Catalog, materialise, snapshots (Phase 15) |
 
-## Expanding the Oxlint configuration
+Shell layout: `src/components/layout/AppLayout.tsx` (sidebar + header). **Sign in** in the header issues a JWT for operator APIs (materialise, refresh, outbox).
 
-If you are developing a production application, we recommend enabling type-aware lint rules by installing `oxlint-tsgolint` and editing `.oxlintrc.json`:
+## Environment variables
 
-```json
-{
-  "$schema": "./node_modules/oxlint/configuration_schema.json",
-  "plugins": ["react", "typescript", "oxc"],
-  "options": {
-    "typeAware": true
-  },
-  "rules": {
-    "react/rules-of-hooks": "error",
-    "react/only-export-components": ["warn", { "allowConstantExport": true }]
-  }
-}
+Create `frontend/.env.local` as needed (do not commit secrets):
+
+| Variable | Purpose |
+|----------|---------|
+| `VITE_API_URL` | API base (default: `/api/v1` via proxy) |
+| `VITE_EVENTS_OPS_API_KEY` | Optional legacy ops key for `/events/outbox` when not using JWT |
+
+Operator calls prefer `Authorization: Bearer <token>` from `authStore` after login (`POST /auth/login`).
+
+## Local development
+
+```bash
+cd frontend
+npm install
+npm run dev      # http://localhost:3000 — proxies /api to backend
+npm run build    # tsc + production bundle
+npm run lint     # oxlint
 ```
 
-See the [Oxlint rules documentation](https://oxc.rs/docs/guide/usage/linter/rules) for the full list of rules and categories.
+Start the backend (see root `README.md` and `docs/reference/05-local-setup.md`) before exercising CRUD or intelligence screens.
+
+## Project layout
+
+```text
+src/
+  api/           # Axios clients and React Query hooks per domain
+  components/    # layout, ui, auth (LoginDialog)
+  pages/         # route-level screens
+  stores/        # Zustand (sidebar, auth token)
+  types/         # Shared TypeScript contracts aligned with backend schemas
+```
+
+## Related documentation
+
+- [phase-implementations/frontend-ui.md](../docs/reference/phase-implementations/frontend-ui.md) — detailed route and API map (update as routes evolve)
+- [15-enterprise-intelligence.md](../docs/reference/phase-implementations/15-enterprise-intelligence.md) — Feature Store, read models, auth
+- [14-event-platform.md](../docs/reference/phase-implementations/14-event-platform.md) — events UI and outbox

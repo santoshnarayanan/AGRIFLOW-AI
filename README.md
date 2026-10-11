@@ -4,7 +4,7 @@
 
 AGRIFLOW-AI is an Agricultural Intelligence Platform designed to help farmers, agronomists, cooperatives, and agricultural enterprises manage farm operations, monitor crop lifecycles, analyze soil health, track irrigation events, record yield measurements, log disease observations, and build toward AI-driven agricultural decision intelligence.
 
-The platform combines farm management, field management, crop management, soil intelligence, weather intelligence, sensor telemetry, irrigation management, yield tracking, disease observation, satellite observation, structured recommendations and alerts (Phase 13 decision intelligence), and a React operational UI into a unified agricultural operating platform.
+The platform combines farm management, field management, crop management, soil intelligence, weather intelligence, sensor telemetry, irrigation management, yield tracking, disease observation, satellite observation, structured recommendations and alerts (Phase 13), domain events and ML engine stubs (Phase 14), AI Feature Store, CQRS dashboard read models, Digital Twin state, event-driven intelligence projection, and platform JWT operator auth (Phase 15), plus a React operational UI into a unified agricultural operating platform.
 
 ---
 
@@ -57,9 +57,13 @@ docs/reference/01-vision.md
 
 ✅ Phase 13 – Enterprise Decision & Recommendation Platform
 
+✅ Phase 14 – Event-Driven Enterprise Platform
+
+✅ Phase 15 – Enterprise Intelligence Platform
+
 ### Current Phase
 
-🔜 Phase 15 – Enterprise Intelligence Platform
+🔜 Phase 16 – Enterprise AI Platform & Production Readiness
 
 ---
 
@@ -81,6 +85,8 @@ Farm                                         (PostgreSQL — relational; Farm CR
 
 Phase 12: TimescaleDB 2.28.1 · 6 hypertables · compression · continuous aggregates · retention
 Phase 13: Decision layer (recommendations · alerts) on standard PostgreSQL tables
+Phase 14: Domain event outbox · consumer inbox · Redpanda relay (optional)
+Phase 15: Feature snapshots · dashboard read models · digital twin state · platform_users
 ```
 
 ---
@@ -96,6 +102,12 @@ crops
 soil_profiles
 recommendations          (Phase 13)
 alerts                   (Phase 13)
+domain_event_outbox      (Phase 14)
+domain_event_consumer_inbox (Phase 14)
+field_feature_snapshots  (Phase 15)
+field_dashboard_read_models (Phase 15)
+field_digital_twin_states (Phase 15)
+platform_users           (Phase 15)
 
 TimescaleDB hypertables (Phase 12)
 weather_records
@@ -106,7 +118,7 @@ disease_observations
 satellite_observations
 ```
 
-Current migration head: `h2i3j4k5l6m7_create_alerts_table` (Phase 13)
+Current migration head: `n8o9p0q1r2s3` — `platform_users` (Phase 15). See `docs/reference/phase-implementations/15-enterprise-intelligence.md`.
 
 #### Phase 12 Hypertable Candidates
 
@@ -125,7 +137,7 @@ Phase 12 also enabled compression policies, eight continuous aggregates, and ele
 
 ## Current Architecture
 
-AGRIFLOW-AI follows a layered architecture. A **React + TypeScript** client (`frontend/`) consumes the FastAPI REST API for dashboards, domain CRUD, and Phase 13 intelligence screens.
+AGRIFLOW-AI follows a layered architecture. A **React + TypeScript** client (`frontend/`) consumes the FastAPI REST API for dashboards, domain CRUD, decision intelligence, domain events ops, Feature Store, and platform sign-in (JWT).
 
 ```text
 React Frontend (Vite · TanStack Query)
@@ -736,7 +748,10 @@ frontend/
 | `docs/reference/09-architecture-diagrams.md` | Architecture Diagrams (Mermaid) |
 | `docs/phases/phase13/phase-summary.md` | Phase 13 — Decision & Recommendation Platform summary |
 | `docs/reference/phase-implementations/13-decision-intelligence.md` | Phase 13 implementation map (backend) |
+| `docs/reference/phase-implementations/14-event-platform.md` | Phase 14 event outbox and consumers |
+| `docs/reference/phase-implementations/15-enterprise-intelligence.md` | Phase 15 Feature Store, CQRS, Digital Twin, JWT |
 | `docs/reference/phase-implementations/frontend-ui.md` | React UI routes, API clients, and dev setup |
+| `frontend/README.md` | Frontend stack, routes, env vars, and dev commands |
 | `docs/phases/phase06/ai-data-readiness-assessment.md` | AI Data Readiness Assessment (Phase 6) |
 | `docs/reference/palantir-alignment.md` | Palantir Foundry Alignment Assessment |
 | `ONBOARDING.md` | Single-page repository onboarding guide |
@@ -761,25 +776,20 @@ frontend/
 ✅ Phase 12 – TimescaleDB Time-Series Foundation  
 ✅ Phase 13 – Enterprise Decision & Recommendation Platform  
 ✅ Phase 14 – Event-Driven Enterprise Platform  
+✅ Phase 15 – Enterprise Intelligence Platform  
 
 ### Current Phase
 
-🔜 **Phase 15 – Enterprise Intelligence Platform** *(current)*
-
-* CQRS, read models, dashboard projections
-* Feature Store and AI feature registry (production ML replaces Phase 14 stubs)
-* Digital Twin foundation and AI-ready query services
-
-### Planned Phases
-
-⏳ **Phase 16 – Enterprise AI Platform & Production Readiness**
+🔜 **Phase 16 – Enterprise AI Platform & Production Readiness** *(current)*
 
 * Temporal workflows, Farm Copilot, Generative AI as a Service (GaaS)
 * Full test suite, CI/CD quality gates, security hardening, production readiness
 
 For the detailed roadmap see `docs/reference/06-roadmap.md`
 
-Phase 14 delivered Redpanda/outbox domain events, event catalog and consumers, `/events` ops UI, stub ML engines (`GET/POST /ml/...`), outbox replay, and `X-Events-Ops-Key` protection on outbox routes.
+**Phase 14 delivered:** Redpanda/outbox domain events, event catalog and consumers, `/events` ops UI, stub ML engines (`GET/POST /ml/...`), outbox replay, and operator protection on outbox routes (`PlatformOperatorDep` — JWT or legacy `X-Events-Ops-Key`).
+
+**Phase 15 delivered:** AI Feature Store (`/features`), CQRS dashboard read models (`/read-models`), Digital Twin foundation (`/digital-twin`), event-driven intelligence projection on field-scoped domain events, Feature Store UI (`/features`), platform JWT login (`/auth/login`), and `platform_users` migration. See `docs/reference/phase-implementations/15-enterprise-intelligence.md` and ADR-007–010.
 
 ### Phase 12 – TimescaleDB Time-Series Foundation (Complete)
 
@@ -815,7 +825,7 @@ Phase 12 is an **infrastructure and data-platform phase** — not a business dom
 
 ---
 
-## Current Agricultural Intelligence Platform (Post Phase 13)
+## Current Agricultural Intelligence Platform (Post Phase 15)
 
 ```text
 Farm                              ✅ Phase 1 model · Phase 13 CRUD API
@@ -831,8 +841,14 @@ Farm                              ✅ Phase 1 model · Phase 13 CRUD API
       ├── Recommendation      ✅ Phase 13 (Decision layer — PostgreSQL)
       └── Alert                 ✅ Phase 13 (Alert layer — PostgreSQL)
 
+Cross-cutting (Phase 14–15)
+  Domain event outbox / consumer inbox   ✅ Phase 14
+  Field feature snapshots                ✅ Phase 15 (Feature Store)
+  Field dashboard read models            ✅ Phase 15 (CQRS projections)
+  Field digital twin state               ✅ Phase 15 (Digital Twin foundation)
+
 TimescaleDB analytical platform  ✅ Phase 12 (compression · continuous aggregates · retention)
-React operational UI             ✅ frontend/ (13 routes — see phase-implementations/frontend-ui.md)
+React operational UI             ✅ frontend/ (15+ routes — see frontend/README.md)
 ```
 
 ### Implemented Domains
@@ -852,17 +868,19 @@ React operational UI             ✅ frontend/ (13 routes — see phase-implemen
 | Satellite Observation | 11 | SatelliteObservation | TimescaleDB hypertable |
 | TimescaleDB Platform | 12 | (6 hypertables) | Compression, CAs, retention — no API changes |
 | Decision Intelligence | 13 | Recommendation, Alert | Standard PostgreSQL; engines produce structured records |
-| Frontend UI | — | (SPA) | React client for all operational and intelligence screens |
+| Frontend UI | — | (SPA) | React client for operational, intelligence, events, and Feature Store screens |
+| Event platform | 14 | Outbox, inbox, catalog | Transactional outbox; optional Redpanda relay |
+| Enterprise intelligence | 15 | Feature snapshots, read models, twin state | Feature Store, CQRS dashboards, Digital Twin, JWT operators |
 
 ## Target Agricultural Intelligence Platform
 
-Phases 1–13 delivered the **operational data platform**, **TimescaleDB analytics layer**, **decision records** (recommendations and alerts), and a **production-style React UI**. Phases 14–16 add event-driven infrastructure, ML engines and Feature Store, Digital Twin, Farm Copilot, and enterprise production readiness — without redesigning the Phase 12 persistence foundation.
+Phases 1–15 delivered the **operational data platform**, **TimescaleDB analytics layer**, **decision records**, **event-driven outbox**, **Feature Store and read models**, **Digital Twin foundation**, and a **production-style React UI**. Phase 16 adds Farm Copilot / GaaS, Temporal workflows, and enterprise production readiness — without redesigning the Phase 12 persistence foundation.
 
 ---
 
 ## Long-Term Goals
 
-AGRIFLOW-AI seeks to become the operating system for modern agriculture by combining operational data, environmental intelligence, predictive analytics, and artificial intelligence into a single platform that helps agricultural organizations improve productivity, sustainability, and decision-making. Phase 12 completed the analytical persistence layer; Phase 13 delivered the decision layer and Farm CRUD API; Phases 14–16 will add event-driven processing, ML engines and Feature Store, Digital Twin, Farm Copilot, and production-grade platform quality — with future infrastructure (Redpanda, CQRS, Temporal) introduced incrementally per the approved roadmap.
+AGRIFLOW-AI seeks to become the operating system for modern agriculture by combining operational data, environmental intelligence, predictive analytics, and artificial intelligence into a single platform that helps agricultural organizations improve productivity, sustainability, and decision-making. Phases 12–15 completed the analytical persistence layer, decision layer, event platform, Feature Store, CQRS read models, and Digital Twin foundation; Phase 16 focuses on Farm Copilot, Temporal, and production-grade platform quality.
 
 ### Platform Evolution
 
@@ -883,10 +901,10 @@ Decision Intelligence Layer
 (Phase 13 ✅ — recommendations · alerts · Farm API)
       ↓
 Event-Driven & ML Platform
-(Phase 14–15)
+(Phase 14–15 ✅)
       ↓
 Digital Twin & Farm Copilot
-(Phase 15–16)
+(Phase 16)
       ↓
 Platform Stabilization & Production Readiness
 (Phase 16)
@@ -903,11 +921,11 @@ Continuous Aggregates
       ↓
 Decision Records (Phase 13 ✅)
       ↓
-Domain Events / Redpanda (Phase 14)
+Domain Events / Redpanda (Phase 14 ✅)
       ↓
-Feature Store & ML Engines (Phase 15)
+Feature Store & ML Engines (Phase 15 ✅)
       ↓
-Digital Twin · Farm Copilot · GaaS (Phase 16)
+Digital Twin foundation (Phase 15 ✅) · Farm Copilot · GaaS (Phase 16)
 ```
 
 **Phase 13 delivered:**
@@ -917,7 +935,9 @@ Digital Twin · Farm Copilot · GaaS (Phase 16)
 * **Farm CRUD API** — completed the Farm vertical slice deferred since Phase 1
 * **React UI** — operational and intelligence screens consuming the REST API
 
-**Upcoming (Phases 14–16):** event-driven architecture (Phase 14), Feature Store and predictive ML engines (Phase 15), Digital Twin and Farm Copilot / GaaS with full production readiness (Phase 16). See `docs/reference/06-roadmap.md`.
+**Phase 14–15 delivered:** transactional outbox, event consumers, stub ML engines, Feature Store, dashboard read models, Digital Twin sync, intelligence projection, and platform JWT operator auth.
+
+**Upcoming (Phase 16):** Farm Copilot / GaaS, Temporal workflows, comprehensive testing, and production readiness. See `docs/reference/06-roadmap.md`.
 
 ### Infrastructure Goals
 
@@ -926,8 +946,8 @@ Infrastructure components are ordered by planned implementation sequence:
 1. **PostgreSQL 17** — primary relational database for all domain entities, transactional workloads, Alembic migrations, and referential integrity (Phases 1–13)
 2. **TimescaleDB 2.28.1 (Phase 12 ✅)** — PostgreSQL extension operational with six hypertables, six compression policies, eight continuous aggregates, eleven retention policies, and `time_bucket()` analytics
 3. **React frontend (`frontend/`)** — operational UI for all domains and Phase 13 intelligence screens (Vite dev proxy to FastAPI)
-4. **Redpanda (Phase 14)** — event streaming for real-time pipeline triggers and decoupled downstream consumers
-5. **CQRS / Feature Store (Phase 15)** — read models, dashboard projections, and versioned ML feature vectors
+4. **Redpanda (Phase 14 ✅)** — event streaming for real-time pipeline triggers and decoupled downstream consumers (optional relay)
+5. **CQRS / Feature Store / Digital Twin (Phase 15 ✅)** — read models, dashboard projections, versioned ML feature vectors, twin state documents
 6. **Temporal & Azure (Phase 16+)** — workflow orchestration and enterprise deployment (AKS, Azure OpenAI for GaaS)
 
 ---
