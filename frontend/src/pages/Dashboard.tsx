@@ -8,6 +8,7 @@ import { useFarms } from '@/api/farms'
 import { useFields } from '@/api/fields'
 import { useAlertsForFieldIds } from '@/api/alerts'
 import { useRecommendationsForFieldIds } from '@/api/recommendations'
+import { usePlatformDashboard } from '@/api/readModels'
 import { formatDateTime } from '@/lib/utils'
 import { decimalFromApi, formatFarmLocation, farmDisplayName } from '@/lib/farm'
 import type { AlertSeverity } from '@/types'
@@ -65,18 +66,23 @@ export function Dashboard() {
   const { data: allFields = [], isLoading: fieldsLoading } = useFields()
   const fieldIds = useMemo(() => allFields.map((f) => fieldIdStr(f.id)), [allFields])
 
+  const { data: projection, isLoading: projectionLoading } = usePlatformDashboard()
   const { data: allAlerts = [], isLoading: alertsLoading } = useAlertsForFieldIds(fieldIds)
   const { data: recommendations = [], isLoading: recsLoading } = useRecommendationsForFieldIds(fieldIds)
 
-  const totalFarms = farms?.length ?? 0
+  const totalFarms = projection?.total_farms ?? farms?.length ?? 0
+  const fieldsMonitored = projection?.total_fields ?? allFields.length
   const recentAlerts = allAlerts.slice(0, 5)
-  const activeAlerts = allAlerts.filter((a) => !a.is_acknowledged).length
-  const criticalCount = allAlerts.filter(
-    (a) => a.severity === 'CRITICAL' && !a.is_acknowledged,
-  ).length
-  const pendingRecs = recommendations.filter(
-    (r) => r.status === 'PENDING' || r.status === 'ACTIVE',
-  ).length
+  const activeAlerts = projection?.open_alerts ?? allAlerts.filter((a) => !a.is_acknowledged).length
+  const criticalCount =
+    projection?.critical_alerts ??
+    allAlerts.filter((a) => a.severity === 'CRITICAL' && !a.is_acknowledged).length
+  const pendingRecs =
+    projection?.active_recommendations ??
+    recommendations.filter((r) => r.status === 'PENDING' || r.status === 'ACTIVE').length
+
+  const severityBreakdown = projection?.alert_severity_breakdown
+  const kpiLoading = projectionLoading || (projection == null && (alertsLoading || recsLoading || fieldsLoading))
 
   return (
     <div className="space-y-6">
@@ -87,7 +93,7 @@ export function Dashboard() {
           icon={Tractor}
           color="bg-green-600"
           sub="Registered agricultural units"
-          loading={farmsLoading}
+          loading={kpiLoading && farmsLoading}
         />
         <StatCard
           label="Active Alerts"
@@ -95,7 +101,7 @@ export function Dashboard() {
           icon={BellRing}
           color={criticalCount > 0 ? 'bg-red-500' : 'bg-amber-500'}
           sub={criticalCount > 0 ? `${criticalCount} critical` : 'No critical alerts'}
-          loading={alertsLoading || fieldsLoading}
+          loading={kpiLoading}
         />
         <StatCard
           label="Open Recommendations"
@@ -103,15 +109,19 @@ export function Dashboard() {
           icon={Lightbulb}
           color="bg-blue-500"
           sub="Pending or active"
-          loading={recsLoading || fieldsLoading}
+          loading={kpiLoading}
         />
         <StatCard
           label="Fields Monitored"
-          value={allFields.length}
+          value={fieldsMonitored}
           icon={Layers}
           color="bg-violet-500"
-          sub="Across all farms"
-          loading={fieldsLoading}
+          sub={
+            projection?.fields_with_feature_snapshots
+              ? `${projection.fields_with_feature_snapshots} with Feature Store`
+              : 'Across all farms'
+          }
+          loading={kpiLoading}
         />
       </div>
 
@@ -125,7 +135,9 @@ export function Dashboard() {
               Array.from({ length: 4 }).map((_, i) => <Skeleton key={i} className="h-10 w-full" />)
             ) : (
               (['CRITICAL', 'HIGH', 'WARNING', 'INFO'] as AlertSeverity[]).map((sev) => {
-                const count = allAlerts.filter((a) => a.severity === sev && !a.is_acknowledged).length
+                const count =
+                  severityBreakdown?.[sev] ??
+                  allAlerts.filter((a) => a.severity === sev && !a.is_acknowledged).length
                 const total = activeAlerts || 1
                 const pct = Math.round((count / total) * 100)
                 const barColors: Record<AlertSeverity, string> = {

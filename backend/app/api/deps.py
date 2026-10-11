@@ -30,7 +30,9 @@ from app.db.repositories.disease_observation import DiseaseObservationRepository
 from app.db.repositories.farm import FarmRepository
 from app.db.repositories.feature_extraction import FeatureExtractionRepository
 from app.db.repositories.field import FieldRepository
+from app.db.repositories.field_dashboard_read_model import FieldDashboardReadModelRepository
 from app.db.repositories.field_feature_snapshot import FieldFeatureSnapshotRepository
+from app.db.repositories.read_model_metrics import ReadModelMetricsRepository
 from app.db.repositories.irrigation_event import IrrigationEventRepository
 from app.db.repositories.recommendation import RecommendationRepository
 from app.db.repositories.satellite_observation import SatelliteObservationRepository
@@ -47,6 +49,7 @@ from app.services.domain_event_outbox import DomainEventOutboxService
 from app.services.disease_observation import DiseaseObservationService
 from app.services.farm import FarmService
 from app.services.feature_store import FeatureStoreService
+from app.services.read_model_projection import ReadModelProjectionService
 from app.services.field import FieldService
 from app.services.irrigation_event import IrrigationEventService
 from app.services.recommendation import RecommendationService
@@ -283,6 +286,21 @@ def get_feature_store_service(session: SessionDep) -> FeatureStoreService:
 
 
 FeatureStoreServiceDep = Annotated[FeatureStoreService, Depends(get_feature_store_service)]
+
+
+def get_read_model_projection_service(session: SessionDep) -> ReadModelProjectionService:
+    return ReadModelProjectionService(
+        farm_repository=FarmRepository(session),
+        field_repository=FieldRepository(session),
+        read_model_repository=FieldDashboardReadModelRepository(session),
+        metrics_repository=ReadModelMetricsRepository(session),
+        feature_snapshot_repository=FieldFeatureSnapshotRepository(session),
+    )
+
+
+ReadModelProjectionServiceDep = Annotated[
+    ReadModelProjectionService, Depends(get_read_model_projection_service)
+]
 
 
 def get_ml_engine_service(
