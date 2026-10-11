@@ -59,7 +59,7 @@ docs/reference/01-vision.md
 
 ### Current Phase
 
-🔜 Phase 14 – Event-Driven Enterprise Platform
+🔜 Phase 15 – Enterprise Intelligence Platform
 
 ---
 
@@ -760,23 +760,17 @@ frontend/
 ✅ Phase 11 – Satellite Observation Domain  
 ✅ Phase 12 – TimescaleDB Time-Series Foundation  
 ✅ Phase 13 – Enterprise Decision & Recommendation Platform  
+✅ Phase 14 – Event-Driven Enterprise Platform  
 
 ### Current Phase
 
-🔜 Phase 14 – Event-Driven Enterprise Platform
-
-### Planned Phases
-
-🔜 **Phase 14 – Event-Driven Enterprise Platform** *(current)*
-
-* Redpanda integration, domain events, outbox pattern, event catalog and consumers
-* Foundation for real-time ML pipeline triggers and distributed services
-
-🔜 **Phase 15 – Enterprise Intelligence Platform**
+🔜 **Phase 15 – Enterprise Intelligence Platform** *(current)*
 
 * CQRS, read models, dashboard projections
-* Feature Store and AI feature registry
+* Feature Store and AI feature registry (production ML replaces Phase 14 stubs)
 * Digital Twin foundation and AI-ready query services
+
+### Planned Phases
 
 ⏳ **Phase 16 – Enterprise AI Platform & Production Readiness**
 
@@ -784,6 +778,8 @@ frontend/
 * Full test suite, CI/CD quality gates, security hardening, production readiness
 
 For the detailed roadmap see `docs/reference/06-roadmap.md`
+
+Phase 14 delivered Redpanda/outbox domain events, event catalog and consumers, `/events` ops UI, stub ML engines (`GET/POST /ml/...`), outbox replay, and `X-Events-Ops-Key` protection on outbox routes.
 
 ### Phase 12 – TimescaleDB Time-Series Foundation (Complete)
 

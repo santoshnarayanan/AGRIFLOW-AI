@@ -822,7 +822,7 @@ The platform evolves from storing agricultural data to producing actionable reco
 
 # Phase 14 – Event-Driven Enterprise Platform
 
-Status: 🚧 In progress — event platform MVP delivered (outbox, Redpanda, catalog, consumers, ops UI); ML prediction engines still planned within Phase 14
+Status: ✅ Complete — transactional outbox, Redpanda relay/consumers, catalog producers, ops UI, stub ML engines, replay, and ops API auth
 
 ## Primary Objective
 
@@ -944,9 +944,9 @@ AGRIFLOW-AI evolves from a farm management system into a comprehensive Agricultu
 
 ## Upcoming
 
-🚧 Phase 14 – Event-Driven Enterprise Platform (event backbone MVP ✅)
+✅ Phase 14 – Event-Driven Enterprise Platform
 
-🔜 Phase 15 – Enterprise Intelligence Platform
+🔜 Phase 15 – Enterprise Intelligence Platform *(current)*
 
 ## Future
 
@@ -959,7 +959,7 @@ AGRIFLOW-AI evolves from a farm management system into a comprehensive Agricultu
 | Phase | Status | Business Capability | Enterprise Technologies |
 |--------|--------|---------------------|--------------------------|
 | **13** | ✅ Complete | Decision Intelligence | Farm CRUD API, Recommendation Engine (6 types/statuses/priorities), Alert Engine (10 types/4 severities), Decision Layer Pattern |
-| **14** | 🚧 In progress | Event-Driven Operations | Redpanda, Domain Events, Outbox Pattern, Consumers, Ops UI ✅; ML Engine Triggers 🔜 |
+| **14** | ✅ Complete | Event-Driven Operations | Redpanda, Outbox, Catalog, Consumers, Ops UI, ML Engine Stubs, Replay, Ops Auth |
 | **15** | 🔜 Planned | Operational Intelligence | CQRS, Read Models, Feature Store, Digital Twin Foundation, AI-ready Query Services |
 | **16** | ⏳ Future | Enterprise AI Platform | Temporal Workflows, GaaS, Farm Copilot, MCP Evaluation, Production Readiness, Observability, Security, Quality Engineering |
 
