@@ -5,6 +5,7 @@ import uuid
 from fastapi import APIRouter, HTTPException, status
 
 from app.api.deps import ReadModelProjectionServiceDep
+from app.core.security.platform_auth import PlatformOperatorDep
 from app.schemas.read_model import (
     FieldDashboardReadModelListResponse,
     FieldDashboardReadModelResponse,
@@ -34,6 +35,7 @@ async def get_platform_dashboard(
 )
 async def refresh_platform_dashboard(
     projection_service: ReadModelProjectionServiceDep,
+    _: PlatformOperatorDep,
 ) -> ReadModelRefreshResponse:
     """Rebuild read models for all fields."""
     count = await projection_service.refresh_platform()
@@ -68,6 +70,7 @@ async def get_farm_dashboard(
 async def refresh_farm_dashboard(
     farm_id: uuid.UUID,
     projection_service: ReadModelProjectionServiceDep,
+    _: PlatformOperatorDep,
 ) -> FieldDashboardReadModelListResponse:
     try:
         items = await projection_service.refresh_farm(farm_id)
@@ -102,6 +105,7 @@ async def get_field_dashboard(
 async def refresh_field_dashboard(
     field_id: uuid.UUID,
     projection_service: ReadModelProjectionServiceDep,
+    _: PlatformOperatorDep,
 ) -> FieldDashboardReadModelResponse:
     try:
         model = await projection_service.refresh_field(field_id)

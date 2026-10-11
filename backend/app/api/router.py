@@ -8,6 +8,7 @@ Adding a new domain module = one include_router call.
 from fastapi import APIRouter
 
 from app.api.alerts.router import router as alerts_router
+from app.api.auth.router import router as auth_router
 from app.api.crops.router import router as crops_router
 from app.api.events.router import router as events_router
 from app.api.features.router import router as features_router
@@ -54,6 +55,7 @@ api_router.include_router(events_router)
 api_router.include_router(ml_router)
 
 # ── Phase 15: Enterprise Intelligence Platform ────────────────────────────────
+api_router.include_router(auth_router)
 api_router.include_router(features_router)
 api_router.include_router(read_models_router)
 api_router.include_router(digital_twin_router)

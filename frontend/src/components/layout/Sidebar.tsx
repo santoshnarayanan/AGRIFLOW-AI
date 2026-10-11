@@ -2,7 +2,7 @@ import { NavLink, useLocation } from 'react-router-dom'
 import {
   LayoutDashboard, Tractor, Layers, Wheat, CloudSun,
   Activity, Droplets, BarChart3, Bug, Satellite, FlaskConical,
-  BellRing, Lightbulb, ChevronLeft, Leaf, Radio,
+  BellRing, Lightbulb, ChevronLeft, Leaf, Radio, Database,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { useAppStore } from '@/stores/appStore'
@@ -45,6 +45,7 @@ const navGroups = [
     items: [
       { to: '/recommendations', icon: Lightbulb, label: 'Recommendations' },
       { to: '/alerts', icon: BellRing, label: 'Alerts' },
+      { to: '/features', icon: Database, label: 'Feature Store' },
     ],
   },
   {

@@ -399,3 +399,17 @@ class AlertSeverity(str, enum.Enum):
     WARNING = "WARNING"
     HIGH = "HIGH"
     CRITICAL = "CRITICAL"
+
+
+class PlatformRole(str, enum.Enum):
+    """
+    RBAC roles for platform intelligence and operations APIs (Phase 15).
+
+    - VIEWER   Read-only platform user (future UI restrictions)
+    - OPERATOR Materialize features, refresh read models, replay outbox
+    - ADMIN    Full operator privileges plus user administration (future)
+    """
+
+    VIEWER = "VIEWER"
+    OPERATOR = "OPERATOR"
+    ADMIN = "ADMIN"

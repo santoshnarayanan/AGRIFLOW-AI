@@ -1,4 +1,5 @@
 import axios from 'axios'
+import { getStoredAccessToken } from '@/stores/authStore'
 
 const eventsOpsKey = import.meta.env.VITE_EVENTS_OPS_API_KEY as string | undefined
 
@@ -8,6 +9,10 @@ export const apiClient = axios.create({
 })
 
 apiClient.interceptors.request.use((config) => {
+  const token = getStoredAccessToken()
+  if (token) {
+    config.headers.set('Authorization', `Bearer ${token}`)
+  }
   if (eventsOpsKey && config.url?.includes('/events/outbox')) {
     config.headers.set('X-Events-Ops-Key', eventsOpsKey)
   }

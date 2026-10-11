@@ -121,6 +121,12 @@ class Settings(BaseSettings):
     DIGITAL_TWIN_STATE_VERSION: str = "twin-v1"
     DIGITAL_TWIN_AUTO_SYNC_ON_READ: bool = True
 
+    # ── Intelligence projections (Phase 15 slice 4) ────────────────────────────
+    INTELLIGENCE_EVENT_PROJECTION_ENABLED: bool = True
+
+    # ── Platform auth / RBAC (Phase 15 slice 5) ──────────────────────────────────
+    AUTH_REQUIRED: bool = False
+
 
 @lru_cache(maxsize=1)
 def get_settings() -> Settings:

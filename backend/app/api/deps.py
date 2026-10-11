@@ -35,6 +35,7 @@ from app.db.repositories.field_digital_twin_state import FieldDigitalTwinStateRe
 from app.db.repositories.field_feature_snapshot import FieldFeatureSnapshotRepository
 from app.db.repositories.read_model_metrics import ReadModelMetricsRepository
 from app.db.repositories.irrigation_event import IrrigationEventRepository
+from app.db.repositories.platform_user import PlatformUserRepository
 from app.db.repositories.recommendation import RecommendationRepository
 from app.db.repositories.satellite_observation import SatelliteObservationRepository
 from app.db.repositories.sensor_reading import SensorReadingRepository
@@ -59,6 +60,7 @@ from app.services.satellite_observation import SatelliteObservationService
 from app.services.sensor_reading import SensorReadingService
 from app.services.soil_profile import SoilProfileService
 from app.services.weather_record import WeatherRecordService
+from app.services.auth import AuthService
 from app.services.yield_record import YieldRecordService
 
 
@@ -329,3 +331,10 @@ def get_ml_engine_service(
 
 
 MLEngineServiceDep = Annotated[MLEngineService, Depends(get_ml_engine_service)]
+
+
+def get_auth_service(session: SessionDep) -> AuthService:
+    return AuthService(PlatformUserRepository(session))
+
+
+AuthServiceDep = Annotated[AuthService, Depends(get_auth_service)]
