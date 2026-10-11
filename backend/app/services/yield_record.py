@@ -47,6 +47,7 @@ from typing import Any
 
 from app.core.logging.logger import get_logger
 from app.db.models.yield_record import YieldRecord
+from app.events.publisher import DomainEventPublisher, NoOpDomainEventPublisher
 from app.db.repositories.crop import CropRepository
 from app.db.repositories.yield_record import YieldRecordRepository
 from app.schemas.yield_record import YieldRecordCreate, YieldRecordUpdate
@@ -99,9 +100,11 @@ class YieldRecordService:
         self,
         yield_record_repository: YieldRecordRepository,
         crop_repository: CropRepository,
+        event_publisher: DomainEventPublisher | None = None,
     ) -> None:
         self._records = yield_record_repository
         self._crops = crop_repository
+        self._event_publisher = event_publisher or NoOpDomainEventPublisher()
 
     # ── Create ─────────────────────────────────────────────────────────────────
 
@@ -159,16 +162,7 @@ class YieldRecordService:
             field_id=str(field_id),
         )
 
-        # ── Future extension point ─────────────────────────────────────────────
-        # This is the intended boundary for the following integrations.
-        # Do NOT implement here; wire in a dedicated event-publishing adapter:
-        #
-        # - YieldRecordCreated event → Redpanda / Kafka topic
-        # - Digital Twin field productivity state update
-        # - CQRS read-model projection
-        # - Phase 12 Yield Prediction Engine feature pipeline trigger
-        # - GaaS YieldAdvisor tool layer
-        # ──────────────────────────────────────────────────────────────────────
+        await self._event_publisher.yield_recorded(record)
 
         return record
 

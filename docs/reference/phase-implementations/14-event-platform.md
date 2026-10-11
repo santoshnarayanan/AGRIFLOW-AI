@@ -4,7 +4,7 @@
 **ADR:** [ADR-006](../../../adr/ADR-006-domain-events-transactional-outbox.md)  
 **Migration:** `i3j4k5l6m7n8` (`domain_event_outbox`)
 
-## Delivered (slice 1)
+## Delivered (slice 1 — outbox foundation)
 
 | Component | Location |
 |-----------|----------|
@@ -22,8 +22,27 @@
 
 See `backend/.env.example` — `EVENTS_ENABLED`, `REDPANDA_ENABLED`, `REDPANDA_BROKERS`.
 
+## Delivered (slice 2 — producers + audit consumer)
+
+| Producer event | Service trigger |
+|----------------|-----------------|
+| `SensorReadingCreated` | `SensorReadingService.create_sensor_reading` |
+| `WeatherRecordCreated` | `WeatherRecordService.create_weather_record` |
+| `IrrigationCompleted` | create when `ended_at` set; update when `ended_at` first set |
+| `YieldRecorded` | `YieldRecordService.create_yield_record` |
+| `DiseaseObserved` | `DiseaseObservationService.create_observation` |
+| `SatelliteObserved` | `SatelliteObservationService.create_satellite_observation` |
+| `CropLifecycleChanged` | `CropService.update_crop` when `status` changes |
+
+| Component | Location |
+|-----------|----------|
+| Audit consumer | `python -m app.events.consumer` |
+| Compose service | `event-audit-consumer` |
+
+Shared DI: `DomainEventPublisherDep` in `app/api/deps.py`.
+
 ## Next slices
 
-- Wire remaining domain services (yield, disease, irrigation, …)
-- Event consumers (alert evaluation stub)
+- Business consumers (alert evaluation, projection stubs)
+- Outbox admin/metrics API
 - Contract tests for envelope JSON

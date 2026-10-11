@@ -28,6 +28,7 @@ from typing import Any
 
 from app.core.logging.logger import get_logger
 from app.db.models.weather_record import WeatherRecord
+from app.events.publisher import DomainEventPublisher, NoOpDomainEventPublisher
 from app.db.repositories.field import FieldRepository
 from app.db.repositories.weather_record import WeatherRecordRepository
 from app.schemas.weather_record import WeatherRecordCreate, WeatherRecordUpdate
@@ -98,9 +99,11 @@ class WeatherRecordService:
         self,
         weather_record_repository: WeatherRecordRepository,
         field_repository: FieldRepository,
+        event_publisher: DomainEventPublisher | None = None,
     ) -> None:
         self._records = weather_record_repository
         self._fields = field_repository
+        self._event_publisher = event_publisher or NoOpDomainEventPublisher()
 
     # ── Create ─────────────────────────────────────────────────────────────────
 
@@ -157,6 +160,7 @@ class WeatherRecordService:
         }
         record = await self._records.create(data)
         log.info("weather_record_service.create.success", record_id=str(record.id))
+        await self._event_publisher.weather_record_created(record)
         return record
 
     # ── Read ───────────────────────────────────────────────────────────────────

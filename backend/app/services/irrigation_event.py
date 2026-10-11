@@ -42,6 +42,7 @@ from typing import Any
 
 from app.core.logging.logger import get_logger
 from app.db.models.irrigation_event import IrrigationEvent
+from app.events.publisher import DomainEventPublisher, NoOpDomainEventPublisher
 from app.db.repositories.field import FieldRepository
 from app.db.repositories.irrigation_event import IrrigationEventRepository
 from app.schemas.irrigation_event import IrrigationEventCreate, IrrigationEventUpdate
@@ -93,9 +94,11 @@ class IrrigationEventService:
         self,
         irrigation_event_repository: IrrigationEventRepository,
         field_repository: FieldRepository,
+        event_publisher: DomainEventPublisher | None = None,
     ) -> None:
         self._events = irrigation_event_repository
         self._fields = field_repository
+        self._event_publisher = event_publisher or NoOpDomainEventPublisher()
 
     # ── Create ─────────────────────────────────────────────────────────────────
 
@@ -138,16 +141,8 @@ class IrrigationEventService:
             event_id=str(event.id),
         )
 
-        # ── Future extension point ─────────────────────────────────────────────
-        # This is the intended boundary for the following integrations.
-        # Do NOT implement here; wire in a dedicated event-publishing adapter:
-        #
-        # - IrrigationEventCreated event → Redpanda / Kafka topic
-        # - Digital Twin field water-balance state update
-        # - CQRS read-model projection
-        # - GaaS IrrigationAdvisor tool layer
-        # - Temporal workflow initiation (e.g. irrigation compliance checks)
-        # ──────────────────────────────────────────────────────────────────────
+        if event.ended_at is not None:
+            await self._event_publisher.irrigation_completed(event)
 
         return event
 
@@ -255,6 +250,12 @@ class IrrigationEventService:
         # guarantees existence, so the cast is safe.
         updated = await self._events.update(event_id, update_data)
         log.info("irrigation_event_service.update.success")
+        if (
+            updated is not None
+            and updated.ended_at is not None
+            and current.ended_at is None
+        ):
+            await self._event_publisher.irrigation_completed(updated)
         return updated  # type: ignore[return-value]
 
     # ── Delete ─────────────────────────────────────────────────────────────────

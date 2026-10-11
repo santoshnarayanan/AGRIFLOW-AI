@@ -23,6 +23,7 @@ from typing import Any
 
 from app.core.logging.logger import get_logger
 from app.db.models.crop import Crop, CropStatus
+from app.events.publisher import DomainEventPublisher, NoOpDomainEventPublisher
 from app.db.repositories.crop import CropRepository
 from app.db.repositories.field import FieldRepository
 from app.schemas.crop import CropCreate, CropUpdate
@@ -80,9 +81,11 @@ class CropService:
         self,
         crop_repository: CropRepository,
         field_repository: FieldRepository,
+        event_publisher: DomainEventPublisher | None = None,
     ) -> None:
         self._crops = crop_repository
         self._fields = field_repository
+        self._event_publisher = event_publisher or NoOpDomainEventPublisher()
 
     # ── Create ─────────────────────────────────────────────────────────────────
 
@@ -231,6 +234,14 @@ class CropService:
         # guarantees existence, so the cast is safe.
         updated = await self._crops.update(crop_id, update_data)
         log.info("crop_service.update.success")
+        if updated is not None and "status" in update_data:
+            new_status = updated.status
+            if new_status != current.status:
+                await self._event_publisher.crop_lifecycle_changed(
+                    updated,
+                    previous_status=current.status,
+                    new_status=new_status,
+                )
         return updated  # type: ignore[return-value]
 
     # ── Delete ─────────────────────────────────────────────────────────────────
