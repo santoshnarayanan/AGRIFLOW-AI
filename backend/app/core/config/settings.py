@@ -59,6 +59,14 @@ class Settings(BaseSettings):
     LOG_LEVEL: Literal["DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"] = "INFO"
     LOG_FORMAT: Literal["json", "console"] = "json"
 
+    # ── Domain events (Phase 14) ──────────────────────────────────────────────
+    EVENTS_ENABLED: bool = True
+    REDPANDA_ENABLED: bool = False
+    REDPANDA_BROKERS: str = "localhost:19092"
+    REDPANDA_CLIENT_ID: str = "agriflow-outbox-relay"
+    OUTBOX_RELAY_POLL_INTERVAL_SECONDS: float = 2.0
+    OUTBOX_RELAY_BATCH_SIZE: int = 100
+
 
 @lru_cache(maxsize=1)
 def get_settings() -> Settings:

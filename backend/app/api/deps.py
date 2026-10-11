@@ -20,7 +20,9 @@ from fastapi import Depends
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.db.repositories.alert import AlertRepository
+from app.core.config import get_settings
 from app.db.repositories.crop import CropRepository
+from app.db.repositories.domain_event_outbox import DomainEventOutboxRepository
 from app.db.repositories.disease_observation import DiseaseObservationRepository
 from app.db.repositories.farm import FarmRepository
 from app.db.repositories.field import FieldRepository
@@ -32,6 +34,7 @@ from app.db.repositories.soil_profile import SoilProfileRepository
 from app.db.repositories.weather_record import WeatherRecordRepository
 from app.db.repositories.yield_record import YieldRecordRepository
 from app.db.session import AsyncSessionFactory
+from app.events.publisher import NoOpDomainEventPublisher, OutboxDomainEventPublisher
 from app.services.alert import AlertService
 from app.services.crop import CropService
 from app.services.disease_observation import DiseaseObservationService
@@ -119,11 +122,18 @@ def get_weather_record_service(session: SessionDep) -> WeatherRecordService:
 WeatherRecordServiceDep = Annotated[WeatherRecordService, Depends(get_weather_record_service)]
 
 
+def _domain_event_publisher(session: SessionDep) -> OutboxDomainEventPublisher | NoOpDomainEventPublisher:
+    if not get_settings().EVENTS_ENABLED:
+        return NoOpDomainEventPublisher()
+    return OutboxDomainEventPublisher(DomainEventOutboxRepository(session))
+
+
 def get_sensor_reading_service(session: SessionDep) -> SensorReadingService:
     """Construct a ``SensorReadingService`` wired to the request-scoped session."""
     return SensorReadingService(
         sensor_reading_repository=SensorReadingRepository(session),
         field_repository=FieldRepository(session),
+        event_publisher=_domain_event_publisher(session),
     )
 
 

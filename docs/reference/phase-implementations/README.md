@@ -15,6 +15,7 @@ These documents complement:
 
 | Phase | Title | Reference |
 |-------|--------|-----------|
+| **14** | Event-driven platform (in progress) | [14-event-platform.md](./14-event-platform.md) |
 | **13** | Enterprise Decision & Recommendation Platform | [13-decision-intelligence.md](./13-decision-intelligence.md) |
 | 12 | TimescaleDB analytical platform | *Planned — use Phase 12 handbooks under `docs/phases/phase12/`* |
 | 11 | Satellite observation | *Planned* |
