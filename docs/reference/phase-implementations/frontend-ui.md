@@ -8,7 +8,7 @@ This document maps the **React + TypeScript** client to the FastAPI backend: rou
 |--------|----------|--------|
 | Entry | `frontend/src/main.tsx`, `App.tsx` | React Router, TanStack Query provider |
 | Shell | `frontend/src/components/layout/AppLayout.tsx` | Sidebar + `Header` + page outlet |
-| Navigation | `frontend/src/components/layout/Sidebar.tsx` | All 13 feature routes |
+| Navigation | `frontend/src/components/layout/Sidebar.tsx` | Feature routes incl. Phase 14 `/events` |
 | Styling | Tailwind + shadcn/ui under `frontend/src/components/ui/` | Shared primitives |
 | HTTP | `frontend/src/api/client.ts` | Axios, base URL `VITE_API_URL` or `/api/v1` |
 
@@ -29,6 +29,7 @@ This document maps the **React + TypeScript** client to the FastAPI backend: rou
 | `/satellite` | `pages/Satellite.tsx` | `satellite`, `fields` |
 | `/recommendations` | `pages/Recommendations.tsx` | `recommendations`, `fields`, `farms` |
 | `/alerts` | `pages/Alerts.tsx` | `alerts`, `fields`, `farms` |
+| `/events` | `pages/Events.tsx` | `events` (catalog, outbox stats, outbox entries) |
 
 ## Domain types and API alignment
 

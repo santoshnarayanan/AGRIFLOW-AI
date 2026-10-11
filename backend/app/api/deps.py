@@ -22,6 +22,9 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.config import get_settings
 from app.db.repositories.alert import AlertRepository
 from app.db.repositories.crop import CropRepository
+from app.db.repositories.domain_event_consumer_inbox import (
+    DomainEventConsumerInboxRepository,
+)
 from app.db.repositories.domain_event_outbox import DomainEventOutboxRepository
 from app.db.repositories.disease_observation import DiseaseObservationRepository
 from app.db.repositories.farm import FarmRepository
@@ -81,7 +84,10 @@ DomainEventPublisherDep = Annotated[
 
 
 def get_domain_event_outbox_service(session: SessionDep) -> DomainEventOutboxService:
-    return DomainEventOutboxService(DomainEventOutboxRepository(session))
+    return DomainEventOutboxService(
+        DomainEventOutboxRepository(session),
+        DomainEventConsumerInboxRepository(session),
+    )
 
 
 DomainEventOutboxServiceDep = Annotated[

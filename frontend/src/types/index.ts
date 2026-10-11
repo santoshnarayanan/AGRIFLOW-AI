@@ -540,3 +540,44 @@ export interface RecommendationUpdate {
   valid_until?: string | null
   notes?: string | null
 }
+
+// ─── Domain events (Phase 14) ───────────────────────────────────────────────
+
+export interface EventCatalogItem {
+  event_type: string
+  topic: string
+  schema_version: string
+  description: string
+}
+
+export interface EventCatalogResponse {
+  events: EventCatalogItem[]
+  count: number
+}
+
+export interface OutboxStats {
+  pending: number
+  published: number
+  failed: number
+  total: number
+  events_processed: number
+}
+
+export type OutboxEntryStatus = 'pending' | 'published' | 'failed' | 'all'
+
+export interface OutboxEntry {
+  id: string
+  event_type: string
+  aggregate_type: string
+  aggregate_id: string
+  topic: string
+  created_at: string
+  published_at: string | null
+  publish_attempts: number
+  last_error: string | null
+}
+
+export interface OutboxEntryListResponse {
+  entries: OutboxEntry[]
+  count: number
+}
