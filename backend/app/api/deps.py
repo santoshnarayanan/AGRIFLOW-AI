@@ -31,6 +31,7 @@ from app.db.repositories.farm import FarmRepository
 from app.db.repositories.feature_extraction import FeatureExtractionRepository
 from app.db.repositories.field import FieldRepository
 from app.db.repositories.field_dashboard_read_model import FieldDashboardReadModelRepository
+from app.db.repositories.field_digital_twin_state import FieldDigitalTwinStateRepository
 from app.db.repositories.field_feature_snapshot import FieldFeatureSnapshotRepository
 from app.db.repositories.read_model_metrics import ReadModelMetricsRepository
 from app.db.repositories.irrigation_event import IrrigationEventRepository
@@ -48,6 +49,7 @@ from app.services.crop import CropService
 from app.services.domain_event_outbox import DomainEventOutboxService
 from app.services.disease_observation import DiseaseObservationService
 from app.services.farm import FarmService
+from app.services.digital_twin import DigitalTwinService
 from app.services.feature_store import FeatureStoreService
 from app.services.read_model_projection import ReadModelProjectionService
 from app.services.field import FieldService
@@ -301,6 +303,22 @@ def get_read_model_projection_service(session: SessionDep) -> ReadModelProjectio
 ReadModelProjectionServiceDep = Annotated[
     ReadModelProjectionService, Depends(get_read_model_projection_service)
 ]
+
+
+def get_digital_twin_service(
+    session: SessionDep,
+    read_model_projection_service: ReadModelProjectionServiceDep,
+) -> DigitalTwinService:
+    return DigitalTwinService(
+        field_repository=FieldRepository(session),
+        crop_repository=CropRepository(session),
+        sensor_reading_repository=SensorReadingRepository(session),
+        twin_state_repository=FieldDigitalTwinStateRepository(session),
+        read_model_projection_service=read_model_projection_service,
+    )
+
+
+DigitalTwinServiceDep = Annotated[DigitalTwinService, Depends(get_digital_twin_service)]
 
 
 def get_ml_engine_service(

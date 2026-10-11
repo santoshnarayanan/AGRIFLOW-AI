@@ -1,8 +1,8 @@
 # Phase 15 — Enterprise Intelligence Platform implementation reference
 
-**Status:** In progress — slice 2 (CQRS read models) delivered  
-**ADR:** [ADR-007](../../../adr/ADR-007-ai-feature-store.md), [ADR-008](../../../adr/ADR-008-cqrs-dashboard-read-models.md)  
-**Migrations:** `k5l6m7n8o9p0` (`field_feature_snapshots`), `l6m7n8o9p0q1` (`field_dashboard_read_models`)
+**Status:** In progress — slice 3 (Digital Twin foundation) delivered  
+**ADR:** [ADR-007](../../../adr/ADR-007-ai-feature-store.md), [ADR-008](../../../adr/ADR-008-cqrs-dashboard-read-models.md), [ADR-009](../../../adr/ADR-009-digital-twin-field-state-foundation.md)  
+**Migrations:** `k5l6m7n8o9p0`, `l6m7n8o9p0q1`, `m7n8o9p0q1r2` (`field_digital_twin_states`)
 
 ## Primary objective
 
@@ -36,11 +36,20 @@ Optimized operational intelligence for dashboards, AI, and Digital Twin — star
 
 See `backend/.env.example` — Feature Store and `READ_MODEL_PROJECTION_VERSION`, `READ_MODEL_AUTO_REFRESH_ON_READ`.
 
+## Delivered (slice 3 — Digital Twin foundation)
+
+| Component | Location |
+|-----------|----------|
+| State document builder | `backend/app/digital_twin/document.py` |
+| Twin state ORM | `backend/app/db/models/field_digital_twin_state.py` |
+| Synchronize service | `backend/app/services/digital_twin.py` |
+| REST API | `GET /api/v1/digital-twin/catalog`, field `state` + `synchronize` |
+| Latest telemetry query | `SensorReadingRepository.latest_per_sensor_type` |
+
 ## Upcoming slices
 
 | Slice | Focus |
 |-------|--------|
-| 3 | Digital Twin foundation (field state document) |
 | 4 | Event-driven snapshot refresh + frontend Feature Store UI |
 | 5 | Full JWT/RBAC (replace ops-only patterns where applicable) |
 

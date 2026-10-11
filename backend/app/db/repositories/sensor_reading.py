@@ -72,6 +72,27 @@ class SensorReadingRepository(BaseRepository[SensorReading]):
 
     # ── SensorReading-specific queries ────────────────────────────────────────
 
+    async def latest_per_sensor_type(self, field_id: uuid.UUID) -> list[SensorReading]:
+        """Return the most recent reading for each sensor_type on a field."""
+        from sqlalchemy import text
+
+        stmt = text(
+            """
+            SELECT DISTINCT ON (sensor_type) id
+            FROM sensor_readings
+            WHERE field_id = :field_id
+            ORDER BY sensor_type, recorded_at DESC
+            """
+        )
+        id_result = await self._session.execute(stmt, {"field_id": field_id})
+        reading_ids = [row[0] for row in id_result.all()]
+        if not reading_ids:
+            return []
+        result = await self._session.execute(
+            select(SensorReading).where(SensorReading.id.in_(reading_ids))
+        )
+        return list(result.scalars().all())
+
     async def list_by_field(
         self,
         field_id: uuid.UUID,
