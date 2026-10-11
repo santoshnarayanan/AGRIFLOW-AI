@@ -65,8 +65,13 @@ class Settings(BaseSettings):
     REDPANDA_BROKERS: str = "localhost:19092"
     REDPANDA_CLIENT_ID: str = "agriflow-outbox-relay"
     REDPANDA_CONSUMER_GROUP_ID: str = "agriflow-domain-event-audit"
+    REDPANDA_BUSINESS_CONSUMER_GROUP_ID: str = "agriflow-business-consumers"
     OUTBOX_RELAY_POLL_INTERVAL_SECONDS: float = 2.0
     OUTBOX_RELAY_BATCH_SIZE: int = 100
+
+    # Business consumers (Phase 14)
+    ALERT_EVALUATION_ENABLED: bool = True
+    SOIL_MOISTURE_LOW_THRESHOLD_PERCENT: float = 20.0
 
 
 @lru_cache(maxsize=1)

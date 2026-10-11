@@ -41,8 +41,23 @@ See `backend/.env.example` — `EVENTS_ENABLED`, `REDPANDA_ENABLED`, `REDPANDA_B
 
 Shared DI: `DomainEventPublisherDep` in `app/api/deps.py`.
 
+## Delivered (slice 3 — ops API + alert evaluation consumer)
+
+| API | Purpose |
+|-----|---------|
+| `GET /api/v1/events/outbox/stats` | Pending / published / failed counts |
+| `GET /api/v1/events/outbox/entries` | Filter `pending` \| `published` \| `failed` \| `all` |
+| `GET /api/v1/events/outbox/entries/{id}` | Single outbox row |
+
+| Consumer | Behavior |
+|----------|----------|
+| `python -m app.events.business_consumer` | `SensorReadingCreated` + `SOIL_MOISTURE` below threshold → `SOIL_MOISTURE_LOW` alert (deduped if one is already open) |
+| Compose | `alert-evaluation-consumer` |
+
+Config: `ALERT_EVALUATION_ENABLED`, `SOIL_MOISTURE_LOW_THRESHOLD_PERCENT`, `REDPANDA_BUSINESS_CONSUMER_GROUP_ID`.
+
 ## Next slices
 
-- Business consumers (alert evaluation, projection stubs)
-- Outbox admin/metrics API
+- Phase 14 frontend (catalog + outbox ops screens)
+- Consumer idempotency store (`event_id` processed log)
 - Contract tests for envelope JSON
