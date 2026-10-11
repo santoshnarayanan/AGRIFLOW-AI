@@ -30,3 +30,6 @@ node_modules/
 *backup.sql
 tree_output.txt
 /backups/*.*
+
+# Personal interview prep (not for version control)
+AGRIFLOW-Interview-Prep.md
