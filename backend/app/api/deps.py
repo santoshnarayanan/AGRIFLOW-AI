@@ -28,7 +28,9 @@ from app.db.repositories.domain_event_consumer_inbox import (
 from app.db.repositories.domain_event_outbox import DomainEventOutboxRepository
 from app.db.repositories.disease_observation import DiseaseObservationRepository
 from app.db.repositories.farm import FarmRepository
+from app.db.repositories.feature_extraction import FeatureExtractionRepository
 from app.db.repositories.field import FieldRepository
+from app.db.repositories.field_feature_snapshot import FieldFeatureSnapshotRepository
 from app.db.repositories.irrigation_event import IrrigationEventRepository
 from app.db.repositories.recommendation import RecommendationRepository
 from app.db.repositories.satellite_observation import SatelliteObservationRepository
@@ -44,6 +46,7 @@ from app.services.crop import CropService
 from app.services.domain_event_outbox import DomainEventOutboxService
 from app.services.disease_observation import DiseaseObservationService
 from app.services.farm import FarmService
+from app.services.feature_store import FeatureStoreService
 from app.services.field import FieldService
 from app.services.irrigation_event import IrrigationEventService
 from app.services.recommendation import RecommendationService
@@ -271,10 +274,22 @@ def get_alert_service(
 AlertServiceDep = Annotated[AlertService, Depends(get_alert_service)]
 
 
+def get_feature_store_service(session: SessionDep) -> FeatureStoreService:
+    return FeatureStoreService(
+        field_repository=FieldRepository(session),
+        snapshot_repository=FieldFeatureSnapshotRepository(session),
+        extraction_repository=FeatureExtractionRepository(session),
+    )
+
+
+FeatureStoreServiceDep = Annotated[FeatureStoreService, Depends(get_feature_store_service)]
+
+
 def get_ml_engine_service(
     recommendation_service: RecommendationServiceDep,
+    feature_store_service: FeatureStoreServiceDep,
 ) -> MLEngineService:
-    return MLEngineService(recommendation_service)
+    return MLEngineService(recommendation_service, feature_store_service)
 
 
 MLEngineServiceDep = Annotated[MLEngineService, Depends(get_ml_engine_service)]

@@ -15,6 +15,7 @@ These documents complement:
 
 | Phase | Title | Reference |
 |-------|--------|-----------|
+| **15** | Enterprise Intelligence (Feature Store) | [15-enterprise-intelligence.md](./15-enterprise-intelligence.md) |
 | **14** | Event-driven platform | [14-event-platform.md](./14-event-platform.md) |
 | **13** | Enterprise Decision & Recommendation Platform | [13-decision-intelligence.md](./13-decision-intelligence.md) |
 | 12 | TimescaleDB analytical platform | *Planned — use Phase 12 handbooks under `docs/phases/phase12/`* |

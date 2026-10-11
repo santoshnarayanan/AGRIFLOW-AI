@@ -80,6 +80,10 @@ class Settings(BaseSettings):
         description="Shared secret for X-Events-Ops-Key on outbox ops and replay routes",
     )
 
+    # ── Feature Store (Phase 15) ───────────────────────────────────────────────
+    FEATURE_STORE_REGISTRY_VERSION: str = "cdd-v1.0.0"
+    FEATURE_STORE_GDD_BASE_C: float = 10.0
+
 
 @lru_cache(maxsize=1)
 def get_settings() -> Settings:

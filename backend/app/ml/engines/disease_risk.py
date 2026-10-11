@@ -7,6 +7,7 @@ from decimal import Decimal
 
 from app.core.enums import RecommendationPriority
 from app.ml.engines.base import EngineRunContext, MLPredictionEngineStub, _default_validity_window
+from app.ml.engines.feature_aware import confidence_with_features
 from app.ml.registry import MLEngineSpec
 from app.schemas.recommendation import RecommendationCreate
 
@@ -19,6 +20,11 @@ class DiseaseRiskEngineStub(MLPredictionEngineStub):
         context: EngineRunContext,
     ) -> RecommendationCreate:
         valid_from, valid_until = _default_validity_window()
+        confidence = confidence_with_features(
+            Decimal("0.580"),
+            context,
+            required_keys=("disease_severity_max", "ndvi_90d_max"),
+        )
         return RecommendationCreate(
             crop_id=context.crop_id,
             recommendation_type=spec.recommendation_type,
@@ -29,8 +35,8 @@ class DiseaseRiskEngineStub(MLPredictionEngineStub):
                 "Future: severity time-series + humidity features from Phase 12 aggregates."
             ),
             recommended_action="Scout affected zones within 48h and confirm diagnosis before treatment.",
-            confidence_score=Decimal("0.580"),
-            evidence_summary=context.notes or "Phase 14 stub — severity label placeholder.",
+            confidence_score=confidence,
+            evidence_summary=context.notes or "No Feature Store snapshot — severity placeholder.",
             engine_version=spec.engine_version,
             valid_from=valid_from,
             valid_until=valid_until,
