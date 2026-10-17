@@ -1,24 +1,27 @@
 # Frontend UI implementation reference
 
-**Status:** Phases 1–13 (core domains + decision intelligence) and **Phase 14** Domain Events UI (`/events`).
+**Status:** Phases 1–13 (core domains + decision intelligence), **Phase 14** (`/events`), **Phase 15** (dashboard read models, Feature Store, platform sign-in) — as implemented in `frontend/`.
 
-This document maps the **React + TypeScript** client to the FastAPI backend: routing, API clients, domain types, and intelligence/platform screens.
+This document maps the **React + TypeScript** client to the FastAPI backend: routing, API clients, domain types, and platform/intelligence screens.
 
 ## Stack and layout
 
 | Layer | Location | Notes |
 |--------|----------|--------|
 | Entry | `frontend/src/main.tsx`, `App.tsx` | React Router, TanStack Query provider |
-| Shell | `frontend/src/components/layout/AppLayout.tsx` | Sidebar + `Header` + page outlet |
-| Navigation | `frontend/src/components/layout/Sidebar.tsx` | **Platform** nav group includes `/events` (Domain Events) |
+| Shell | `frontend/src/components/layout/AppLayout.tsx` | Sidebar + `Header` + page outlet; `pageMeta` for `/events`, `/features` |
+| Navigation | `frontend/src/components/layout/Sidebar.tsx` | **AI Intelligence** group: recommendations, alerts, Feature Store; **Platform**: Domain Events |
+| Auth UI | `components/auth/LoginDialog.tsx`, `stores/authStore.ts` | Phase 15 — JWT in `localStorage`; header Sign in / Sign out |
 | Styling | Tailwind + shadcn/ui under `frontend/src/components/ui/` | Shared primitives |
-| HTTP | `frontend/src/api/client.ts` | Axios, base URL `VITE_API_URL` or `/api/v1`; optional `X-Events-Ops-Key` on `/events/outbox` requests |
+| HTTP | `frontend/src/api/client.ts` | Axios; `Authorization: Bearer` when logged in; optional `X-Events-Ops-Key` on outbox URLs |
+
+See also [frontend/README.md](../../../frontend/README.md) for env vars and dev commands.
 
 ## Routes (sidebar)
 
 | Path | Page component | Primary API modules |
 |------|----------------|---------------------|
-| `/` | `pages/Dashboard.tsx` | `farms`, `fields`, `alerts`, `recommendations` |
+| `/` | `pages/Dashboard.tsx` | `readModels` (platform dashboard KPIs), `farms`, `fields`, `alerts`, `recommendations` |
 | `/farms` | `pages/Farms.tsx` | `farms` |
 | `/fields` | `pages/Fields.tsx` | `fields`, `farms` |
 | `/crops` | `pages/Crops.tsx` | `crops`, `fields`, `farms` |
@@ -31,7 +34,10 @@ This document maps the **React + TypeScript** client to the FastAPI backend: rou
 | `/satellite` | `pages/Satellite.tsx` | `satellite`, `fields` |
 | `/recommendations` | `pages/Recommendations.tsx` | `recommendations`, `fields`, `farms` |
 | `/alerts` | `pages/Alerts.tsx` | `alerts`, `fields`, `farms` |
+| `/features` | `pages/FeatureStore.tsx` | `features` (catalog, snapshots, materialise) — **Phase 15** |
 | `/events` | `pages/Events.tsx` | `events` (catalog, outbox stats, outbox entries) — **Phase 14** |
+
+**No dedicated UI routes yet (backend APIs exist):** Digital Twin (`/digital-twin/...`), read-model **refresh** POST endpoints, ML engine (`/ml/...`). Operators use API/Swagger or future Phase 16 screens.
 
 ## Domain types and API alignment
 
@@ -55,10 +61,31 @@ Shared contracts live in `frontend/src/types/index.ts`.
 ### Phase 14 — Domain events (UI)
 
 - Types: `EventCatalogResponse`, `OutboxStats`, `OutboxEntry`, `OutboxEntryListResponse`, `OutboxEntryStatus`.
-- Client: `frontend/src/api/events.ts` — `GET /events/catalog`, `GET /events/outbox/stats`, `GET /events/outbox/entries?status=...` (15s refetch on stats/entries).
-- **Operator access:** Outbox routes are protected on the backend. Set `VITE_EVENTS_OPS_API_KEY` in the frontend to send `X-Events-Ops-Key` on outbox URLs (`client.ts` interceptor).
-- Page: `Events.tsx` — outbox stat cards, event catalog table, outbox entry list with status filter (`pending` / `published` / `failed` / `all`).
+- Client: `frontend/src/api/events.ts` — `GET /events/catalog`, `GET /events/outbox/stats`, `GET /events/outbox/entries?status=...`.
+- **Operator access:** Outbox routes require `PlatformOperatorDep` on the backend. The UI sends **Bearer JWT** after sign-in (`client.ts`). Optionally set `VITE_EVENTS_OPS_API_KEY` for legacy `X-Events-Ops-Key` on outbox URLs (still attached when JWT is absent).
+- Page: `Events.tsx` — stat cards, event catalog table, outbox entry list with status filter.
 - See [14-event-platform.md](./14-event-platform.md).
+
+### Phase 15 — CQRS dashboard read models (UI)
+
+- Types: `PlatformDashboardReadModel` (and related KPI fields in `types/index.ts`).
+- Client: `frontend/src/api/readModels.ts` — `GET /read-models/dashboard` via `usePlatformDashboard()`.
+- **Dashboard** (`Dashboard.tsx`) renders KPI cards from the platform read model when available (field counts, alert/recommendation highlights from projection — not only live per-field alert queries).
+- **Not in UI:** `POST .../dashboard/refresh`, farm/field dashboard refresh — operator-only; call via API or sign in + future admin tools.
+
+### Phase 15 — Feature Store (UI)
+
+- Types: `FeatureCatalogResponse`, `FeatureCatalogItem`, `FieldFeatureSnapshot`, `FieldFeatureSnapshotListResponse`.
+- Client: `frontend/src/api/features.ts` — `GET /features/catalog`, `GET /features/fields/{id}/snapshots`, `POST /features/fields/{id}/materialize`.
+- Page: `FeatureStore.tsx` — registry version, catalog table, field selector, materialise action, snapshot history.
+- **Materialise** requires operator auth (JWT in dev with `AUTH_REQUIRED=false` may still work via backend dev bypass; production should use sign-in).
+
+### Phase 15 — Platform authentication (UI)
+
+- Types: `LoginRequest`, `TokenResponse`, `PlatformUser`, `PlatformRole`.
+- Client: `frontend/src/api/auth.ts` — `POST /auth/login`, `GET /auth/me`; hooks `useLogin`, `useCurrentUser`, `useLogout`.
+- Store: `stores/authStore.ts` — `agriflow_access_token` in `localStorage`.
+- **Header** (`Header.tsx`): Sign in opens `LoginDialog`; signed-in state shows email + logout.
 
 ### Other domains
 
@@ -66,8 +93,9 @@ Several legacy pages still use simplified numeric ids in types for crops, sensor
 
 ## Global UX behaviors
 
-- **Header notification bell** (`Header.tsx`): loads all fields, fetches alerts, shows a badge count of unacknowledged alerts, navigates to `/alerts` on click.
-- **Dashboard**: farm table and alert/recommendation stats use the same field-scoped alert/recommendation hooks as the intelligence pages.
+- **Header notification bell** (`Header.tsx`): loads all fields, fetches alerts, badge for unacknowledged count, navigates to `/alerts`.
+- **Header auth** (Phase 15): platform operator JWT for protected APIs (Feature Store materialise, outbox when not using ops key).
+- **Dashboard**: CQRS platform read model KPIs (`usePlatformDashboard`) plus farm table and legacy alert/recommendation stats where still used.
 - **Dev proxy**: Vite proxies `/api` to the backend (see `frontend/vite.config.ts`).
 
 ## Environment variables (frontend)
@@ -75,7 +103,7 @@ Several legacy pages still use simplified numeric ids in types for crops, sensor
 | Variable | Purpose |
 |----------|---------|
 | `VITE_API_URL` | API base (default `/api/v1` via proxy) |
-| `VITE_EVENTS_OPS_API_KEY` | Ops key for `/events/outbox` routes (Phase 14) |
+| `VITE_EVENTS_OPS_API_KEY` | Optional legacy ops key for `/events/outbox` requests |
 
 ## Local development
 
@@ -86,11 +114,12 @@ npm run dev    # http://localhost:3000
 npm run build  # production typecheck + bundle
 ```
 
-Backend must be reachable at the configured API base (default proxy to port 8000).
+Backend must be reachable at the configured API base (default proxy to port 8000). For operator flows, run migration `n8o9p0q1r2s3` and sign in with bootstrap admin (see `backend/.env.example`).
 
 ## Related documentation
 
 - [04-api-design.md](../04-api-design.md) — REST conventions
 - [13-decision-intelligence.md](./13-decision-intelligence.md) — Phase 13 backend and API map
 - [14-event-platform.md](./14-event-platform.md) — Phase 14 events and outbox
+- [15-enterprise-intelligence.md](./15-enterprise-intelligence.md) — Feature Store, read models, Digital Twin, JWT
 - [../../phases/phase13/phase-summary.md](../../phases/phase13/phase-summary.md) — Phase 13 product narrative
