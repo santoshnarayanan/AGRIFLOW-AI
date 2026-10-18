@@ -61,9 +61,11 @@ docs/reference/01-vision.md
 
 ✅ Phase 15 – Enterprise Intelligence Platform
 
+✅ Phase 16 – Enterprise AI Platform & Production Readiness
+
 ### Current Phase
 
-🔜 Phase 16 – Enterprise AI Platform & Production Readiness
+Platform maintenance and production hardening (post–Phase 16)
 
 ---
 
@@ -777,19 +779,21 @@ frontend/
 ✅ Phase 13 – Enterprise Decision & Recommendation Platform  
 ✅ Phase 14 – Event-Driven Enterprise Platform  
 ✅ Phase 15 – Enterprise Intelligence Platform  
+✅ Phase 16 – Enterprise AI Platform & Production Readiness  
 
 ### Current Phase
 
-🔜 **Phase 16 – Enterprise AI Platform & Production Readiness** *(current)*
+**Post–Phase 16** — incremental production hardening (expanded regression, CI/CD, security audits)
 
-* Temporal workflows, Farm Copilot, Generative AI as a Service (GaaS)
-* Full test suite, CI/CD quality gates, security hardening, production readiness
+* Temporal `SoilMoistureAlertWorkflow`, Farm Copilot (`/copilot`), MCP tool evaluation (`/mcp`), Prometheus `/metrics`
 
 For the detailed roadmap see `docs/reference/06-roadmap.md`
 
 **Phase 14 delivered:** Redpanda/outbox domain events, event catalog and consumers, `/events` ops UI, stub ML engines (`GET/POST /ml/...`), outbox replay, and operator protection on outbox routes (`PlatformOperatorDep` — JWT or legacy `X-Events-Ops-Key`).
 
 **Phase 15 delivered:** AI Feature Store (`/features`), CQRS dashboard read models (`/read-models`), Digital Twin foundation (`/digital-twin`), event-driven intelligence projection on field-scoped domain events, Feature Store UI (`/features`), platform JWT login (`/auth/login`), and `platform_users` migration. See `docs/reference/phase-implementations/15-enterprise-intelligence.md` and ADR-007–010.
+
+**Phase 16 delivered:** Temporal soil-moisture alert workflow + worker, Farm Copilot API and UI (`/copilot`), MCP tool catalog/invoke (`/mcp`), Prometheus metrics middleware. See `docs/reference/phase-implementations/16-enterprise-ai.md` and ADR-011.
 
 ### Phase 12 – TimescaleDB Time-Series Foundation (Complete)
 
@@ -937,7 +941,7 @@ Digital Twin foundation (Phase 15 ✅) · Farm Copilot · GaaS (Phase 16)
 
 **Phase 14–15 delivered:** transactional outbox, event consumers, stub ML engines, Feature Store, dashboard read models, Digital Twin sync, intelligence projection, and platform JWT operator auth.
 
-**Upcoming (Phase 16):** Farm Copilot / GaaS, Temporal workflows, comprehensive testing, and production readiness. See `docs/reference/06-roadmap.md`.
+**Phase 16 delivered:** Farm Copilot / GaaS (deterministic + optional LLM), Temporal workflows, MCP evaluation API, baseline observability. Expanded regression and enterprise deployment remain ongoing. See `docs/reference/06-roadmap.md` and `16-enterprise-ai.md`.
 
 ### Infrastructure Goals
 
@@ -948,7 +952,7 @@ Infrastructure components are ordered by planned implementation sequence:
 3. **React frontend (`frontend/`)** — operational UI for all domains and Phase 13 intelligence screens (Vite dev proxy to FastAPI)
 4. **Redpanda (Phase 14 ✅)** — event streaming for real-time pipeline triggers and decoupled downstream consumers (optional relay)
 5. **CQRS / Feature Store / Digital Twin (Phase 15 ✅)** — read models, dashboard projections, versioned ML feature vectors, twin state documents
-6. **Temporal & Azure (Phase 16+)** — workflow orchestration and enterprise deployment (AKS, Azure OpenAI for GaaS)
+6. **Temporal & GaaS (Phase 16 ✅)** — `SoilMoistureAlertWorkflow`, Farm Copilot, optional Azure OpenAI; AKS deployment remains operational follow-up
 
 ---
 
