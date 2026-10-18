@@ -74,5 +74,4 @@ See `backend/.env.example` — Feature Store, read models, digital twin, `INTELL
 
 ## Phase 16 handoff
 
-- Farm Copilot / GaaS over feature snapshots and read models
-- Temporal training pipelines replacing deterministic engine logic
+Delivered — see [16-enterprise-ai.md](./16-enterprise-ai.md) (Farm Copilot uses the same tools/read models/twin data; Temporal soil-moisture workflow is separate from ML training pipelines).
