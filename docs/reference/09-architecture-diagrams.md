@@ -1,17 +1,20 @@
 # AGRIFLOW-AI Architecture Diagrams
 
 **Document:** Architecture Diagrams Reference  
-**Version:** 1.2  
-**Date:** June 2026  
-**Scope:** Current State (Phase 13) and Target State (Phase 15) — visual architecture reference  
-**Current Phase:** Phase 13 — AI Decision Intelligence Layer (Complete)  
+**Version:** 1.3  
+**Date:** October 2026  
+**Scope:** Domain foundation (Phases 1–8), full platform evolution, and architecture views through Phase 15; Phase 16+ remains roadmap  
+**Current Phase:** Phase 16 — Enterprise AI Platform & Production Readiness (next)  
 **Status:** Living Document  
-**Author:** AGRIFLOW-AI Principal Enterprise Architecture
+**Author:** AGRIFLOW-AI Principal Enterprise Architecture  
+
+**Companion:** Runtime and integration flows (Phases 13–15) — [application-technical-flow.md](./application-technical-flow.md)
 
 ---
 
 ## Table of Contents
 
+0. [Domain Foundation — Phases 1–8](#0-domain-foundation--phases-18)
 1. [AGRIFLOW Platform Evolution](#1-agriflow-platform-evolution)
 2. [Current Domain Architecture](#2-current-domain-architecture)
 3. [Current Clean Architecture](#3-current-clean-architecture)
@@ -28,6 +31,144 @@
 14. [Future Digital Twin Architecture](#14-future-digital-twin-architecture)
 15. [Future GaaS Architecture](#15-future-gaas-architecture)
 16. [AGRIFLOW Target State Architecture — Phase 15 Vision](#16-agriflow-target-state-architecture--phase-15-vision)
+
+---
+
+## 0. Domain Foundation — Phases 1–8
+
+### Title
+Operational data platform — domain model and boundaries (Phases 1–8)
+
+### Purpose
+Provide a **focused, domain-centric** view of the first eight phases: what was built, how entities relate, and which design rules still govern Phases 9–15. This section complements [§2 Current Domain Architecture](#2-current-domain-architecture) (full post–Phase 13 map) and [application-technical-flow.md](./application-technical-flow.md) (runtime and event/intelligence flows).
+
+### Explanation
+Phases 1–8 established the **governed farm operating model** before yield/disease/satellite (9–11), TimescaleDB activation (12), decision records (13), events (14), and intelligence projections (15). Every later capability **extends** this hierarchy; it does not replace it. APIs remain nested under farms and fields; time-series domains introduced here were later converted to hypertables in Phase 12 without breaking contracts.
+
+### Phase 1–8 delivery map
+
+| Phase | Domain / capability | Primary entities | API nesting (typical) |
+|-------|---------------------|------------------|------------------------|
+| **1** | Foundation + Farm | `Farm` | `/api/v1/farms` |
+| **2** | Field | `Field` | `/api/v1/farms/{farm_id}/fields` |
+| **3** | Crop lifecycle | `Crop`, `CropStatus` | `/api/v1/fields/{field_id}/crops` |
+| **4** | Soil intelligence | `SoilProfile` (1:1 field) | `/api/v1/fields/{field_id}/soil-profile` |
+| **5** | Weather | `WeatherRecord` | `/api/v1/fields/{field_id}/weather-records` |
+| **6** | AI readiness | P1 columns on core entities | Same routes — schema evolution only |
+| **7** | Sensor telemetry | `SensorReading` (append-only) | `/api/v1/fields/{field_id}/sensor-readings` |
+| **8** | Irrigation | `IrrigationEvent` (mutable) | `/api/v1/fields/{field_id}/irrigation-events` |
+
+### 0.1 Bounded context map
+
+Three cooperating areas share the **Field** pivot. They map to sidebar groups in the React app (Farm / Environmental / Operations).
+
+```mermaid
+flowchart TB
+  subgraph FM["Farm management · Phases 1–3"]
+    Farm["Farm aggregate root"]
+    Field["Field"]
+    Crop["Crop lifecycle"]
+    Farm --> Field --> Crop
+  end
+
+  subgraph ENV["Environmental intelligence · Phases 4–5, 7"]
+    Soil["SoilProfile 1:1"]
+    Weather["WeatherRecord"]
+    Sensor["SensorReading"]
+    Field --> Soil
+    Field --> Weather
+    Field --> Sensor
+  end
+
+  subgraph OPS["Field operations · Phase 8"]
+    Irr["IrrigationEvent"]
+    Field --> Irr
+  end
+
+  FM ~~~ ENV
+  ENV ~~~ OPS
+```
+
+| Context | Design intent |
+|---------|----------------|
+| **Farm management** | Stable identity and tenancy boundary (`Farm`); geospatial unit (`Field`); seasonal production object (`Crop`). |
+| **Environmental** | Slow soil attributes vs high-frequency weather and IoT telemetry on the same field. |
+| **Operations** | Human-managed irrigation events with correctable records (mutable), distinct from immutable sensors. |
+
+### 0.2 Core aggregate tree (Phases 1–8 scope)
+
+Simplified view — **no** yield, disease, satellite, recommendations, or alerts (added in later phases).
+
+```mermaid
+graph TD
+  Farm["Farm<br/>Phase 1"]
+  Field["Field<br/>Phase 2"]
+  Crop["Crop<br/>Phase 3"]
+  Soil["SoilProfile<br/>Phase 4 · 1:1"]
+  Weather["WeatherRecord<br/>Phase 5"]
+  Sensor["SensorReading<br/>Phase 7 · append-only"]
+  Irr["IrrigationEvent<br/>Phase 8 · mutable"]
+
+  Farm -->|"1:N"| Field
+  Field -->|"1:N"| Crop
+  Field -->|"1:1"| Soil
+  Field -->|"1:N"| Weather
+  Field -->|"1:N"| Sensor
+  Field -->|"1:N"| Irr
+```
+
+### 0.3 Crop lifecycle (Phase 3)
+
+```mermaid
+stateDiagram-v2
+  direction LR
+  [*] --> PLANNED
+  PLANNED --> PLANTED
+  PLANTED --> GROWING
+  GROWING --> HARVESTED
+  HARVESTED --> [*]
+```
+
+Primary path documented on `Crop` (`app/db/models/crop.py`). Transitions are enforced in `CropService`; `actual_yield_tons_ha` is validated when status is `HARVESTED`. Yield and disease domains (Phases 9–10) attach to a **Crop** row once the crop cycle exists.
+
+### 0.4 Data contracts — mutability and time-series readiness
+
+| Entity | Phase | Writes | Rationale |
+|--------|-------|--------|-----------|
+| `Farm`, `Field`, `Crop` | 1–3 | CREATE / PATCH | Master and lifecycle data |
+| `SoilProfile` | 4 | CREATE / PATCH | Slow-changing; one profile per field |
+| `WeatherRecord` | 5 | CREATE / PATCH | Corrections allowed; `recorded_at` time key |
+| `SensorReading` | 7 | **CREATE only** | Telemetry as immutable evidence |
+| `IrrigationEvent` | 8 | CREATE / PATCH | Operational corrections; `started_at` time key |
+
+```mermaid
+flowchart LR
+  subgraph Relational["PostgreSQL relational · Phases 1–4, 6"]
+    R1["farms · fields · crops · soil_profiles"]
+  end
+
+  subgraph TSReady["Time-keyed · hypertable-ready · Phases 5, 7, 8"]
+    T1["weather_records"]
+    T2["sensor_readings"]
+    T3["irrigation_events"]
+  end
+
+  Relational -->|"Phase 12 ADR-002"| TSReady
+```
+
+Phase **12** promoted six time-series tables (including yield, disease, satellite from Phases 9–11) to TimescaleDB hypertables. Phases **5, 7, and 8** domains above were authored with partition keys and composite PK patterns so that migration required **no API changes**.
+
+### 0.5 AI readiness overlay (Phase 6)
+
+Phase 6 did not add a new bounded context. It expanded **P1 ML-oriented attributes** on existing entities (for example crop yield expectations, growth stage) so later Feature Store and engine stubs have governed fields to read. See `docs/phases/phase06/` and the AI readiness section [§7](#7-ai-readiness-architecture) below.
+
+### Key architectural observations (Phases 1–8)
+
+- **Phase 2** fixed the template: `Model → Schema → Repository → Service → Router` with `deps.py` injection — reused unchanged through Phase 15.
+- **Phase 4** enforces soil uniqueness at DB and service layers — a pattern repeated for agronomic invariants elsewhere.
+- **Phase 7** is the first **append-only** domain and the earliest explicit hook for async pipelines (now Phase 14 outbox + Phase 15 projection).
+- **Phase 8** established **mutable operational events** and PostgreSQL `ENUM` migration discipline used across later domains.
+- For **full entity attributes** including Phases 9–13, use [§2 Current Domain Architecture](#2-current-domain-architecture). For **HTTP and event flows**, use [application-technical-flow.md](./application-technical-flow.md).
 
 ---
 
