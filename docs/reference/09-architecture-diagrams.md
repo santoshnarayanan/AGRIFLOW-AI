@@ -476,7 +476,7 @@ sequenceDiagram
     Repo->>Repo: session.flush()
     Repo-->>Svc: SensorReading ORM instance
 
-    Note over Svc: Future extension point (ADR-007-26):\nRedpanda publish / Digital Twin update\n/ Temporal workflow trigger
+    Note over Svc: ADR-007-26 boundary (Ph.14–16):\noutbox · projection · optional Temporal
 
     Svc-->>Router: SensorReading ORM instance
     Router->>Schema: model_validate(orm) → SensorReadingResponse
