@@ -597,7 +597,7 @@ erDiagram
         DATE planting_date
         DATE expected_harvest_date
         DATE actual_harvest_date
-        crop_status status
+        string status
         NUMERIC actual_yield_tons_ha
         NUMERIC expected_yield_tons_ha
         NUMERIC seeding_rate_kg_ha
@@ -608,8 +608,8 @@ erDiagram
 
     soil_profiles {
         UUID id PK
-        UUID field_id FK_UNIQUE
-        soil_type soil_type
+        UUID field_id FK
+        string soil_type
         NUMERIC ph
         NUMERIC organic_matter
         NUMERIC nitrogen
@@ -641,8 +641,8 @@ erDiagram
     sensor_readings {
         UUID id PK
         UUID field_id FK
-        sensor_type sensor_type
-        DOUBLE_PRECISION sensor_value
+        string sensor_type
+        double sensor_value
         VARCHAR unit
         TIMESTAMPTZ recorded_at
         TEXT notes
@@ -657,8 +657,8 @@ erDiagram
         TIMESTAMPTZ ended_at
         NUMERIC duration_minutes
         NUMERIC water_volume_liters
-        irrigation_method irrigation_method
-        water_source water_source
+        string irrigation_method
+        string water_source
         TEXT notes
         TIMESTAMPTZ created_at
         TIMESTAMPTZ updated_at
@@ -670,7 +670,7 @@ erDiagram
         UUID field_id FK
         TIMESTAMPTZ recorded_at
         NUMERIC yield_value_tons_ha
-        yield_measurement_method measurement_method
+        string measurement_method
         NUMERIC area_harvested_ha
         NUMERIC moisture_content_percent
         NUMERIC test_weight_kg_hl
@@ -686,8 +686,8 @@ erDiagram
         UUID field_id FK
         TIMESTAMPTZ observed_at
         VARCHAR disease_name
-        disease_severity severity
-        diagnosis_method diagnosis_method
+        string severity
+        string diagnosis_method
         NUMERIC affected_area_percent
         TEXT treatment_applied
         TEXT notes
@@ -699,10 +699,10 @@ erDiagram
         UUID id PK
         UUID field_id FK
         TIMESTAMPTZ observed_at
-        satellite_provider satellite_provider
-        spectral_index spectral_index
+        string satellite_provider
+        string spectral_index
         NUMERIC index_value
-        processing_level processing_level
+        string processing_level
         NUMERIC resolution_m
         NUMERIC cloud_cover_percent
         VARCHAR scene_id
@@ -714,13 +714,13 @@ erDiagram
     recommendations {
         UUID id PK
         UUID field_id FK
-        UUID crop_id FK "nullable SET NULL"
-        recommendation_type recommendation_type
-        recommendation_status recommendation_status
-        recommendation_priority recommendation_priority
-        NUMERIC confidence_score "NUMERIC(4,3)"
+        UUID crop_id FK
+        string recommendation_type
+        string recommendation_status
+        string recommendation_priority
+        NUMERIC confidence_score
         TEXT recommendation_text
-        VARCHAR engine_version "VARCHAR(50)"
+        VARCHAR engine_version
         TIMESTAMPTZ valid_from
         TIMESTAMPTZ valid_until
         TIMESTAMPTZ created_at
@@ -730,12 +730,12 @@ erDiagram
     alerts {
         UUID id PK
         UUID field_id FK
-        UUID crop_id FK "nullable SET NULL"
-        UUID recommendation_id FK "nullable SET NULL"
-        alert_type alert_type
-        alert_severity alert_severity
+        UUID crop_id FK
+        UUID recommendation_id FK
+        string alert_type
+        string alert_severity
         TEXT message
-        TIMESTAMPTZ triggered_at "event detection time"
+        TIMESTAMPTZ triggered_at
         TIMESTAMPTZ resolved_at
         TIMESTAMPTZ created_at
         TIMESTAMPTZ updated_at
