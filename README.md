@@ -4,7 +4,7 @@
 
 AGRIFLOW-AI is an Agricultural Intelligence Platform designed to help farmers, agronomists, cooperatives, and agricultural enterprises manage farm operations, monitor crop lifecycles, analyze soil health, track irrigation events, record yield measurements, log disease observations, and build toward AI-driven agricultural decision intelligence.
 
-The platform combines farm management, field management, crop management, soil intelligence, weather intelligence, sensor telemetry, irrigation management, yield tracking, disease observation, satellite observation, structured recommendations and alerts (Phase 13), domain events and ML engine stubs (Phase 14), AI Feature Store, CQRS dashboard read models, Digital Twin state, event-driven intelligence projection, and platform JWT operator auth (Phase 15), plus a React operational UI into a unified agricultural operating platform.
+The platform combines farm management, field management, crop management, soil intelligence, weather intelligence, sensor telemetry, irrigation management, yield tracking, disease observation, satellite observation, structured recommendations and alerts (Phase 13), domain events and ML engine stubs (Phase 14), AI Feature Store, CQRS dashboard read models, Digital Twin state, event-driven intelligence projection, and platform JWT operator auth (Phase 15), Farm Copilot / GaaS, Temporal workflows, MCP tool evaluation, and Prometheus metrics (Phase 16), plus a React operational UI into a unified agricultural operating platform.
 
 ---
 
@@ -87,8 +87,9 @@ Farm                                         (PostgreSQL — relational; Farm CR
 
 Phase 12: TimescaleDB 2.28.1 · 6 hypertables · compression · continuous aggregates · retention
 Phase 13: Decision layer (recommendations · alerts) on standard PostgreSQL tables
-Phase 14: Domain event outbox · consumer inbox · Redpanda relay (optional)
+Phase 14: Domain event outbox · consumer inbox · Redpanda relay (optional) · ML engine stubs
 Phase 15: Feature snapshots · dashboard read models · digital twin state · platform_users
+Phase 16: Temporal soil-moisture workflow · Farm Copilot · MCP · `/metrics`
 ```
 
 ---
@@ -289,13 +290,13 @@ Edit `backend/.env` and set your PostgreSQL connection string to match the Docke
 DATABASE_URL=postgresql+psycopg2://agriflow:agriflow@localhost:25432/agriflow
 ```
 
-### 6. Start Docker
+### 6. Start Docker / Podman Compose
 
 ```bash
-docker compose up -d
+docker compose up -d db backend frontend
 ```
 
-This starts PostgreSQL and the FastAPI backend as Docker containers.
+This starts PostgreSQL, the FastAPI backend, and the Vite frontend (UI on port **3000**, API on **8000**). For database only: `docker compose up -d db`.
 
 ### 7. Run Alembic Migrations
 
@@ -525,7 +526,7 @@ Verify these patterns are present in `.gitignore` before committing any new file
 
 ### Frontend Application
 
-* React + TypeScript SPA with 13 feature routes (farms, fields, crops, soil, weather, sensors, irrigation, yield, disease, satellite, recommendations, alerts, dashboard)
+* React + TypeScript SPA with domain routes plus **Domain Events**, **Feature Store**, and **Farm Copilot** (`/copilot`) — see `frontend/README.md`
 * Axios API clients aligned with FastAPI OpenAPI contracts (`frontend/src/api/`)
 * Local dev on port 3000 with API proxy to the backend
 
@@ -533,28 +534,19 @@ Verify these patterns are present in `.gitignore` before committing any new file
 
 ## Testing Strategy
 
-Comprehensive automated testing is intentionally deferred until **Phase 16 – Platform Stabilization & Quality Engineering**. Business rules continue to evolve across phases; writing large test suites before the domain model and infrastructure layers stabilise would require repeated rewrites.
+**Current (post–Phase 16):**
 
-**Phases 12–15 — incremental verification:**
+* Backend **pytest** suite under `backend/app/tests/` (health, auth, Feature Store, events, Copilot, Temporal workflow unit tests, and more)
+* **GitHub Actions** workflow `.github/workflows/backend-ci.yml` (pytest + optional `pip-audit` on push/PR)
+* Swagger/OpenAPI and manual UI validation for new screens
 
-* Manual validation of new infrastructure and AI capabilities
-* Smoke testing of critical API paths
-* Swagger/OpenAPI contract verification
-* Incremental functional verification as each phase delivers new capabilities
+**Ongoing / backlog:**
 
-**Phase 16 — comprehensive quality engineering:**
+* Broad integration tests against a live Postgres stack
+* Frontend automated tests
+* Load benchmarks and full regression matrices in a dedicated environment
 
-* Complete API validation across all domains
-* Unit testing (Repository, Service, Schema layers)
-* Repository testing and Service layer testing
-* Integration testing and end-to-end workflow validation
-* Regression testing
-* Performance benchmarking
-* Security validation
-* CI/CD quality gates and code coverage reporting
-* Production readiness assessment
-
-This staged approach reduces rework while the domain model, TimescaleDB layer, and AI services continue to evolve. Until Phase 16, domain and infrastructure implementation proceeds phase-by-phase with Swagger/OpenAPI documentation as the primary contract verification mechanism during Phases 12–15.
+See `docs/reference/phase-implementations/16-enterprise-ai.md` for Phase 16 delivery vs operational follow-up.
 
 ---
 
@@ -740,7 +732,9 @@ frontend/
 | Document | Description |
 | --- | --- |
 | `docs/reference/01-vision.md` | Product Vision & Strategic Direction |
-| `docs/reference/02-architecture.md` | Technical Architecture (Phases 1–13 complete) |
+| `docs/reference/02-architecture.md` | Technical Architecture |
+| `docs/reference/architecture-implementation-history.md` | Repository-grounded implementation history (Phases 1–16 supplement in §23) |
+| `docs/reference/application-technical-flow.md` | Runtime flows (layers, Phases 13–16) |
 | `docs/reference/03-database.md` | Database Design & Schema Reference |
 | `docs/reference/04-api-design.md` | API Design & Endpoint Catalog |
 | `docs/reference/05-local-setup.md` | Local Development Setup |
@@ -752,7 +746,9 @@ frontend/
 | `docs/reference/phase-implementations/13-decision-intelligence.md` | Phase 13 implementation map (backend) |
 | `docs/reference/phase-implementations/14-event-platform.md` | Phase 14 event outbox and consumers |
 | `docs/reference/phase-implementations/15-enterprise-intelligence.md` | Phase 15 Feature Store, CQRS, Digital Twin, JWT |
+| `docs/reference/phase-implementations/16-enterprise-ai.md` | Phase 16 Temporal, Copilot, MCP, observability |
 | `docs/reference/phase-implementations/frontend-ui.md` | React UI routes, API clients, and dev setup |
+| `docs/contributing-git-hooks.md` | Optional git hooks (co-author stripping) |
 | `frontend/README.md` | Frontend stack, routes, env vars, and dev commands |
 | `docs/phases/phase06/ai-data-readiness-assessment.md` | AI Data Readiness Assessment (Phase 6) |
 | `docs/reference/palantir-alignment.md` | Palantir Foundry Alignment Assessment |
@@ -829,7 +825,7 @@ Phase 12 is an **infrastructure and data-platform phase** — not a business dom
 
 ---
 
-## Current Agricultural Intelligence Platform (Post Phase 15)
+## Current Agricultural Intelligence Platform (Post Phase 16)
 
 ```text
 Farm                              ✅ Phase 1 model · Phase 13 CRUD API
@@ -852,7 +848,8 @@ Cross-cutting (Phase 14–15)
   Field digital twin state               ✅ Phase 15 (Digital Twin foundation)
 
 TimescaleDB analytical platform  ✅ Phase 12 (compression · continuous aggregates · retention)
-React operational UI             ✅ frontend/ (15+ routes — see frontend/README.md)
+React operational UI             ✅ frontend/ (Compose service or `npm run dev` — see frontend/README.md)
+Farm Copilot UI                  ✅ `/copilot` (optional OpenAI via `backend/.env`)
 ```
 
 ### Implemented Domains
@@ -878,13 +875,13 @@ React operational UI             ✅ frontend/ (15+ routes — see frontend/READ
 
 ## Target Agricultural Intelligence Platform
 
-Phases 1–15 delivered the **operational data platform**, **TimescaleDB analytics layer**, **decision records**, **event-driven outbox**, **Feature Store and read models**, **Digital Twin foundation**, and a **production-style React UI**. Phase 16 adds Farm Copilot / GaaS, Temporal workflows, and enterprise production readiness — without redesigning the Phase 12 persistence foundation.
+Phases 1–16 delivered the **operational data platform**, **TimescaleDB analytics layer**, **decision records**, **event-driven outbox**, **Feature Store and read models**, **Digital Twin foundation**, **Farm Copilot / GaaS**, **Temporal workflows**, baseline **CI and observability**, and a **production-style React UI** — without redesigning the Phase 12 persistence foundation.
 
 ---
 
 ## Long-Term Goals
 
-AGRIFLOW-AI seeks to become the operating system for modern agriculture by combining operational data, environmental intelligence, predictive analytics, and artificial intelligence into a single platform that helps agricultural organizations improve productivity, sustainability, and decision-making. Phases 12–15 completed the analytical persistence layer, decision layer, event platform, Feature Store, CQRS read models, and Digital Twin foundation; Phase 16 focuses on Farm Copilot, Temporal, and production-grade platform quality.
+AGRIFLOW-AI seeks to become the operating system for modern agriculture by combining operational data, environmental intelligence, predictive analytics, and artificial intelligence into a single platform that helps agricultural organizations improve productivity, sustainability, and decision-making. Phases 12–16 completed the analytical persistence layer, decision layer, event platform, Feature Store, CQRS read models, Digital Twin foundation, enterprise AI surfaces (Copilot, Temporal, MCP), and initial production hardening.
 
 ### Platform Evolution
 

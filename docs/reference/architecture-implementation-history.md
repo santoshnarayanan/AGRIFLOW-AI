@@ -1,10 +1,10 @@
 # AGRIFLOW-AI Architecture Archaeology & Implementation History Report
 
 **Document Type:** Repository-Grounded Architecture & Implementation History  
-**Scope:** Phase 1 through completed Phase 13  
-**Date:** October 2026  
+**Scope:** Phase 1 through **Phase 16** (§§1–22 are anchored at Phase 13; **§23** supplements Phases 14–16)  
+**Date:** October 2026 (updated post–Phase 16)  
 **Evidence Basis:** Source code, Alembic migrations, formal ADRs, tests, configuration, documentation, Git history  
-**Status:** Living historical record — implementation wins over documentation where conflicts exist
+**Status:** Living historical record — implementation wins over documentation where conflicts exist. For current delivery status see `06-roadmap.md` and `phase-implementations/16-enterprise-ai.md`.
 
 ---
 
@@ -20,12 +20,15 @@ AGRIFLOW-AI evolved from a **single-domain FastAPI foundation** (Phase 1) into a
 | **Observational intelligence** | 7–11 | Sensor telemetry (append-only), irrigation events, yield/disease grandchildren, satellite Earth observation |
 | **Enterprise time-series platform** | 12 | TimescaleDB 2.28.1 extension; 6 hypertables; compression; 8 continuous aggregates; 11 retention policies |
 | **AI decision intelligence** | 13 | Recommendation domain, Alert domain, Farm CRUD API; 5 ADRs; 5 new enums; 2 migrations |
+| **Event-driven platform** | 14 | Outbox, Redpanda relay, consumers, ML stubs, events ops UI — see §23 |
+| **Operational intelligence** | 15 | Feature Store, CQRS read models, Digital Twin, JWT/RBAC — see §23 |
+| **Enterprise AI & hardening** | 16 | Temporal, Farm Copilot, MCP, metrics, CI, security headers — see §23 |
 
 **FACT:** Phase 12 was an **infrastructure phase**. It changed persistence beneath the repository layer with **zero API breaking changes** (verified: no router/schema/service interface changes in Phase 12 migrations).
 
 **FACT:** Phase 13 delivered the Decision Intelligence Layer — `Recommendation` and `Alert` domains as standard PostgreSQL tables (not TimescaleDB hypertables), Farm CRUD API completion, five new enums (14 total in `core/enums.py`), and five formal ADRs (ADR-013-01 through ADR-013-05). Two Alembic migrations (total 18). HEAD: `h2i3j4k5l6m7`.
 
-**FACT:** Git history in this repository begins approximately at **Phase 9–10** (earliest commits reference Phase 9–10 work). Phases 1–8 chronology is reconstructed from Alembic migration timestamps, `docs/07-phase-history.md`, and source structure. See §Git History note below.
+**FACT:** Git history in this repository begins approximately at **Phase 9–10** (earliest commits reference Phase 9–10 work). Phases 1–8 chronology is reconstructed from Alembic migration timestamps, `docs/reference/07-phase-history.md`, and source structure. See §Git History note below.
 
 ---
 
@@ -58,7 +61,7 @@ AGRIFLOW-AI evolved from a **single-domain FastAPI foundation** (Phase 1) into a
 - **Alternatives:** Not documented formally.
 - **Consequences:** All APIs use UUID path parameters; composite PK addition in Phase 12 retained UUID as PK component.
 - **Future impact:** Enabled TimescaleDB composite PK `(id, time_column)` without changing API identity semantics.
-- **Status:** **INFERRED — NO FORMAL ADR FOUND** (documented in `docs/07-phase-history.md`).
+- **Status:** **INFERRED — NO FORMAL ADR FOUND** (documented in `docs/reference/07-phase-history.md`).
 
 ### Server-side audit timestamps
 - **Decision:** `created_at` / `updated_at` as `TIMESTAMPTZ NOT NULL` with PostgreSQL `now()` defaults.
@@ -144,7 +147,7 @@ Need a reproducible agricultural platform foundation with governed schema evolut
 - UUID PK, audit model, Alembic-first — **INFERRED — NO FORMAL ADR FOUND**
 
 ### Testing / Validation
-- `docs/07-phase-history.md` records automated testing as **deferred** in Phase 1.
+- `docs/reference/07-phase-history.md` records automated testing as **deferred** in Phase 1.
 - **FACT:** `backend/app/tests/test_health.py` exists (2 tests) — likely added later; not attributable to Phase 1 commit history.
 
 ### Business Capability Delivered
@@ -1173,12 +1176,14 @@ Phase 13 → Farm CRUD completed → Phase 1 architectural debt (19 months) reso
 
 ---
 
-# 14. Current Phase 13 Architecture
+# 14. Architecture Snapshot at Phase 13 (Historical)
+
+> **Note:** Phases 14–16 added event streaming, Feature Store, Digital Twin, React UI, Copilot, Temporal, and more. See **§23** for the current platform summary. The bullets below describe the repository **at Phase 13 completion** only.
 
 ## Application architecture
 - Python 3.12, FastAPI 0.115.5, SQLAlchemy 2.0 async, Pydantic 2.x
 - Single monolith backend at `backend/app/`
-- No frontend in repository
+- No frontend in repository *(superseded — `frontend/` added post–Phase 13)*
 
 ## Domain architecture
 - 12 ORM models, 11 services, 66 API endpoints
@@ -1372,26 +1377,23 @@ flowchart TB
 
 # 17. Future Architecture Enabled by Phases 1–12
 
-**All items below are PLANNED / FUTURE — not implemented unless noted.**
+**Status as of Phase 16:** Several items below were **planned at Phase 13** and are now **implemented** (see §23). Remaining rows are still future or partial.
 
-| Capability | Planned Phase | Repository evidence |
-|---|---|---|
-| ML Yield Prediction Engine | 14 | Roadmap; `recommendations` table ready for write-back |
-| ML Disease Risk Scoring Engine | 14 | Roadmap; `recommendations` + `alerts` tables ready |
-| ML Irrigation Optimization Engine | 14 | Roadmap; `recommendations` table ready |
-| AI Feature Store | 15 | ADR-004, roadmap; Phase 13 decision layer in place |
-| Enterprise Ontology formalization | 15 | Implicit in ORM; no ontology module |
-| Redpanda event streaming | 14 | Service extension point comments (SensorReading, etc.) |
-| Domain Events / Outbox | 14 | Roadmap only |
-| CQRS | 15 | Repository comments; service boundary |
-| Cassandra | Future | Model forward-compat comments |
-| Temporal workflows | 14–16 | Service comments |
-| Digital Twin | 15–16 | Enum docstrings, roadmap |
-| Farm Copilot / GaaS | 15–16 | Roadmap, Palantir doc |
-| PostGIS | Future | Roadmap cross-cutting |
-| Authentication/Authorization | Deferred since Phase 1 | Settings + deps present; not enforced |
-| Observability platform | 16 | Roadmap |
-| MCP | 16 | Roadmap |
+| Capability | Phase | Status (Phase 16) | Repository evidence |
+|---|---|---|---|
+| ML Yield / Disease / Irrigation engines | 14 | **Stub** (`/ml`, event hooks) | `backend/app/ml/` |
+| AI Feature Store | 15 | **Implemented** | `app/features/`, `/api/v1/features` |
+| Redpanda + domain outbox | 14 | **Implemented** (optional in dev) | `app/events/`, `docker-compose.yml` |
+| CQRS dashboard read models | 15 | **Implemented** | `read_model_projection.py`, `/read-models` |
+| Digital Twin foundation | 15 | **Implemented** | `app/digital_twin/`, `/digital-twin` |
+| Platform JWT / operator RBAC | 15 | **Implemented** (`AUTH_REQUIRED` configurable) | ADR-010, `platform_auth.py` |
+| Temporal workflows | 16 | **Implemented** (optional) | `app/temporal/`, `SoilMoistureAlertWorkflow` |
+| Farm Copilot / GaaS | 16 | **Implemented** | `/copilot`, `app/services/copilot.py` |
+| MCP tool evaluation | 16 | **Implemented** (HTTP + optional stdio) | `/mcp`, `app/mcp_stdio/` |
+| Prometheus metrics | 16 | **Implemented** | `/api/v1/metrics` |
+| React operational UI | post-13 | **Implemented** | `frontend/`, Compose `frontend` service |
+| GitHub Actions CI | 16 | **Implemented** | `.github/workflows/backend-ci.yml` |
+| Cassandra / PostGIS / full GaaS tenancy | Future | Planned | Roadmap |
 
 ---
 
@@ -1418,18 +1420,18 @@ flowchart TB
 
 | Gap | Type | Evidence |
 |---|---|---|
-| No domain/integration tests | **Technical debt** | Only `test_health.py` |
-| No authentication enforcement | **Intentional future work** (Phase 1 deferred) + **production gap** | Security stub; open API |
+| Limited integration test coverage | **Ongoing** | pytest suite growing; not full E2E matrix |
+| Authentication optional in dev | **By design** | `AUTH_REQUIRED=false` default; enable for production |
 | ~~Farm incomplete vertical slice~~ | **RESOLVED Phase 13** | Farm CRUD (service + router + schema) delivered |
 | Continuous aggregates unused in app | **Architectural limitation** | CAs exist in DB only |
 | ADR-007–011 not formalized | **Missing ADR** | Documentation-only in phase history |
 | Dual session DI patterns | **Technical debt** | `get_db` vs `get_session` |
 | CropStatus/SoilType outside core/enums | **Documentation gap** | Inconsistent enum registry |
 | Phase 11 validation deferred | **Intentional future work** | Phase history status |
-| No CI/CD | **Technical debt** | No `.github/workflows` |
+| CI/CD maturity | **Ongoing** | `backend-ci.yml`; no frontend/deploy pipelines yet |
 | Retention without archive gate | **Architectural limitation** | `TODO(AGRIFLOW-ARCHIVE-001)` |
 | ORM missing weather compound index | **Implementation/doc gap** | Index in migration 13, not in ORM |
-| No frontend | **Intentional future work** | Deferred Phase 1 |
+| ~~No frontend~~ | **Resolved** | `frontend/` + Compose service (Phase 16 docs) |
 
 ---
 
@@ -1505,13 +1507,31 @@ AGRIFLOW-AI began as a **well-structured agricultural CRUD foundation**: a FastA
 
 **Phase 13 — AI Decision Intelligence** delivered on the architectural promise: the `Recommendation` and `Alert` domains, Farm CRUD API completion, five new enums (14 total), and five formal ADRs (ADR-013-01 through ADR-013-05). Both decision domains are standard PostgreSQL relations — not TimescaleDB hypertables — reflecting a deliberate architectural pattern: low-volume mutable decision records do not require time-series partitioning. The `triggered_at` / `created_at` distinction on Alert, the nullable `crop_id` (field-level entities survive crop deletion), and the `confidence_score NUMERIC(4,3)` (exact decimal arithmetic for ML thresholds) are Phase 13's governing invariants. The Farm CRUD gap — a deliberate omission since Phase 1 — was finally resolved. Eighteen total Alembic migrations; head `h2i3j4k5l6m7`.
 
+**Phases 14–16** (summary): event outbox and Redpanda integration; stub ML engines; Feature Store and CQRS projections; Digital Twin state; platform JWT; intelligence event projection; Temporal `SoilMoistureAlertWorkflow`; Farm Copilot with tool registry and optional OpenAI; MCP HTTP and stdio evaluation; Prometheus metrics; GitHub Actions; React UI including `/copilot`. Migration head for platform users: `n8o9p0q1r2s3`. Detail: `phase-implementations/14-event-platform.md`, `15-enterprise-intelligence.md`, `16-enterprise-ai.md`.
+
 The arc from Phase 1 to Phase 13 is not feature accumulation alone; it is **progressive architectural constraint**. Each phase closed doors that would have caused pain later (immutable telemetry, ENUM lifecycle, denormalized field queries, composite PKs, repository transparency, nullable crop FK) while leaving documented doors open for Phase 14 ML engines, Redpanda, CQRS, Cassandra, Temporal, and GaaS — always planned, never prematurely implemented.
 
 ---
 
 # Git History Note
 
-**FACT:** Git history in this repository begins with Phase 9–10 era commits (earliest: `a641851 phase 9`). Phases 1–8 chronology is reconstructed from Alembic migration `Create Date` metadata, `docs/07-phase-history.md`, and source structure. Phase 12 commits are well-represented (Steps 1D–4C, ADR approvals, documentation updates).
+**FACT:** Git history in this repository begins with Phase 9–10 era commits (earliest: `a641851 phase 9`). Phases 1–8 chronology is reconstructed from Alembic migration `Create Date` metadata, `docs/reference/07-phase-history.md`, and source structure. Phase 12–16 commits are represented in GitHub `main`.
+
+---
+
+# 23. Phases 14–16 Platform Supplement (Current)
+
+| Phase | Capability | Key paths |
+|---|---|---|
+| **14** | Transactional outbox, Redpanda relay, audit/business consumers, events ops API, ML stubs | `app/events/`, `api/events/`, `api/ml/` |
+| **15** | Feature Store, CQRS read models, Digital Twin, event-driven projection, JWT/RBAC | `app/features/`, `read_models/`, `digital_twin/`, ADR-007–010 |
+| **16** | Temporal worker, Farm Copilot, MCP, Prometheus, security headers, CI | `app/temporal/`, `app/copilot/`, `api/copilot/`, `.github/workflows/` |
+
+**Compose (Podman/Docker):** `db`, `backend`, `frontend` (port 3000), optional `redpanda`, `temporal`, workers/consumers — see root `docker-compose.yml` and `frontend/README.md`.
+
+**Migration head (platform auth):** `n8o9p0q1r2s3` (`platform_users`).
+
+**Formal ADRs (14–16 era):** ADR-006 (events), ADR-007–010 (Phase 15), ADR-011 (Phase 16).
 
 ---
 
@@ -1519,16 +1539,10 @@ The arc from Phase 1 to Phase 13 is not feature accumulation alone; it is **prog
 
 | Item | Value |
 |---|---|
-| **File** | `AGRIFLOW-AI_ARCHITECTURE_IMPLEMENTATION_HISTORY.md` (repository root) |
-| **Action** | Created (no prior file existed) |
-| **Approximate length** | ~850 lines |
-| **Phases covered** | 1–13 (complete); 14+ as PLANNED only |
-| **Migrations reviewed** | 18 / 18 |
-| **Formal ADRs reviewed** | 10 (ADR-001–005 + ADR-013-01–005) + documentation-only ADR-007–011 series |
-| **Database tables reviewed** | 12 domain tables + 8 continuous aggregate views |
-| **TimescaleDB objects reviewed** | 6 hypertables, 6 compression policies, 8 CAs, 11 retention policies |
-| **Documentation/implementation discrepancies** | 5 documented (§20) |
-| **Insufficient evidence areas** | Phases 1–8 exact commit dates; Phase 11 runtime validation status; production deployment state |
+| **File** | `docs/reference/architecture-implementation-history.md` |
+| **Phases covered** | 1–13 detailed; **14–16 in §23** |
+| **Migrations (Phase 13 era)** | 18 reviewed in body; later migrations in phase-implementation docs |
+| **Current delivery reference** | `06-roadmap.md`, `16-enterprise-ai.md` |
 
 ---
 
