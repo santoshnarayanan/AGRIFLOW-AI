@@ -30,6 +30,10 @@ node_modules/
 *backup.sql
 tree_output.txt
 /backups/*.*
+backend/.env_backup
+
+# Local one-off git maintenance scripts (history rewrite helpers)
+scripts/git/
 
 # Personal interview prep (not for version control)
 AGRIFLOW-Interview-Prep.md
