@@ -43,6 +43,16 @@ Operator calls prefer `Authorization: Bearer <token>` from `authStore` after log
 cd frontend
 npm install
 npm run dev      # http://localhost:3000 — proxies /api to backend
+
+### Podman / Docker Compose (with db + backend)
+
+From the repository root:
+
+```bash
+docker compose up --build db backend frontend
+```
+
+Open **http://localhost:3000** (Vite in `frontend-1` proxies `/api` to `backend:8000`).
 npm run build    # tsc + production bundle
 npm run lint     # oxlint
 ```

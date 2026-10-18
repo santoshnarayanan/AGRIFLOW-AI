@@ -5,6 +5,7 @@
 #   db       — PostgreSQL 17 + TimescaleDB with persistent volume
 #   redpanda — Kafka-compatible event bus (Phase 14)
 #   backend  — FastAPI (auto-reload enabled for development)
+#   frontend — Vite dev server (port 3000, proxies /api → backend)
 #   outbox-relay — Publishes domain_event_outbox rows to Redpanda
 #   event-audit-consumer — Logs domain events from all catalog topics (dev)
 #   alert-evaluation-consumer — Business handler: soil moisture → alerts
@@ -92,6 +93,22 @@ services:
     depends_on:
       db:
         condition: service_healthy
+
+  # ── React frontend (Vite) ───────────────────────────────────────────────────
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    environment:
+      VITE_API_PROXY_TARGET: http://backend:8000
+    ports:
+      - "3000:3000"
+    volumes:
+      - ./frontend:/app
+      - frontend_node_modules:/app/node_modules
+    depends_on:
+      - backend
 
   # ── Outbox relay (Phase 14) ─────────────────────────────────────────────────
   outbox-relay:
@@ -193,4 +210,6 @@ services:
 
 volumes:
   postgres_data:
+    driver: local
+  frontend_node_modules:
     driver: local
