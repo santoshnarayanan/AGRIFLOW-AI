@@ -1,0 +1,45 @@
+name: Backend CI
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "backend/**"
+      - ".github/workflows/backend-ci.yml"
+  pull_request:
+    branches: [main]
+    paths:
+      - "backend/**"
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: backend
+    env:
+      APP_ENV: development
+      POSTGRES_PASSWORD: ci-test-password
+      SECRET_KEY: ci-test-secret-key-minimum-32-chars
+      COPILOT_ENABLED: "true"
+      COPILOT_LLM_PROVIDER: none
+      METRICS_ENABLED: "true"
+      SECURITY_HEADERS_ENABLED: "true"
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: backend/requirements.txt
+
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+
+      - name: Run tests
+        run: python -m pytest app/tests -q --tb=short
+
+      - name: Dependency audit
+        run: pip install pip-audit && pip-audit -r requirements.txt --skip-editable
+        continue-on-error: true

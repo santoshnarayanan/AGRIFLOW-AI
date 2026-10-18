@@ -1,6 +1,6 @@
 # Phase 16 — Enterprise AI Platform & Production Readiness
 
-**Status:** Complete (core slices)  
+**Status:** Complete (platform + hardening slices)  
 **ADR:** [ADR-011](../../../adr/ADR-011-phase16-temporal-copilot.md)
 
 ## Primary objective
@@ -53,6 +53,20 @@ Configuration: `METRICS_ENABLED`.
 - `backend/app/tests/test_temporal_workflow.py` — time-skipping workflow unit test
 - `backend/app/tests/test_copilot.py` — MCP catalog + Copilot 404
 
-## Remaining production hardening (follow-up)
+## Delivered — Production hardening (Phase 16b)
 
-Full regression suite expansion, load benchmarks, DR drills, farm-scoped Copilot RBAC, and dedicated MCP stdio server for external agent hosts are tracked as operational backlog — not blockers for Phase 16 code delivery.
+| Component | Location |
+|-----------|----------|
+| Copilot / MCP JWT (VIEWER+) | `PlatformViewerDep` on `/copilot` and MCP invoke |
+| Auto OpenAI when key set | `Settings.apply_copilot_openai_default` |
+| Security headers middleware | `app/core/security/headers.py` |
+| GitHub Actions CI | `.github/workflows/backend-ci.yml` |
+| MCP stdio server | `pip install -r requirements-mcp.txt` then `python -m app.mcp_stdio.server` |
+| DR runbook + backup script | `docs/ops/disaster-recovery-runbook.md`, `scripts/ops/backup-postgres.ps1` |
+| Extra tests | `test_security_hardening.py` |
+
+Configuration: `COPILOT_AUTH_REQUIRED`, `SECURITY_HEADERS_ENABLED`, `AGRIFLOW_API_URL` / `AGRIFLOW_BEARER_TOKEN` for stdio MCP.
+
+## Operational follow-up (non-code)
+
+Per-farm user tenancy (not just platform roles), large-scale load testing in a dedicated environment, and Azure-specific DR automation remain environment/ops tasks.

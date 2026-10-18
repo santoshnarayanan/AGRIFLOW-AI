@@ -136,6 +136,7 @@ class Settings(BaseSettings):
 
     # ── Farm Copilot / GaaS (Phase 16) ────────────────────────────────────────────
     COPILOT_ENABLED: bool = True
+    COPILOT_AUTH_REQUIRED: bool = False
     COPILOT_LLM_PROVIDER: Literal["none", "openai", "azure"] = "none"
     OPENAI_API_KEY: str | None = None
     OPENAI_API_BASE: str = "https://api.openai.com/v1"
@@ -150,6 +151,23 @@ class Settings(BaseSettings):
 
     # ── Observability (Phase 16) ─────────────────────────────────────────────────
     METRICS_ENABLED: bool = True
+
+    # ── Security (Phase 16 hardening) ────────────────────────────────────────────
+    SECURITY_HEADERS_ENABLED: bool = True
+
+    @model_validator(mode="after")
+    def apply_copilot_openai_default(self) -> "Settings":
+        """Use OpenAI when a key is configured and provider was left at ``none``."""
+        if (
+            self.COPILOT_ENABLED
+            and self.COPILOT_LLM_PROVIDER == "none"
+            and self.OPENAI_API_KEY
+            and self.OPENAI_API_KEY.strip()
+        ):
+            self.COPILOT_LLM_PROVIDER = "openai"
+        if self.COPILOT_AUTH_REQUIRED and not self.AUTH_REQUIRED:
+            self.AUTH_REQUIRED = True
+        return self
 
 
 @lru_cache(maxsize=1)

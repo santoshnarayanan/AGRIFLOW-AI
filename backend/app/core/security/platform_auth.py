@@ -22,6 +22,7 @@ class PlatformPrincipal:
 
 
 _OPERATOR_ROLES = {PlatformRole.OPERATOR, PlatformRole.ADMIN}
+_VIEWER_ROLES = {PlatformRole.VIEWER, PlatformRole.OPERATOR, PlatformRole.ADMIN}
 
 
 def _role_from_claim(value: str) -> PlatformRole:
@@ -101,3 +102,72 @@ async def require_platform_operator(
 
 
 PlatformOperatorDep = Annotated[PlatformPrincipal, Depends(require_platform_operator)]
+
+
+async def require_platform_viewer(
+    authorization: Annotated[str | None, Header()] = None,
+    x_events_ops_key: Annotated[str | None, Header(alias="X-Events-Ops-Key")] = None,
+) -> PlatformPrincipal:
+    """
+    Authenticated platform user with at least VIEWER role (Farm Copilot / read APIs).
+
+    Uses the same JWT and ops-key paths as ``require_platform_operator``, but allows
+    VIEWER. Development bypass matches operator behavior when ``AUTH_REQUIRED`` is false.
+    """
+    settings = get_settings()
+
+    if authorization and authorization.lower().startswith("bearer "):
+        token = authorization.split(" ", 1)[1].strip()
+        try:
+            claims = decode_access_token(token)
+        except ValueError as exc:
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail=str(exc),
+            ) from exc
+        role = _role_from_claim(str(claims.get("role", "")))
+        if role not in _VIEWER_ROLES:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Insufficient role for this operation.",
+            )
+        return PlatformPrincipal(
+            subject=str(claims.get("sub", "")),
+            email=claims.get("email"),
+            role=role,
+            auth_method="jwt",
+        )
+
+    expected_ops = settings.EVENTS_OPS_API_KEY
+    if expected_ops and x_events_ops_key == expected_ops:
+        return PlatformPrincipal(
+            subject="ops-key",
+            email=None,
+            role=PlatformRole.ADMIN,
+            auth_method="ops_key",
+        )
+
+    if not settings.AUTH_REQUIRED:
+        if settings.APP_ENV == "development":
+            return PlatformPrincipal(
+                subject="development",
+                email=None,
+                role=PlatformRole.ADMIN,
+                auth_method="development_bypass",
+            )
+
+    if not settings.AUTH_REQUIRED and settings.APP_ENV != "production":
+        return PlatformPrincipal(
+            subject="anonymous",
+            email=None,
+            role=PlatformRole.VIEWER,
+            auth_method="development_bypass",
+        )
+
+    raise HTTPException(
+        status_code=status.HTTP_401_UNAUTHORIZED,
+        detail="Authentication required. Use Bearer JWT or X-Events-Ops-Key.",
+    )
+
+
+PlatformViewerDep = Annotated[PlatformPrincipal, Depends(require_platform_viewer)]

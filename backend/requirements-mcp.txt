@@ -1,0 +1,4 @@
+# Optional — MCP stdio server only (`python -m app.mcp_stdio.server`).
+# Install in a separate venv if FastAPI/starlette pins conflict with the MCP SDK.
+-r requirements.txt
+mcp==1.9.4

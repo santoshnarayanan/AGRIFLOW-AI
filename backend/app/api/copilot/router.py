@@ -7,9 +7,14 @@ import uuid
 from fastapi import APIRouter, HTTPException, status
 
 from app.api.deps import CopilotServiceDep, SessionDep
+from app.core.config import get_settings
+from app.core.logging.logger import get_logger
+from app.core.security.platform_auth import PlatformViewerDep
 from app.schemas.copilot import CopilotChatRequest, CopilotChatResponse
 from app.services.copilot import CopilotDisabledError
 from app.services.field import FieldNotFoundError
+
+logger = get_logger(__name__)
 
 router = APIRouter(prefix="/copilot", tags=["Farm Copilot"])
 
@@ -24,7 +29,15 @@ async def copilot_chat(
     body: CopilotChatRequest,
     _session: SessionDep,
     copilot: CopilotServiceDep,
+    principal: PlatformViewerDep,
 ) -> CopilotChatResponse:
+    if get_settings().COPILOT_AUTH_REQUIRED or get_settings().AUTH_REQUIRED:
+        logger.info(
+            "copilot.chat",
+            field_id=str(field_id),
+            subject=principal.subject,
+            role=principal.role.value,
+        )
     try:
         result = await copilot.chat(field_id, body.message)
     except CopilotDisabledError as exc:
