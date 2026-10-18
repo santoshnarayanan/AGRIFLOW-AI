@@ -127,6 +127,30 @@ class Settings(BaseSettings):
     # ── Platform auth / RBAC (Phase 15 slice 5) ──────────────────────────────────
     AUTH_REQUIRED: bool = False
 
+    # ── Temporal workflows (Phase 16) ───────────────────────────────────────────
+    TEMPORAL_ENABLED: bool = False
+    TEMPORAL_HOST: str = "localhost:7233"
+    TEMPORAL_NAMESPACE: str = "default"
+    TEMPORAL_TASK_QUEUE: str = "agriflow-alerts"
+    TEMPORAL_SOIL_MOISTURE_PERSISTENCE_MINUTES: int = 15
+
+    # ── Farm Copilot / GaaS (Phase 16) ────────────────────────────────────────────
+    COPILOT_ENABLED: bool = True
+    COPILOT_LLM_PROVIDER: Literal["none", "openai", "azure"] = "none"
+    OPENAI_API_KEY: str | None = None
+    OPENAI_API_BASE: str = "https://api.openai.com/v1"
+    OPENAI_MODEL: str = "gpt-4o-mini"
+    AZURE_OPENAI_ENDPOINT: str | None = None
+    AZURE_OPENAI_API_KEY: str | None = None
+    AZURE_OPENAI_DEPLOYMENT: str | None = None
+    AZURE_OPENAI_API_VERSION: str = "2024-02-15-preview"
+
+    # ── MCP tool evaluation (Phase 16) ───────────────────────────────────────────
+    MCP_TOOLS_ENABLED: bool = True
+
+    # ── Observability (Phase 16) ─────────────────────────────────────────────────
+    METRICS_ENABLED: bool = True
+
 
 @lru_cache(maxsize=1)
 def get_settings() -> Settings:

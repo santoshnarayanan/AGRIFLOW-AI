@@ -20,6 +20,12 @@ structlog==24.4.0
 # ── HTTP Client (inter-service, LLM calls) ────────────────────────────────────
 httpx==0.28.0
 
+# ── Workflow orchestration (Phase 16 — Temporal) ─────────────────────────────
+temporalio==1.9.0
+
+# ── Observability (Phase 16) ──────────────────────────────────────────────────
+prometheus-client==0.21.1
+
 # ── Event streaming (Phase 14 — Redpanda / Kafka protocol) ───────────────────
 aiokafka==0.12.0
 

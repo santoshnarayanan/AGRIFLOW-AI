@@ -13,6 +13,9 @@ from app.api.crops.router import router as crops_router
 from app.api.events.router import router as events_router
 from app.api.features.router import router as features_router
 from app.api.digital_twin.router import router as digital_twin_router
+from app.api.copilot.router import router as copilot_router
+from app.api.mcp.router import router as mcp_router
+from app.api.metrics.router import router as metrics_router
 from app.api.read_models.router import router as read_models_router
 from app.api.ml.router import router as ml_router
 from app.api.disease_observations.router import router as disease_observations_router
@@ -59,3 +62,8 @@ api_router.include_router(auth_router)
 api_router.include_router(features_router)
 api_router.include_router(read_models_router)
 api_router.include_router(digital_twin_router)
+
+# ── Phase 16: Enterprise AI Platform ───────────────────────────────────────────
+api_router.include_router(copilot_router)
+api_router.include_router(mcp_router)
+api_router.include_router(metrics_router)

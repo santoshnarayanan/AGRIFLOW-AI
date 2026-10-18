@@ -16,6 +16,7 @@ import { Recommendations } from '@/pages/Recommendations'
 import { Alerts } from '@/pages/Alerts'
 import { Events } from '@/pages/Events'
 import { FeatureStore } from '@/pages/FeatureStore'
+import { Copilot } from '@/pages/Copilot'
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -47,6 +48,7 @@ export default function App() {
             <Route path="alerts" element={<Alerts />} />
             <Route path="events" element={<Events />} />
             <Route path="features" element={<FeatureStore />} />
+            <Route path="copilot" element={<Copilot />} />
           </Route>
         </Routes>
       </BrowserRouter>

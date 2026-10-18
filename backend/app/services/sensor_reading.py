@@ -54,6 +54,10 @@ from app.db.repositories.sensor_reading import SensorReadingRepository
 from app.events.publisher import DomainEventPublisher, NoOpDomainEventPublisher
 from app.schemas.sensor_reading import SensorReadingCreate
 from app.services.field import FieldNotFoundError  # shared domain exception
+from app.temporal.starter import (
+    NoOpSoilMoistureWorkflowStarter,
+    SoilMoistureWorkflowStarter,
+)
 
 logger = get_logger(__name__)
 
@@ -103,10 +107,14 @@ class SensorReadingService:
         sensor_reading_repository: SensorReadingRepository,
         field_repository: FieldRepository,
         event_publisher: DomainEventPublisher | None = None,
+        soil_moisture_workflow_starter: SoilMoistureWorkflowStarter | None = None,
     ) -> None:
         self._readings = sensor_reading_repository
         self._fields = field_repository
         self._event_publisher = event_publisher or NoOpDomainEventPublisher()
+        self._soil_moisture_workflow_starter = (
+            soil_moisture_workflow_starter or NoOpSoilMoistureWorkflowStarter()
+        )
 
     # ── Create ─────────────────────────────────────────────────────────────────
 
@@ -152,6 +160,9 @@ class SensorReadingService:
 
         # Phase 14 — transactional outbox (ADR-006); relay publishes to Redpanda.
         await self._event_publisher.sensor_reading_created(reading)
+
+        # Phase 16 — optional Temporal durability for sustained soil moisture deficit.
+        await self._soil_moisture_workflow_starter.maybe_start_for_reading(reading)
 
         return reading
 

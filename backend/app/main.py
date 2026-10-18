@@ -9,6 +9,7 @@ Startup sequence:
   5. Attach lifespan context manager (DB pool warm-up / teardown)
 """
 
+import time
 from collections.abc import AsyncGenerator
 from contextlib import asynccontextmanager
 
@@ -67,6 +68,28 @@ def create_application() -> FastAPI:
         allow_methods=["*"],
         allow_headers=["*"],
     )
+
+    if settings.METRICS_ENABLED:
+        from app.core.observability.metrics import HTTP_LATENCY, HTTP_REQUESTS
+
+        @app.middleware("http")
+        async def prometheus_http_middleware(request: Request, call_next):
+            if request.url.path.endswith("/metrics"):
+                return await call_next(request)
+            start = time.perf_counter()
+            response = await call_next(request)
+            route = request.scope.get("route")
+            path_template = getattr(route, "path", request.url.path)
+            elapsed = time.perf_counter() - start
+            HTTP_REQUESTS.labels(
+                method=request.method,
+                path_template=path_template,
+                status=str(response.status_code),
+            ).inc()
+            HTTP_LATENCY.labels(method=request.method, path_template=path_template).observe(
+                elapsed
+            )
+            return response
 
     # ── Routers ───────────────────────────────────────────────────────────────
     app.include_router(api_router, prefix=settings.API_V1_PREFIX)

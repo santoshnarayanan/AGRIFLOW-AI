@@ -18,6 +18,7 @@ const pageMeta: Record<string, { title: string; description: string }> = {
   '/alerts': { title: 'Alerts', description: 'System and agronomic alerts' },
   '/events': { title: 'Domain Events', description: 'Event catalog and transactional outbox' },
   '/features': { title: 'Feature Store', description: 'ML feature registry and field snapshots' },
+  '/copilot': { title: 'Farm Copilot', description: 'Natural-language agronomic assistance (GaaS)' },
 }
 
 export function AppLayout() {

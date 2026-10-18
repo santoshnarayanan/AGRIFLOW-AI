@@ -62,6 +62,8 @@ from app.services.soil_profile import SoilProfileService
 from app.services.weather_record import WeatherRecordService
 from app.services.auth import AuthService
 from app.services.yield_record import YieldRecordService
+from app.temporal.starter import get_soil_moisture_workflow_starter
+from app.services.copilot import FarmCopilotService
 
 
 # ── Database session ──────────────────────────────────────────────────────────
@@ -188,6 +190,7 @@ def get_sensor_reading_service(
         sensor_reading_repository=SensorReadingRepository(session),
         field_repository=FieldRepository(session),
         event_publisher=event_publisher,
+        soil_moisture_workflow_starter=get_soil_moisture_workflow_starter(),
     )
 
 
@@ -338,3 +341,10 @@ def get_auth_service(session: SessionDep) -> AuthService:
 
 
 AuthServiceDep = Annotated[AuthService, Depends(get_auth_service)]
+
+
+def get_copilot_service(session: SessionDep) -> FarmCopilotService:
+    return FarmCopilotService(session)
+
+
+CopilotServiceDep = Annotated[FarmCopilotService, Depends(get_copilot_service)]
