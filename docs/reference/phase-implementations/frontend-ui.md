@@ -1,6 +1,6 @@
 # Frontend UI implementation reference
 
-**Status:** Phases 1–13 (core domains + decision intelligence), **Phase 14** (`/events`), **Phase 15** (dashboard read models, Feature Store, platform sign-in) — as implemented in `frontend/`.
+**Status:** Phases 1–13 (core domains + decision intelligence), **Phase 14** (`/events`), **Phase 15** (dashboard read models, Feature Store, platform sign-in), **Phase 16** (`/copilot` Farm Copilot) — as implemented in `frontend/`.
 
 This document maps the **React + TypeScript** client to the FastAPI backend: routing, API clients, domain types, and platform/intelligence screens.
 
@@ -9,8 +9,8 @@ This document maps the **React + TypeScript** client to the FastAPI backend: rou
 | Layer | Location | Notes |
 |--------|----------|--------|
 | Entry | `frontend/src/main.tsx`, `App.tsx` | React Router, TanStack Query provider |
-| Shell | `frontend/src/components/layout/AppLayout.tsx` | Sidebar + `Header` + page outlet; `pageMeta` for `/events`, `/features` |
-| Navigation | `frontend/src/components/layout/Sidebar.tsx` | **AI Intelligence** group: recommendations, alerts, Feature Store; **Platform**: Domain Events |
+| Shell | `frontend/src/components/layout/AppLayout.tsx` | Sidebar + `Header` + page outlet; `pageMeta` for `/events`, `/features`, `/copilot` |
+| Navigation | `frontend/src/components/layout/Sidebar.tsx` | **AI Intelligence**: recommendations, alerts, Feature Store, **Farm Copilot**; **Platform**: Domain Events |
 | Auth UI | `components/auth/LoginDialog.tsx`, `stores/authStore.ts` | Phase 15 — JWT in `localStorage`; header Sign in / Sign out |
 | Styling | Tailwind + shadcn/ui under `frontend/src/components/ui/` | Shared primitives |
 | HTTP | `frontend/src/api/client.ts` | Axios; `Authorization: Bearer` when logged in; optional `X-Events-Ops-Key` on outbox URLs |
@@ -36,8 +36,9 @@ See also [frontend/README.md](../../../frontend/README.md) for env vars and dev 
 | `/alerts` | `pages/Alerts.tsx` | `alerts`, `fields`, `farms` |
 | `/features` | `pages/FeatureStore.tsx` | `features` (catalog, snapshots, materialise) — **Phase 15** |
 | `/events` | `pages/Events.tsx` | `events` (catalog, outbox stats, outbox entries) — **Phase 14** |
+| `/copilot` | `pages/Copilot.tsx` | `copilot` (`POST /copilot/fields/{id}/chat`) — **Phase 16** |
 
-**No dedicated UI routes yet (backend APIs exist):** Digital Twin (`/digital-twin/...`), read-model **refresh** POST endpoints, ML engine (`/ml/...`). Operators use API/Swagger or future Phase 16 screens.
+**No dedicated UI routes yet (backend APIs exist):** Digital Twin (`/digital-twin/...`), read-model **refresh** POST endpoints, ML engine (`/ml/...`), MCP tool playground (`/mcp/...`). Operators use API/Swagger or external MCP stdio host (`python -m app.mcp_stdio.server`).
 
 ## Domain types and API alignment
 
@@ -80,6 +81,14 @@ Shared contracts live in `frontend/src/types/index.ts`.
 - Page: `FeatureStore.tsx` — registry version, catalog table, field selector, materialise action, snapshot history.
 - **Materialise** requires operator auth (JWT in dev with `AUTH_REQUIRED=false` may still work via backend dev bypass; production should use sign-in).
 
+### Phase 16 — Farm Copilot (UI)
+
+- Client: `frontend/src/api/copilot.ts` — `copilotChat(fieldId, message)` → `CopilotChatResponse` (`mode`, `answer`, `tools` trace).
+- Page: `Copilot.tsx` — field selector (`useFields()`), question textarea, displays deterministic or **openai** mode from backend.
+- **LLM:** Configured in `backend/.env` (`OPENAI_API_KEY`, `COPILOT_LLM_PROVIDER`); frontend has no API keys.
+- **Auth:** Copilot route uses `PlatformViewerDep` when `AUTH_REQUIRED=true`; dev bypass matches other routes. Bearer token from sign-in is sent via `api/client.ts` when present.
+- See [16-enterprise-ai.md](./16-enterprise-ai.md) and [application-technical-flow.md](../application-technical-flow.md) §9.1.
+
 ### Phase 15 — Platform authentication (UI)
 
 - Types: `LoginRequest`, `TokenResponse`, `PlatformUser`, `PlatformRole`.
@@ -107,6 +116,8 @@ Several legacy pages still use simplified numeric ids in types for crops, sensor
 
 ## Local development
 
+**Host (Vite):**
+
 ```bash
 cd frontend
 npm install
@@ -114,7 +125,15 @@ npm run dev    # http://localhost:3000
 npm run build  # production typecheck + bundle
 ```
 
-Backend must be reachable at the configured API base (default proxy to port 8000). For operator flows, run migration `n8o9p0q1r2s3` and sign in with bootstrap admin (see `backend/.env.example`).
+**Podman/Docker (from repo root):**
+
+```bash
+docker compose up -d db backend frontend
+```
+
+Open http://localhost:3000 — Vite in the `frontend` container proxies `/api` to `backend:8000` (`VITE_API_PROXY_TARGET` in compose).
+
+Backend must be reachable at the configured API base (default proxy to port 8000). For operator flows, run migration `n8o9p0q1r2s3` and sign in with bootstrap admin (see `backend/.env.example`). Farm Copilot needs at least one field (seed data or CRUD).
 
 ## Related documentation
 
@@ -122,4 +141,6 @@ Backend must be reachable at the configured API base (default proxy to port 8000
 - [13-decision-intelligence.md](./13-decision-intelligence.md) — Phase 13 backend and API map
 - [14-event-platform.md](./14-event-platform.md) — Phase 14 events and outbox
 - [15-enterprise-intelligence.md](./15-enterprise-intelligence.md) — Feature Store, read models, Digital Twin, JWT
+- [16-enterprise-ai.md](./16-enterprise-ai.md) — Farm Copilot, Temporal, MCP (backend)
+- [application-technical-flow.md](../application-technical-flow.md) — runtime flows including `/copilot`
 - [../../phases/phase13/phase-summary.md](../../phases/phase13/phase-summary.md) — Phase 13 product narrative
