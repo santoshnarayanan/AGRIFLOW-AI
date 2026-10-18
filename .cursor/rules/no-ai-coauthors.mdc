@@ -1,0 +1,13 @@
+---
+description: Do not add AI co-authors to git commits
+alwaysApply: true
+---
+
+# Git commits — sole author
+
+This repository is maintained for open-source showcase. **Never** add co-author trailers to commit messages, including:
+
+- `Co-authored-by: Cursor <cursoragent@cursor.com>`
+- `Co-authored-by: Claude` / Anthropic noreply addresses
+
+Commits must list only the human maintainer as author. Use normal commit messages without `Co-authored-by` lines for AI tools.

@@ -1,0 +1,8 @@
+#!/bin/sh
+# Strip AI co-author trailers (Git Bash / sh — no Python required).
+MSG_FILE="$1"
+TMP="${MSG_FILE}.agriflow.tmp"
+grep -vi 'co-authored-by:.*cursoragent' "$MSG_FILE" \
+  | grep -vi 'co-authored-by:.*claude' \
+  | grep -vi 'co-authored-by:.*anthropic' > "$TMP"
+mv "$TMP" "$MSG_FILE"
