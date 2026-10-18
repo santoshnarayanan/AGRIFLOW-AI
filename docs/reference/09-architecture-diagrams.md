@@ -1,14 +1,14 @@
 # AGRIFLOW-AI Architecture Diagrams
 
 **Document:** Architecture Diagrams Reference  
-**Version:** 1.3  
+**Version:** 1.4  
 **Date:** October 2026  
-**Scope:** Domain foundation (Phases 1–8), full platform evolution, and architecture views through Phase 15; Phase 16+ remains roadmap  
-**Current Phase:** Phase 16 — Enterprise AI Platform & Production Readiness (next)  
+**Scope:** Domain foundation (Phases 1–8), platform evolution through **Phase 16**; §§9–15 retain target-state diagrams with implementation status callouts  
+**Current Phase:** Phases 1–16 delivered — post–Phase 16 maintenance  
 **Status:** Living Document  
 **Author:** AGRIFLOW-AI Principal Enterprise Architecture  
 
-**Companion:** Runtime and integration flows (Phases 13–15) — [application-technical-flow.md](./application-technical-flow.md)
+**Companion:** Runtime and integration flows (Phases 13–16) — [application-technical-flow.md](./application-technical-flow.md)
 
 ---
 
@@ -31,6 +31,7 @@
 14. [Future Digital Twin Architecture](#14-future-digital-twin-architecture)
 15. [Future GaaS Architecture](#15-future-gaas-architecture)
 16. [AGRIFLOW Target State Architecture — Phase 15 Vision](#16-agriflow-target-state-architecture--phase-15-vision)
+17. [Phase 16 — Implemented Enterprise AI (summary)](#17-phase-16--implemented-enterprise-ai-summary)
 
 ---
 
@@ -819,7 +820,7 @@ AGRIFLOW-AI Sensor Telemetry Architecture — Phase 7 IoT Data Ingestion with Ti
 Show how sensor data flows from IoT field devices through the ingestion API into immutable TimescaleDB hypertable storage, and illustrate the extension points where future event-driven components will be wired.
 
 ### Explanation
-Phase 7 introduced the first real-time telemetry capability. IoT gateways submit sensor readings via REST. The API layer validates, the service layer enforces immutability rules (timezone-awareness, no future timestamps), and the repository persists to `sensor_readings`. Phase 12 converted `sensor_readings` to a TimescaleDB hypertable with compression, continuous aggregates, and retention policies — with zero changes to the ingestion path. The service contains a documented extension point (ADR-007-26) marking where Redpanda publishing, Digital Twin updates, and Temporal triggers will connect in future phases — without modifying the current business logic.
+Phase 7 introduced the first real-time telemetry capability. IoT gateways submit sensor readings via REST. The API layer validates, the service layer enforces immutability rules (timezone-awareness, no future timestamps), and the repository persists to `sensor_readings`. Phase 12 converted `sensor_readings` to a TimescaleDB hypertable with compression, continuous aggregates, and retention policies — with zero changes to the ingestion path. Phases 14–16 wired the ADR-007-26 boundary: transactional outbox → Redpanda (optional), intelligence projection (Feature Store, read models, twin), and optional `SoilMoistureAlertWorkflow` via Temporal.
 
 ```mermaid
 graph TB
@@ -839,7 +840,7 @@ graph TB
 
     subgraph "Service Layer (Business Rules)"
         SVC["SensorReadingService\n• Field existence check\n• Timezone-aware timestamp check\n• Future timestamp rejection\n• Persistence delegation"]
-        EXT["⬛ Extension Point (ADR-007-26)\n[NOT YET IMPLEMENTED]\n• Redpanda event publish\n• Digital Twin state update\n• CQRS read-model projection\n• Temporal workflow trigger"]
+        EXT["⬛ Extension Point (ADR-007-26)\n✅ Outbox publish (Ph.14)\n✅ Twin/CQRS projection (Ph.15)\n✅ Temporal trigger (Ph.16, optional)"]
     end
 
     subgraph "Repository Layer"
@@ -1015,6 +1016,8 @@ graph TB
 
 ## 9. Future Event-Driven Architecture
 
+> **Implementation status (Phase 16):** **Delivered** for core patterns — transactional outbox, relay, audit/business consumers, events ops UI. Diagram below is the **target topology**; see [phase-implementations/14-event-platform.md](./phase-implementations/14-event-platform.md) and [application-technical-flow.md](./application-technical-flow.md) §5.
+
 ### Title
 AGRIFLOW-AI Future Event-Driven Architecture — Redpanda Streaming Platform
 
@@ -1080,6 +1083,8 @@ graph TB
 ---
 
 ## 10. Future CQRS Architecture
+
+> **Implementation status (Phase 16):** **Dashboard CQRS delivered** (`field_dashboard_read_models`, projection service, Dashboard UI). Full read/write store split (e.g. Cassandra read side) remains **future**. See [phase-implementations/15-enterprise-intelligence.md](./phase-implementations/15-enterprise-intelligence.md).
 
 ### Title
 AGRIFLOW-AI Future CQRS Architecture — Read/Write Separation for Sensor Telemetry
@@ -1323,6 +1328,8 @@ graph TB
 
 ## 13. Future Temporal Workflow Architecture
 
+> **Implementation status (Phase 16):** **`SoilMoistureAlertWorkflow` + worker delivered** (`TEMPORAL_ENABLED`, Compose `temporal` / `temporal-worker`). Additional workflows in diagram remain **roadmap**. See [phase-implementations/16-enterprise-ai.md](./phase-implementations/16-enterprise-ai.md).
+
 ### Title
 AGRIFLOW-AI Future Temporal Workflow Architecture — Durable Agricultural Process Orchestration
 
@@ -1393,6 +1400,8 @@ graph TB
 ---
 
 ## 14. Future Digital Twin Architecture
+
+> **Implementation status (Phase 16):** **Foundation delivered** — `field_digital_twin_states`, synchronize API, event-driven refresh with read models. Redis hot-state and full simulation layer in diagram remain **future**. See Phase 15 implementation reference.
 
 ### Title
 AGRIFLOW-AI Future Digital Twin Architecture — Virtual Farm Intelligence Platform
@@ -1491,6 +1500,8 @@ graph TB
 ---
 
 ## 15. Future GaaS Architecture
+
+> **Implementation status (Phase 16):** **Farm Copilot v1 delivered** — tool registry, `/copilot` API + UI, optional OpenAI, MCP HTTP/stdio evaluation. LangChain/LangGraph agent and vector RAG in diagram remain **roadmap**.
 
 ### Title
 AGRIFLOW-AI Future GaaS Architecture — Generative-As-A-Service Agricultural Intelligence
@@ -1715,10 +1726,11 @@ graph LR
         P4["Phase 8–11\nPredictive Farming\n• Irrigation tracking ✅\n• Yield records ✅\n• Disease observation ✅\n• Satellite observation ✅"]
         P4B["Phase 12\nTime-Series Foundation ✅\n• TimescaleDB hypertables\n• Compression + CAs\n• Retention policies"]
         P5["Phase 13\nDecision Intelligence ✅\n• Recommendation Engine\n• Alert Engine\n• Farm CRUD API\n• Decision Layer Pattern"]
-        P6["Phase 14–15\nIntelligent & Autonomous Farming\n• ML yield & disease prediction\n• Feature Store\n• Digital Twin v1\n• GaaS Farm Copilot"]
+        P6["Phase 14–15 ✅\nEvents · Feature Store\n· Digital Twin v1"]
+        P7["Phase 16 ✅\nCopilot · Temporal\n· MCP · metrics"]
     end
 
-    P1 --> P2 --> P3 --> P4 --> P4B --> P5 --> P6
+    P1 --> P2 --> P3 --> P4 --> P4B --> P5 --> P6 --> P7
 ```
 
 ### Key Architectural Observations
@@ -1727,7 +1739,26 @@ graph LR
 - **Redpanda is the central integration fabric.** Every major platform capability — Digital Twin, AI Feature Store, CQRS, Temporal, Alert Engine — connects to the platform via Redpanda topics. This ensures the core domain APIs remain stable as new consumers are added.
 - **The five-layer Clean Architecture scales to Phase 15 without modification.** Completed domains (Irrigation ✅, Yield ✅, Disease Observation ✅, Satellite Observation ✅) follow the same `Model → Schema → Repository → Service → Router` pattern established in Phase 2. The only additions are Redpanda publishing in the service layer and Temporal workflow triggering at the extension point.
 - **Azure is the preferred infrastructure platform** for enterprise and cooperative deployments due to Azure OpenAI Service data sovereignty, Azure Kubernetes Service (AKS) orchestration, Azure API Management gateway, and Azure AI Search vector capabilities — all available within a single Azure tenancy.
-- **GaaS is the ultimate user interface.** The Phase 15 Farm Copilot makes the entire platform accessible to farm operators who have no interest in dashboards, APIs, or ML model outputs — they simply ask what they need to know and receive a grounded, cited, actionable recommendation.
+- **GaaS is the ultimate user interface.** The Phase 16 Farm Copilot (`/copilot`) exposes tool-grounded Q&A; optional OpenAI improves prose while deterministic mode works without external LLM keys.
+
+---
+
+## 17. Phase 16 — Implemented Enterprise AI (summary)
+
+### Purpose
+Concise **as-built** view for open-source readers. Target-state diagrams in §§8–16 remain valid for scale-out and Azure; this section lists what runs in the repository today.
+
+| Capability | Status | Entry points |
+|------------|--------|----------------|
+| Farm Copilot / GaaS v1 | ✅ | `POST /api/v1/copilot/fields/{id}/chat`, UI `/copilot` |
+| MCP tool evaluation | ✅ | `GET/POST /api/v1/mcp/tools*`; optional `app.mcp_stdio.server` |
+| Temporal soil-moisture workflow | ✅ (optional) | `app/temporal/`, Compose `temporal-worker` |
+| Prometheus metrics | ✅ | `GET /api/v1/metrics` |
+| React UI in Compose | ✅ | `docker compose up frontend` → port 3000 |
+| GitHub Actions CI | ✅ | `.github/workflows/backend-ci.yml` |
+
+**Runtime flows:** [application-technical-flow.md](./application-technical-flow.md) §9.1  
+**Implementation map:** [phase-implementations/16-enterprise-ai.md](./phase-implementations/16-enterprise-ai.md)
 
 ---
 
@@ -1742,7 +1773,7 @@ graph LR
 
 **Living Document:** This document should be updated at the completion of each phase to reflect new domain additions, architectural decisions, and technology adoptions.
 
-**Last Updated:** Phase 13 completion — October 2026
+**Last Updated:** Phase 16 alignment — October 2026
 
 ---
 

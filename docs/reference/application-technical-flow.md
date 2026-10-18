@@ -1,14 +1,14 @@
 # AGRIFLOW-AI — Application Technical Flow
 
-**Purpose:** Single reference for how requests, data, and domain events move through the platform (Phases 1–15).  
+**Purpose:** Single reference for how requests, data, and domain events move through the platform (Phases 1–16).  
 **Audience:** Engineers onboarding, interview prep, and runtime validation.  
-**Related:** [02-architecture.md](./02-architecture.md), [09-architecture-diagrams.md](./09-architecture-diagrams.md), [phase-implementations/frontend-ui.md](./phase-implementations/frontend-ui.md)
+**Related:** [02-architecture.md](./02-architecture.md), [09-architecture-diagrams.md](./09-architecture-diagrams.md), [phase-implementations/frontend-ui.md](./phase-implementations/frontend-ui.md), [phase-implementations/16-enterprise-ai.md](./phase-implementations/16-enterprise-ai.md)
 
 ---
 
 ## 1. System at a glance
 
-AGRIFLOW-AI is a **layered FastAPI backend** plus a **React SPA**. Operational data lives in **PostgreSQL 17**; time-series domains use **TimescaleDB** hypertables. Phases 13–15 add **decision records**, a **transactional event outbox**, and **intelligence projections** (Feature Store, CQRS read models, Digital Twin state).
+AGRIFLOW-AI is a **layered FastAPI backend** plus a **React SPA** (host `npm run dev` or Compose `frontend` service). Operational data lives in **PostgreSQL 17**; time-series domains use **TimescaleDB** hypertables. Phases 13–15 add **decision records**, a **transactional event outbox**, and **intelligence projections** (Feature Store, CQRS read models, Digital Twin state). Phase 16 adds **Farm Copilot**, optional **Temporal** workflows, **MCP** tool evaluation, and **Prometheus** metrics.
 
 ```mermaid
 flowchart TB
@@ -21,6 +21,7 @@ flowchart TB
     P13["Phase 13<br/>recommendations · alerts"]
     P14["Phase 14<br/>events · ml"]
     P15["Phase 15<br/>features · read-models · digital-twin · auth"]
+    P16["Phase 16<br/>copilot · mcp · metrics"]
     H["health · version"]
   end
 
@@ -40,6 +41,7 @@ flowchart TB
     REL["outbox-relay"]
     BC["business_consumer"]
     AC["audit consumer"]
+    TW["temporal-worker<br/>Phase 16"]
   end
 
   UI -->|HTTPS / dev proxy| API
@@ -47,6 +49,7 @@ flowchart TB
   P13 --> S
   P14 --> S
   P15 --> S
+  P16 --> S
   S --> REP
   S --> PUB
   REP --> PG
@@ -338,7 +341,7 @@ sequenceDiagram
 | Role | Typical use |
 |------|-------------|
 | `OPERATOR` / `ADMIN` | Materialise, refresh, twin sync, outbox |
-| `VIEWER` | Defined in schema; limited separate UI today |
+| `VIEWER` | Farm Copilot + MCP invoke when `AUTH_REQUIRED=true` |
 | Dev bypass | `AUTH_REQUIRED=false` + `APP_ENV=development` → synthetic principal |
 
 Bootstrap user created by migration `n8o9p0q1r2s3` — see `backend/.env.example` (rotate in production).
@@ -354,6 +357,7 @@ Bootstrap user created by migration `n8o9p0q1r2s3` — see `backend/.env.example
 | Decisions | `/recommendations`, `/alerts` | `/recommendations`, `/alerts` |
 | Events ops | `/events` | `/events/catalog`, `/events/outbox/*` |
 | Feature Store | `/features` | `/features/*` |
+| Farm Copilot | `/copilot` | `POST /copilot/fields/{id}/chat` |
 | Sign-in | Header | `/auth/login`, `/auth/me` |
 
 Full table: [phase-implementations/frontend-ui.md](./phase-implementations/frontend-ui.md).
@@ -369,20 +373,51 @@ Full table: [phase-implementations/frontend-ui.md](./phase-implementations/front
 | 13 | `recommendations`, `alerts` |
 | 14 | `domain_event_outbox`, `domain_event_consumer_inbox` |
 | 15 | `field_feature_snapshots`, `field_dashboard_read_models`, `field_digital_twin_states`, `platform_users` |
+| 16 | No new tables; Temporal/Copilot/MCP use existing domain data; metrics in-process |
+
+---
+
+## 9.1 Phase 16 — Copilot, Temporal, and MCP
+
+### Farm Copilot (GaaS)
+
+```mermaid
+sequenceDiagram
+  participant UI as /copilot React
+  participant API as POST /copilot/fields/{id}/chat
+  participant CS as FarmCopilotService
+  participant T as copilot/tools
+  participant LLM as OpenAI (optional)
+
+  UI->>API: message + field_id
+  API->>CS: chat()
+  CS->>T: get_field_context, soil moisture, alerts, …
+  alt COPILOT_LLM_PROVIDER=openai
+    CS->>LLM: chat completion + tool JSON
+    LLM-->>CS: natural language answer
+  else deterministic
+    CS-->>CS: template answer from tool results
+  end
+  CS-->>UI: answer, mode, tools trace
+```
+
+- `OPENAI_API_KEY` with `COPILOT_LLM_PROVIDER=none` still selects OpenAI via settings auto-default when key is set.  
+- Optional: `temporal-worker` + `TEMPORAL_ENABLED=true` starts `SoilMoistureAlertWorkflow` on low soil moisture ingest.  
+- MCP: `GET /mcp/tools`, `POST /mcp/tools/invoke`; stdio host `python -m app.mcp_stdio.server` (see `requirements-mcp.txt`).
 
 ---
 
 ## 10. Local runtime composition
 
-For **full** Phase 14 async behavior, run database + Redpanda + backend + relay + consumers (see root `docker-compose.yml`). For **API-only** dev, TimescaleDB + host `uvicorn` + host `npm run dev` is enough; set `REDPANDA_ENABLED=false` and rely on outbox rows until relay is started.
+For **UI in Podman/Docker:** `docker compose up -d db backend frontend` (ports **3000** / **8000**). For **full** Phase 14–16 async behavior, add Redpanda, relay, consumers, and optional `temporal` + `temporal-worker` (see root `docker-compose.yml`). For **API-only** dev, TimescaleDB + host `uvicorn` + host `npm run dev` is enough; set `REDPANDA_ENABLED=false` and rely on outbox rows until relay is started.
 
 ```mermaid
 flowchart LR
   subgraph minimal["Minimal UI + API dev"]
     DB1[("db :25432")]
-    BE1["uvicorn :8000"]
-    FE1["vite :3000"]
-    FE1 --> BE1 --> DB1
+    BE1["backend :8000"]
+    FE1["frontend :3000"]
+    FE1 -->|proxy /api| BE1 --> DB1
   end
 
   subgraph full["Full event pipeline"]
@@ -403,9 +438,9 @@ flowchart LR
 
 ## 11. What this document does not cover
 
-- **Phase 16** (Farm Copilot, Temporal, production ML training, full test/CI matrix) — see [06-roadmap.md](./06-roadmap.md).  
+- **Production ML training**, full E2E/load test matrix, Azure deployment — see [06-roadmap.md](./06-roadmap.md) operational backlog.  
 - **CDD bulk seeding** — engineering utility under `backend/app/cdd/` (not part of the online request path).  
-- **Per-field authorization / multi-tenant** — data model is farm-scoped; enterprise IAM is future work.
+- **Per-farm user tenancy** — platform roles exist; farm-scoped IAM is future work.
 
 ---
 
@@ -422,9 +457,11 @@ flowchart LR
 | Feature Store | `backend/app/services/feature_store.py` |
 | Read models | `backend/app/services/read_model_projection.py` |
 | Digital Twin | `backend/app/services/digital_twin.py` |
+| Farm Copilot | `backend/app/services/copilot.py`, `app/copilot/tools.py` |
+| Temporal | `backend/app/temporal/` |
 | HTTP client + JWT | `frontend/src/api/client.ts` |
 | App routes | `frontend/src/App.tsx` |
 
 ---
 
-*Last aligned with Phases 13–15 implementation references and `main` branch architecture.*
+*Last aligned with Phases 13–16 implementation references and `main` branch architecture.*
