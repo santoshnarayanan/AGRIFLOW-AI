@@ -73,6 +73,25 @@ class SoilProfileRepository(BaseRepository[SoilProfile]):
         )
         return result.scalar_one_or_none()
 
+    async def list_profiles(
+        self,
+        *,
+        field_id: uuid.UUID | None = None,
+        limit: int = 500,
+        offset: int = 0,
+    ) -> list[SoilProfile]:
+        """Return soil profiles, optionally filtered by field."""
+        stmt = (
+            select(SoilProfile)
+            .order_by(SoilProfile.created_at.desc())
+            .limit(limit)
+            .offset(offset)
+        )
+        if field_id is not None:
+            stmt = stmt.where(SoilProfile.field_id == field_id)
+        result = await self._session.execute(stmt)
+        return list(result.scalars().all())
+
     async def exists_for_field(self, field_id: uuid.UUID) -> bool:
         """
         Return True if a SoilProfile already exists for the given field.

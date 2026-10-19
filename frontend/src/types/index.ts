@@ -328,7 +328,7 @@ export type SoilTexture =
   | 'silt' | 'clay_loam' | 'clay' | 'peat'
 
 export interface SoilProfile {
-  id: number
+  id: string
   field_id: string
   ph_level: number | null
   nitrogen_content: number | null

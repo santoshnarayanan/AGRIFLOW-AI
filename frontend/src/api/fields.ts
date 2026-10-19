@@ -5,7 +5,7 @@ import { fetchFarms } from '@/api/farms'
 
 const FIELDS_KEY = ['fields'] as const
 
-async function fetchFieldsByFarm(farmId: string): Promise<Field[]> {
+export async function fetchFieldsByFarm(farmId: string): Promise<Field[]> {
   const { data } = await apiClient.get<OffsetPaginatedResponse<Field>>(
     `/farms/${farmId}/fields`,
     { params: { limit: 500, offset: 0 } },
@@ -13,7 +13,7 @@ async function fetchFieldsByFarm(farmId: string): Promise<Field[]> {
   return data.items
 }
 
-async function fetchAllFields(): Promise<Field[]> {
+export async function fetchAllFields(): Promise<Field[]> {
   const farms = await fetchFarms()
   if (farms.length === 0) return []
   const batches = await Promise.all(farms.map((f) => fetchFieldsByFarm(f.id)))

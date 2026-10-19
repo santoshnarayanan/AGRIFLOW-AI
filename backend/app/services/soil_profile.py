@@ -151,6 +151,20 @@ class SoilProfileService:
 
         return profile
 
+    async def list_soil_profiles(
+        self,
+        *,
+        field_id: uuid.UUID | None = None,
+        limit: int = 500,
+        offset: int = 0,
+    ) -> list[SoilProfile]:
+        """List soil profiles for the UI (optional field filter)."""
+        return await self._profiles.list_profiles(
+            field_id=field_id,
+            limit=limit,
+            offset=offset,
+        )
+
     # ── Update ─────────────────────────────────────────────────────────────────
 
     async def update_soil_profile(

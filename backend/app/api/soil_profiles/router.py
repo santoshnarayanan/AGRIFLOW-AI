@@ -17,7 +17,7 @@ Domain exception → HTTP status mapping
 
 import uuid
 
-from fastapi import APIRouter, HTTPException, status
+from fastapi import APIRouter, HTTPException, Query, status
 
 from app.api.deps import SoilProfileServiceDep
 from app.core.logging import get_logger
@@ -31,6 +31,30 @@ from app.services.soil_profile import DuplicateSoilProfileError, SoilProfileNotF
 
 router = APIRouter(tags=["Soil Profiles"])
 logger = get_logger(__name__)
+
+
+# ── List (UI) ──────────────────────────────────────────────────────────────────
+
+
+@router.get(
+    "/soil-profiles",
+    response_model=list[SoilProfileResponse],
+    status_code=status.HTTP_200_OK,
+    summary="List soil profiles",
+    description="Return soil profiles for all fields, or filter by ``field_id``.",
+)
+async def list_soil_profiles(
+    service: SoilProfileServiceDep,
+    field_id: uuid.UUID | None = Query(default=None, description="Optional field filter"),
+    limit: int = Query(default=500, ge=1, le=500),
+    offset: int = Query(default=0, ge=0),
+) -> list[SoilProfileResponse]:
+    profiles = await service.list_soil_profiles(
+        field_id=field_id,
+        limit=limit,
+        offset=offset,
+    )
+    return [SoilProfileResponse.model_validate(p) for p in profiles]
 
 
 # ── Create ─────────────────────────────────────────────────────────────────────

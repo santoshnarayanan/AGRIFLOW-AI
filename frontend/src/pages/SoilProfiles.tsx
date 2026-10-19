@@ -328,7 +328,9 @@ export function SoilProfiles() {
   const [editProfile, setEditProfile] = useState<SoilProfile | null>(null)
   const [deleteProfile, setDeleteProfile] = useState<SoilProfile | null>(null)
 
-  const { data: fields } = useFields(selectedFarmId)
+  const { data: farmFields } = useFields(selectedFarmId)
+  const { data: allFields } = useFields(undefined)
+  const fields = selectedFarmId ? farmFields : allFields
   const { data: profiles, isLoading, isError } = useSoilProfiles(selectedFieldId)
   const { mutate: createProfile, isPending: creating } = useCreateSoilProfile()
   const { mutate: updateProfile, isPending: updating } = useUpdateSoilProfile()
@@ -347,7 +349,7 @@ export function SoilProfiles() {
       potassium_content: numOrUndef(values.potassium_content),
       organic_matter: numOrUndef(values.organic_matter),
       moisture_content: numOrUndef(values.moisture_content),
-      texture: values.texture ? (values.texture as SoilTexture) : undefined,
+      texture: (values.texture ? values.texture : 'loam') as SoilTexture,
       notes: values.notes || undefined,
       recorded_at: values.recorded_at || undefined,
     }
