@@ -382,6 +382,8 @@ export interface Crop {
   name: string
   variety: string | null
   growth_stage: GrowthStage
+  /** API value when not in UI growth-stage enum (e.g. ``BBCH-59``). */
+  growth_stage_label?: string | null
   planting_date: string | null
   expected_harvest_date: string | null
   actual_harvest_date: string | null

@@ -20,6 +20,7 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
 import { useFarms } from '@/api/farms'
+import { cropDisplayName, cropDisplayVariety } from '@/lib/cropDisplay'
 import { useFields } from '@/api/fields'
 import { useCrops } from '@/api/crops'
 import { useYieldRecords, useCreateYieldRecord, useUpdateYieldRecord, useDeleteYieldRecord } from '@/api/yield'
@@ -335,7 +336,7 @@ function RecordDialog({ open, onOpenChange, editing, allFields }: RecordDialogPr
                     <SelectItem value="">— No crop —</SelectItem>
                     {crops.map(c => (
                       <SelectItem key={c.id} value={String(c.id)}>
-                        {c.name}{c.variety ? ` (${c.variety})` : ''}
+                        {cropDisplayName(c)}{cropDisplayVariety(c) ? ` (${cropDisplayVariety(c)})` : ''}
                       </SelectItem>
                     ))}
                   </SelectContent>

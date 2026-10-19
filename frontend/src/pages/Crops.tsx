@@ -21,6 +21,7 @@ import { useFarms } from '@/api/farms'
 import { useFields } from '@/api/fields'
 import { useCrops, useCreateCrop, useUpdateCrop, useDeleteCrop } from '@/api/crops'
 import { formatDate, cn } from '@/lib/utils'
+import { cropDisplayName, cropDisplayVariety } from '@/lib/cropDisplay'
 import type { Crop, GrowthStage, CropStatus, CropCreate, CropUpdate } from '@/types'
 
 // ─── Constants ────────────────────────────────────────────────────────────────
@@ -64,8 +65,9 @@ function statusLabel(status: CropStatus) {
 
 // ─── Growth stage stepper ─────────────────────────────────────────────────────
 
-function GrowthStagePill({ stage }: { stage: GrowthStage }) {
+function GrowthStagePill({ stage, label }: { stage: GrowthStage; label?: string | null }) {
   const idx = stageProgress(stage)
+  const display = label?.trim() ? label : (GROWTH_STAGES[idx]?.label ?? stage)
   const colors: Record<GrowthStage, string> = {
     seedling: 'bg-lime-100 text-lime-800',
     vegetative: 'bg-green-100 text-green-800',
@@ -77,7 +79,7 @@ function GrowthStagePill({ stage }: { stage: GrowthStage }) {
   return (
     <div className="flex items-center gap-1.5">
       <span className={cn('inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-semibold', colors[stage])}>
-        {GROWTH_STAGES[idx]?.label ?? stage}
+        {display}
       </span>
     </div>
   )
@@ -299,7 +301,7 @@ function DeleteCropDialog({
         <DialogHeader>
           <DialogTitle>Delete Crop</DialogTitle>
           <DialogDescription>
-            Delete <strong>{crop?.name}{crop?.variety ? ` (${crop.variety})` : ''}</strong>?
+            Delete <strong>{crop ? cropDisplayName(crop) : ''}{crop && cropDisplayVariety(crop) ? ` (${cropDisplayVariety(crop)})` : ''}</strong>?
             Associated yield records, disease observations, irrigation events, and AI
             recommendations linked to this crop will lose their crop reference (set to null).
             This action cannot be undone.
@@ -455,7 +457,7 @@ export function Crops() {
           <CardContent className="p-4 text-center">
             <p className="text-2xl font-bold">
               {crops
-                ? [...new Set(crops.map((c) => c.name))].length
+                ? [...new Set(crops.map((c) => cropDisplayName(c)))].length
                 : '—'}
             </p>
             <p className="text-xs text-muted-foreground mt-0.5">Unique Varieties</p>
@@ -523,10 +525,10 @@ export function Crops() {
                     <TableRow key={crop.id}>
                       <TableCell>
                         <div>
-                          <p className="font-medium">{crop.name}</p>
-                          <p className="text-xs text-muted-foreground">
-                            {crop.variety ?? <span className="italic">No variety</span>}
-                          </p>
+                          <p className="font-medium">{cropDisplayName(crop)}</p>
+                          {cropDisplayVariety(crop) ? (
+                            <p className="text-xs text-muted-foreground">{cropDisplayVariety(crop)}</p>
+                          ) : null}
                         </div>
                       </TableCell>
                       <TableCell>
@@ -540,7 +542,7 @@ export function Crops() {
                         </div>
                       </TableCell>
                       <TableCell>
-                        <GrowthStagePill stage={crop.growth_stage} />
+                        <GrowthStagePill stage={crop.growth_stage} label={crop.growth_stage_label} />
                       </TableCell>
                       <TableCell>
                         <Badge variant={statusVariant(crop.status)}>
@@ -615,8 +617,8 @@ export function Crops() {
           <DialogHeader>
             <DialogTitle>Edit Crop</DialogTitle>
             <DialogDescription>
-              Update details for {editCrop?.name}
-              {editCrop?.variety ? ` (${editCrop.variety})` : ''}.
+              Update details for {editCrop ? cropDisplayName(editCrop) : ''}
+              {editCrop && cropDisplayVariety(editCrop) ? ` (${cropDisplayVariety(editCrop)})` : ''}.
             </DialogDescription>
           </DialogHeader>
           {editCrop && (
@@ -625,8 +627,8 @@ export function Crops() {
               lockedFieldId={editCrop.field_id}
               defaultValues={{
                 field_id: String(editCrop.field_id),
-                name: editCrop.name,
-                variety: editCrop.variety ?? '',
+                name: cropDisplayName(editCrop),
+                variety: cropDisplayVariety(editCrop) ?? '',
                 growth_stage: editCrop.growth_stage,
                 status: editCrop.status,
                 planting_date: editCrop.planting_date ?? '',
