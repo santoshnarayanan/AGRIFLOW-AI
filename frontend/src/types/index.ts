@@ -141,9 +141,9 @@ export interface SatelliteAnalysisUpdate {
 export type DiseaseSeverity = 'low' | 'moderate' | 'high' | 'critical'
 
 export interface DiseaseObservation {
-  id: number
+  id: string
   field_id: string
-  crop_id: number | null
+  crop_id: string | null
   disease_name: string
   severity: DiseaseSeverity
   affected_area_percentage: number | null
@@ -158,7 +158,7 @@ export interface DiseaseObservation {
 
 export interface DiseaseObservationCreate {
   field_id: string
-  crop_id?: number
+  crop_id?: string
   disease_name: string
   severity: DiseaseSeverity
   affected_area_percentage?: number
@@ -170,7 +170,7 @@ export interface DiseaseObservationCreate {
 }
 
 export interface DiseaseObservationUpdate {
-  crop_id?: number | null
+  crop_id?: string | null
   disease_name?: string
   severity?: DiseaseSeverity
   affected_area_percentage?: number
@@ -185,9 +185,9 @@ export interface DiseaseObservationUpdate {
 export type YieldGrade = 'premium' | 'grade_a' | 'grade_b' | 'grade_c' | 'commercial' | 'reject'
 
 export interface YieldRecord {
-  id: number
+  id: string
   field_id: string
-  crop_id: number | null
+  crop_id: string | null
   harvest_date: string
   quantity: number
   unit: string
@@ -202,7 +202,7 @@ export interface YieldRecord {
 
 export interface YieldRecordCreate {
   field_id: string
-  crop_id?: number
+  crop_id?: string
   harvest_date: string
   quantity: number
   unit: string
@@ -214,7 +214,7 @@ export interface YieldRecordCreate {
 }
 
 export interface YieldRecordUpdate {
-  crop_id?: number | null
+  crop_id?: string | null
   quantity?: number
   unit?: string
   quality_grade?: YieldGrade | null
@@ -230,9 +230,9 @@ export type IrrigationMethod =
   | 'drip' | 'sprinkler' | 'flood' | 'furrow' | 'center_pivot' | 'subsurface'
 
 export interface IrrigationEvent {
-  id: number
+  id: string
   field_id: string
-  crop_id: number | null
+  crop_id: string | null
   start_time: string
   end_time: string | null
   duration_minutes: number | null
@@ -245,7 +245,7 @@ export interface IrrigationEvent {
 
 export interface IrrigationEventCreate {
   field_id: string
-  crop_id?: number
+  crop_id?: string
   start_time: string
   end_time?: string
   duration_minutes?: number
@@ -255,7 +255,8 @@ export interface IrrigationEventCreate {
 }
 
 export interface IrrigationEventUpdate {
-  crop_id?: number | null
+  crop_id?: string | null
+  start_time?: string
   end_time?: string
   duration_minutes?: number
   water_amount?: number

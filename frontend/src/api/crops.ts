@@ -122,7 +122,7 @@ async function fetchCropsByField(fieldId: string): Promise<Crop[]> {
   return data.items.map(mapCropFromApi)
 }
 
-async function fetchAllCrops(): Promise<Crop[]> {
+export async function fetchAllCrops(): Promise<Crop[]> {
   const farms = await fetchFarms()
   const fieldBatches = await Promise.all(
     farms.map(async (farm) => {

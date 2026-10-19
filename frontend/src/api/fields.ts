@@ -39,10 +39,11 @@ async function deleteField(id: string): Promise<void> {
   await apiClient.delete(`/fields/${id}`)
 }
 
-export function useFields(farmId?: string) {
+export function useFields(farmId?: string, options?: { enabled?: boolean }) {
   return useQuery({
     queryKey: farmId ? [...FIELDS_KEY, 'farm', farmId] : [...FIELDS_KEY, 'all'],
     queryFn: () => (farmId ? fetchFieldsByFarm(farmId) : fetchAllFields()),
+    enabled: options?.enabled ?? true,
   })
 }
 

@@ -8,6 +8,8 @@ export const apiClient = axios.create({
   headers: { 'Content-Type': 'application/json' },
   // Local CDD/demo stacks can be slow (many fields × weather rows); avoid false "backend down" errors.
   timeout: 180_000,
+  // FastAPI repeated query params: field_ids=a&field_ids=b (not field_ids[]=a)
+  paramsSerializer: { indexes: null },
 })
 
 apiClient.interceptors.request.use((config) => {
