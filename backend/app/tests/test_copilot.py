@@ -12,6 +12,7 @@ from httpx import ASGITransport, AsyncClient
 from app.api.deps import get_copilot_service, get_session
 from app.core.config import get_settings
 from app.main import app
+from app.copilot.tools import _tool_get_field_context
 from app.services.field import FieldNotFoundError
 
 settings = get_settings()
@@ -44,6 +45,41 @@ async def test_mcp_invoke_unknown_tool() -> None:
         assert response.status_code == 400
     finally:
         app.dependency_overrides.clear()
+
+
+@pytest.mark.asyncio
+async def test_get_field_context_uses_farm_name() -> None:
+    field_id = uuid.uuid4()
+    farm_id = uuid.uuid4()
+    field = AsyncMock()
+    field.id = field_id
+    field.farm_id = farm_id
+    field.name = "Research Plot A"
+    field.area_hectares = 8
+
+    farm = AsyncMock()
+    farm.farm_name = "AGRIFLOW Demonstration Farm"
+
+    session = AsyncMock()
+    field_repo = AsyncMock()
+    field_repo.get_by_id = AsyncMock(return_value=field)
+    farm_repo = AsyncMock()
+    farm_repo.get_by_id = AsyncMock(return_value=farm)
+
+    from app.copilot import tools as tools_module
+
+    original_field_repo = tools_module.FieldRepository
+    original_farm_repo = tools_module.FarmRepository
+    tools_module.FieldRepository = lambda _session: field_repo  # type: ignore[misc,assignment]
+    tools_module.FarmRepository = lambda _session: farm_repo  # type: ignore[misc,assignment]
+    try:
+        result = await _tool_get_field_context(session, {"field_id": str(field_id)})
+    finally:
+        tools_module.FieldRepository = original_field_repo
+        tools_module.FarmRepository = original_farm_repo
+
+    assert result["field_name"] == "Research Plot A"
+    assert result["farm_name"] == "AGRIFLOW Demonstration Farm"
 
 
 @pytest.mark.asyncio

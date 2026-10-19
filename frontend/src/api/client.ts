@@ -26,7 +26,17 @@ apiClient.interceptors.request.use((config) => {
 apiClient.interceptors.response.use(
   (res) => res,
   (err) => {
-    const message = err.response?.data?.detail ?? err.message ?? 'Request failed'
+    const detail = err.response?.data?.detail
+    let message: string
+    if (typeof detail === 'string') {
+      message = detail
+    } else if (Array.isArray(detail)) {
+      message = detail.map((item) => item.msg ?? JSON.stringify(item)).join('; ')
+    } else if (detail && typeof detail === 'object' && 'message' in detail) {
+      message = String((detail as { message: unknown }).message)
+    } else {
+      message = err.message ?? 'Request failed'
+    }
     return Promise.reject(new Error(message))
   }
 )

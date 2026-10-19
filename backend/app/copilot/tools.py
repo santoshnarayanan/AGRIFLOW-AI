@@ -46,7 +46,7 @@ async def _tool_get_field_context(session: AsyncSession, args: dict[str, Any]) -
         "field_id": str(field.id),
         "field_name": field.name,
         "farm_id": str(field.farm_id),
-        "farm_name": farm.name if farm else None,
+        "farm_name": farm.farm_name if farm else None,
         "area_hectares": float(field.area_hectares) if field.area_hectares else None,
     }
 

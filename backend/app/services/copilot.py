@@ -72,8 +72,17 @@ class FarmCopilotService:
             tool_trace.append({"tool": "get_dashboard_kpis", "result": kpis})
 
         if self._settings.COPILOT_LLM_PROVIDER != "none":
-            answer = await self._llm_answer(message, context, tool_trace)
-            mode = self._settings.COPILOT_LLM_PROVIDER
+            try:
+                answer = await self._llm_answer(message, context, tool_trace)
+                mode = self._settings.COPILOT_LLM_PROVIDER
+            except (RuntimeError, httpx.HTTPError) as exc:
+                logger.warning(
+                    "copilot.llm.fallback_to_deterministic",
+                    provider=self._settings.COPILOT_LLM_PROVIDER,
+                    error=str(exc),
+                )
+                answer = self._deterministic_answer(message, context, tool_trace)
+                mode = "deterministic"
         else:
             answer = self._deterministic_answer(message, context, tool_trace)
             mode = "deterministic"
