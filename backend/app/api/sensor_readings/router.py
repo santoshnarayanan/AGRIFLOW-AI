@@ -22,10 +22,11 @@ Domain exception → HTTP status mapping (ADR-007-33)
 
 import uuid
 
-from fastapi import APIRouter, HTTPException, status
+from fastapi import APIRouter, HTTPException, Query, status
 
 from app.api.deps import SensorReadingServiceDep
 from app.core.logging import get_logger
+from app.schemas.common import PaginatedResponse
 from app.schemas.sensor_reading import SensorReadingCreate, SensorReadingResponse
 from app.services.field import FieldNotFoundError
 from app.services.sensor_reading import InvalidSensorTimestampError, SensorReadingNotFoundError
@@ -77,21 +78,37 @@ async def create_sensor_reading(
 
 @router.get(
     "/fields/{field_id}/sensor-readings",
-    response_model=list[SensorReadingResponse],
+    response_model=PaginatedResponse[SensorReadingResponse],
     status_code=status.HTTP_200_OK,
     summary="List sensor readings for a field",
     description=(
-        "Return all telemetry observations belonging to a field, ordered by "
-        "recorded_at descending (most recent observation first)."
+        "Return telemetry observations belonging to a field, ordered by "
+        "recorded_at descending (most recent observation first). "
+        "Supports pagination via ``limit`` and ``offset``."
     ),
 )
 async def list_field_sensor_readings(
     field_id: uuid.UUID,
     service: SensorReadingServiceDep,
-) -> list[SensorReadingResponse]:
+    limit: int = Query(
+        default=500,
+        ge=1,
+        le=500,
+        description="Maximum number of records to return",
+    ),
+    offset: int = Query(
+        default=0,
+        ge=0,
+        description="Number of records to skip",
+    ),
+) -> PaginatedResponse[SensorReadingResponse]:
     log = logger.bind(field_id=str(field_id))
     try:
-        readings = await service.list_field_sensor_readings(field_id)
+        readings = await service.list_field_sensor_readings(
+            field_id,
+            limit=limit,
+            offset=offset,
+        )
     except FieldNotFoundError as exc:
         log.warning("api.sensor_readings.list.field_not_found")
         raise HTTPException(
@@ -99,7 +116,12 @@ async def list_field_sensor_readings(
             detail=str(exc),
         ) from exc
     log.info("api.sensor_readings.list.success", count=len(readings))
-    return [SensorReadingResponse.model_validate(r) for r in readings]
+    return PaginatedResponse[SensorReadingResponse](
+        items=[SensorReadingResponse.model_validate(r) for r in readings],
+        total=len(readings),
+        limit=limit,
+        offset=offset,
+    )
 
 
 # ── Get single ─────────────────────────────────────────────────────────────────

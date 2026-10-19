@@ -195,9 +195,12 @@ class SensorReadingService:
     async def list_field_sensor_readings(
         self,
         field_id: uuid.UUID,
+        *,
+        limit: int = 500,
+        offset: int = 0,
     ) -> list[SensorReading]:
         """
-        Return all sensor readings belonging to a field, ordered by
+        Return sensor readings belonging to a field, ordered by
         recorded_at descending (most recent reading first).
 
         Repository ordering (``ORDER BY recorded_at DESC``) is authoritative;
@@ -216,7 +219,11 @@ class SensorReadingService:
             log.warning("sensor_reading_service.list.field_not_found")
             raise FieldNotFoundError(f"Field '{field_id}' does not exist.")
 
-        readings = await self._readings.list_by_field(field_id)
+        readings = await self._readings.list_by_field(
+            field_id,
+            limit=limit,
+            offset=offset,
+        )
         log.debug(
             "sensor_reading_service.list.success",
             count=len(readings),

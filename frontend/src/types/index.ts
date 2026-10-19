@@ -272,7 +272,7 @@ export type SensorType =
   | 'electrical_conductivity' | 'leaf_wetness'
 
 export interface SensorReading {
-  id: number
+  id: string
   field_id: string
   sensor_id: string | null
   sensor_type: SensorType

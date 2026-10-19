@@ -96,24 +96,23 @@ class SensorReadingRepository(BaseRepository[SensorReading]):
     async def list_by_field(
         self,
         field_id: uuid.UUID,
+        *,
+        limit: int = 500,
+        offset: int = 0,
     ) -> list[SensorReading]:
         """
-        Return all sensor readings belonging to a field, ordered by
+        Return sensor readings belonging to a field, ordered by
         recorded_at descending (most recent reading first).
 
-        No pagination, date-range filtering, or aggregation is applied —
-        all query refinements are deferred to future repository iterations
-        per ADR-007-21.  The service layer is responsible for any downstream
-        result processing.
-
-        Ordering by ``recorded_at DESC`` is the canonical telemetry access
-        pattern and maps directly to a TimescaleDB hypertable scan without
-        structural change when that upgrade is made.
+        Pagination via ``limit`` and ``offset`` avoids loading full hypertable
+        scans into API memory for high-volume CDD/demo datasets.
         """
         result = await self._session.execute(
             select(SensorReading)
             .where(SensorReading.field_id == field_id)
             .order_by(SensorReading.recorded_at.desc())
+            .limit(limit)
+            .offset(offset)
         )
         return list(result.scalars().all())
 

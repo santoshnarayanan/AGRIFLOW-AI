@@ -67,6 +67,9 @@ const TYPE_COLOR: Record<SensorType, string> = {
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
+const DEFAULT_PERIOD_FROM = '2025-06-01'
+const DEFAULT_PERIOD_TO = '2026-05-31'
+
 function formatChartDate(iso: string) {
   const d = new Date(iso)
   return `${d.getMonth() + 1}/${d.getDate()} ${String(d.getHours()).padStart(2, '0')}:00`
@@ -417,25 +420,32 @@ function TypeSummaryGrid({ readings }: TypeSummaryProps) {
 
 export function Sensors() {
   const [selectedFarmId, setSelectedFarmId] = useState<string | undefined>()
-  const [selectedFieldId, setSelectedFieldId] = useState<number | undefined>()
+  const [selectedFieldId, setSelectedFieldId] = useState<string | undefined>()
   const [selectedType, setSelectedType] = useState<SensorType | 'all'>('all')
   const [logOpen, setLogOpen] = useState(false)
   const [deleteTarget, setDeleteTarget] = useState<SensorReading | null>(null)
 
-  const now = new Date()
-  const sevenDaysAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000)
-  const [fromDate, setFromDate] = useState(sevenDaysAgo.toISOString().slice(0, 10))
-  const [toDate, setToDate] = useState(now.toISOString().slice(0, 10))
+  const [fromDate, setFromDate] = useState(DEFAULT_PERIOD_FROM)
+  const [toDate, setToDate] = useState(DEFAULT_PERIOD_TO)
 
   const { data: farms = [] } = useFarms()
-  const { data: fields = [] } = useFields(selectedFarmId)
+  const { data: fields = [], isSuccess: fieldsReady, isLoading: fieldsLoading } =
+    useFields(selectedFarmId)
 
-  const { data: readings = [], isLoading } = useSensorReadings({
-    fieldId: selectedFieldId,
+  const fieldIds = useMemo(() => {
+    if (selectedFieldId) return [selectedFieldId]
+    return fields.map((f) => f.id)
+  }, [selectedFieldId, fields])
+
+  const { data: readings = [], isLoading: readingsLoading, isFetching } = useSensorReadings({
+    fieldIds,
     sensorType: selectedType !== 'all' ? selectedType : undefined,
-    from: fromDate ? `${fromDate}T00:00:00Z` : undefined,
-    to: toDate ? `${toDate}T23:59:59Z` : undefined,
+    from: fromDate,
+    to: toDate,
+    limit: 500,
+    enabled: fieldsReady && fieldIds.length > 0,
   })
+  const isLoading = fieldsLoading || readingsLoading || isFetching
 
   // Stats
   const stats = useMemo(() => {
@@ -498,7 +508,7 @@ export function Sensors() {
 
         <Select
           value={selectedFieldId ? String(selectedFieldId) : 'all'}
-          onValueChange={v => setSelectedFieldId(v !== 'all' ? Number(v) : undefined)}
+          onValueChange={v => setSelectedFieldId(v !== 'all' ? v : undefined)}
           disabled={!selectedFarmId}
         >
           <SelectTrigger className="w-44">
