@@ -296,7 +296,7 @@ export interface SensorReadingCreate {
 // ─── Weather Observation ──────────────────────────────────────────────────────
 
 export interface WeatherObservation {
-  id: number
+  id: string
   field_id: string
   temperature: number | null
   humidity: number | null

@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useMemo, useState } from 'react'
 import { useForm, Controller } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
@@ -30,6 +30,10 @@ import { formatDateTime, cn } from '@/lib/utils'
 import type { WeatherObservationCreate } from '@/types'
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
+
+/** CDD demo dataset window — avoids empty UI when calendar date is outside seed range. */
+const DEFAULT_PERIOD_FROM = '2025-06-01'
+const DEFAULT_PERIOD_TO = '2026-05-31'
 
 function optNum(s: string): number | undefined {
   return s === '' ? undefined : Number(s)
@@ -279,21 +283,40 @@ export function Weather() {
   const [selectedFarmId, setSelectedFarmId] = useState<string | undefined>()
   const [selectedFieldId, setSelectedFieldId] = useState<string | undefined>()
   const [logOpen, setLogOpen] = useState(false)
-  const [deleteId, setDeleteId] = useState<number | null>(null)
+  const [deleteId, setDeleteId] = useState<string | null>(null)
 
-  // Default date range: last 7 days
-  const toDate = new Date().toISOString().split('T')[0]
-  const fromDate = new Date(Date.now() - 7 * 86400_000).toISOString().split('T')[0]
-  const [from, setFrom] = useState(fromDate)
-  const [to, setTo] = useState(toDate)
+  const [from, setFrom] = useState(DEFAULT_PERIOD_FROM)
+  const [to, setTo] = useState(DEFAULT_PERIOD_TO)
 
-  const { data: fields } = useFields(selectedFarmId)
-  const { data: observations, isLoading, isError } = useWeather({
+  const { data: fields, isSuccess: fieldsReady, isLoading: fieldsLoading } = useFields(
+    selectedFarmId,
+  )
+  const fieldIds = useMemo(() => {
+    if (selectedFieldId) return [selectedFieldId]
+    return fields?.map((f) => f.id) ?? []
+  }, [selectedFieldId, fields])
+
+  const weatherEnabled =
+    selectedFieldId != null ||
+    !selectedFarmId ||
+    (fieldsReady && fieldIds.length > 0)
+
+  const {
+    data: observations,
+    isLoading: weatherLoading,
+    isError,
+    isFetching,
+    error: weatherError,
+  } = useWeather({
     fieldId: selectedFieldId,
+    fieldIds: selectedFieldId ? undefined : fieldIds.length > 0 ? fieldIds : undefined,
     from,
     to,
-    limit: 200,
+    limit: 500,
+    enabled: weatherEnabled,
   })
+  const isLoading =
+    (selectedFarmId && !selectedFieldId && fieldsLoading) || weatherLoading || isFetching
   const { mutate: createObs, isPending: creating } = useCreateWeather()
   const { mutate: deleteObs } = useDeleteWeather()
 
@@ -482,8 +505,21 @@ export function Weather() {
               {Array.from({ length: 5 }).map((_, i) => <Skeleton key={i} className="h-10 w-full" />)}
             </div>
           ) : isError ? (
-            <div className="py-12 text-center text-sm text-destructive">
-              Failed to load data. Is the backend running?
+            <div className="py-12 text-center text-sm text-destructive space-y-2">
+              <p>Failed to load weather data.</p>
+              <p className="text-xs text-muted-foreground max-w-md mx-auto">
+                {weatherError instanceof Error ? weatherError.message : 'Request failed'}
+              </p>
+              <p className="text-xs text-muted-foreground">
+                If you just updated the app, restart the backend container so{' '}
+                <code className="text-[11px]">GET /weather-records</code> is available.
+              </p>
+            </div>
+          ) : selectedFarmId && fieldsReady && fieldIds.length === 0 ? (
+            <div className="flex flex-col items-center justify-center py-16 text-muted-foreground">
+              <CloudSun className="mb-3 h-10 w-10 opacity-20" />
+              <p className="font-medium">No fields to load weather for</p>
+              <p className="text-sm">Create a farm and field first, or adjust filters.</p>
             </div>
           ) : observations?.length === 0 ? (
             <div className="flex flex-col items-center justify-center py-16 text-muted-foreground">

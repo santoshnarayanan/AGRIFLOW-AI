@@ -204,6 +204,22 @@ class WeatherRecordService:
             offset=offset,
         )
 
+    async def list_weather_records(
+        self,
+        *,
+        field_id: uuid.UUID | None = None,
+        field_ids: list[uuid.UUID] | None = None,
+        limit: int = 500,
+        offset: int = 0,
+    ) -> list[WeatherRecord]:
+        """List weather observations for the UI (optional field filter)."""
+        return await self._records.list_records(
+            field_id=field_id,
+            field_ids=field_ids,
+            limit=limit,
+            offset=offset,
+        )
+
     # ── Update ─────────────────────────────────────────────────────────────────
 
     async def update_weather_record(

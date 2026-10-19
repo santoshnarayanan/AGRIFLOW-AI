@@ -136,6 +136,55 @@ async def list_field_weather_records(
     )
 
 
+# ── List (UI) ──────────────────────────────────────────────────────────────────
+
+
+@router.get(
+    "/weather-records",
+    response_model=PaginatedResponse[WeatherRecordResponse],
+    status_code=status.HTTP_200_OK,
+    summary="List weather records",
+    description=(
+        "Return weather observations across the platform, optionally filtered "
+        "by ``field_id`` or repeated ``field_ids`` query parameters."
+    ),
+)
+async def list_weather_records(
+    service: WeatherRecordServiceDep,
+    field_id: uuid.UUID | None = Query(
+        default=None,
+        description="Return observations for a single field",
+    ),
+    field_ids: list[uuid.UUID] | None = Query(
+        default=None,
+        description="Return observations for any of these fields",
+    ),
+    limit: int = Query(
+        default=500,
+        ge=1,
+        le=500,
+        description="Maximum number of records to return",
+    ),
+    offset: int = Query(
+        default=0,
+        ge=0,
+        description="Number of records to skip",
+    ),
+) -> PaginatedResponse[WeatherRecordResponse]:
+    records = await service.list_weather_records(
+        field_id=field_id,
+        field_ids=field_ids,
+        limit=limit,
+        offset=offset,
+    )
+    return PaginatedResponse[WeatherRecordResponse](
+        items=[WeatherRecordResponse.model_validate(r) for r in records],
+        total=len(records),
+        limit=limit,
+        offset=offset,
+    )
+
+
 # ── Get single ─────────────────────────────────────────────────────────────────
 
 

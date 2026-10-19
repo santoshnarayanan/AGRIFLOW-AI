@@ -6,6 +6,8 @@ const eventsOpsKey = import.meta.env.VITE_EVENTS_OPS_API_KEY as string | undefin
 export const apiClient = axios.create({
   baseURL: import.meta.env.VITE_API_URL ?? '/api/v1',
   headers: { 'Content-Type': 'application/json' },
+  // Local CDD/demo stacks can be slow (many fields × weather rows); avoid false "backend down" errors.
+  timeout: 180_000,
 })
 
 apiClient.interceptors.request.use((config) => {

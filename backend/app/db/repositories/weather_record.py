@@ -84,6 +84,28 @@ class WeatherRecordRepository(BaseRepository[WeatherRecord]):
         )
         return list(result.scalars().all())
 
+    async def list_records(
+        self,
+        *,
+        field_id: uuid.UUID | None = None,
+        field_ids: list[uuid.UUID] | None = None,
+        limit: int = 500,
+        offset: int = 0,
+    ) -> list[WeatherRecord]:
+        """Return weather observations, optionally filtered by field(s)."""
+        stmt = (
+            select(WeatherRecord)
+            .order_by(WeatherRecord.recorded_at.desc())
+            .limit(limit)
+            .offset(offset)
+        )
+        if field_id is not None:
+            stmt = stmt.where(WeatherRecord.field_id == field_id)
+        elif field_ids:
+            stmt = stmt.where(WeatherRecord.field_id.in_(field_ids))
+        result = await self._session.execute(stmt)
+        return list(result.scalars().all())
+
     async def exists(self, record_id: uuid.UUID) -> bool:
         """
         Return True if a WeatherRecord with the given UUID exists.
