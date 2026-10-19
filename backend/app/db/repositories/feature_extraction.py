@@ -173,7 +173,7 @@ class FeatureExtractionRepository:
               CASE severity
                 WHEN 'CRITICAL' THEN 4
                 WHEN 'HIGH' THEN 3
-                WHEN 'MODERATE' THEN 2
+                WHEN 'MEDIUM' THEN 2
                 WHEN 'LOW' THEN 1
                 ELSE 0
               END DESC
