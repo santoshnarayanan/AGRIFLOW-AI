@@ -58,6 +58,9 @@ const GRADE_RANK: Record<YieldGrade, number> = {
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
+const DEFAULT_PERIOD_FROM = '2025-06-01'
+const DEFAULT_PERIOD_TO = '2026-05-31'
+
 function formatQty(value: number, unit: string) {
   return `${value.toLocaleString(undefined, { maximumFractionDigits: 2 })} ${unit}`
 }
@@ -247,7 +250,7 @@ function RecordDialog({ open, onOpenChange, editing, allFields }: RecordDialogPr
 
   const onSubmit = (values: RecordFormValues) => {
     const payload = {
-      crop_id: values.crop_id ? Number(values.crop_id) : undefined,
+      crop_id: values.crop_id || undefined,
       harvest_date: values.harvest_date,
       quantity: Number(values.quantity),
       unit: values.unit,
@@ -264,8 +267,9 @@ function RecordDialog({ open, onOpenChange, editing, allFields }: RecordDialogPr
         { onSuccess: () => { onOpenChange(false); reset(defaultValues) } },
       )
     } else {
+      if (!values.crop_id) return
       createRecord.mutate(
-        { ...payload, field_id: values.field_id },
+        { ...payload, field_id: values.field_id, crop_id: values.crop_id },
         { onSuccess: () => { onOpenChange(false); reset(defaultValues) } },
       )
     }
@@ -474,25 +478,37 @@ function DeleteDialog({ record, onOpenChange }: DeleteDialogProps) {
 
 export function Yield() {
   const [selectedFarmId, setSelectedFarmId] = useState<string | undefined>()
-  const [selectedFieldId, setSelectedFieldId] = useState<number | undefined>()
+  const [selectedFieldId, setSelectedFieldId] = useState<string | undefined>()
   const [dialogOpen, setDialogOpen] = useState(false)
   const [editing, setEditing] = useState<YieldRecord | null>(null)
   const [deleteTarget, setDeleteTarget] = useState<YieldRecord | null>(null)
 
-  const now = new Date()
-  const yearAgo = new Date(now.getFullYear() - 1, now.getMonth(), now.getDate())
-  const [fromDate, setFromDate] = useState(yearAgo.toISOString().slice(0, 10))
-  const [toDate, setToDate] = useState(now.toISOString().slice(0, 10))
+  const [fromDate, setFromDate] = useState(DEFAULT_PERIOD_FROM)
+  const [toDate, setToDate] = useState(DEFAULT_PERIOD_TO)
 
   const { data: farms = [] } = useFarms()
-  const { data: fields = [] } = useFields(selectedFarmId)
+  const { data: fields = [], isSuccess: fieldsReady, isLoading: fieldsLoading } =
+    useFields(selectedFarmId)
   const { data: allFieldsFlat = [] } = useFields()
 
-  const { data: records = [], isLoading } = useYieldRecords({
+  const fieldIds = useMemo(
+    () => (selectedFieldId ? [selectedFieldId] : fields.map((f) => f.id)),
+    [selectedFieldId, fields],
+  )
+
+  const listEnabled =
+    selectedFieldId != null || !selectedFarmId || (fieldsReady && fieldIds.length > 0)
+
+  const { data: records = [], isLoading: recordsLoading, isFetching } = useYieldRecords({
     fieldId: selectedFieldId,
-    from: fromDate ? `${fromDate}T00:00:00Z` : undefined,
-    to: toDate ? `${toDate}T23:59:59Z` : undefined,
+    fieldIds: selectedFieldId ? undefined : fieldIds.length > 0 ? fieldIds : undefined,
+    from: fromDate,
+    to: toDate,
+    limit: 500,
+    enabled: listEnabled,
   })
+  const isLoading =
+    (selectedFarmId && !selectedFieldId && fieldsLoading) || recordsLoading || isFetching
 
   // Stats
   const stats = useMemo(() => {
@@ -569,7 +585,7 @@ export function Yield() {
 
         <Select
           value={selectedFieldId ? String(selectedFieldId) : 'all'}
-          onValueChange={v => setSelectedFieldId(v !== 'all' ? Number(v) : undefined)}
+          onValueChange={v => setSelectedFieldId(v !== 'all' ? v : undefined)}
           disabled={!selectedFarmId}
         >
           <SelectTrigger className="w-44">

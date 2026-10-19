@@ -53,6 +53,9 @@ const SEV_BADGE: Record<DiseaseSeverity, string> = {
 // Higher = worse (used for "worst severity" stat)
 const SEV_RANK: Record<DiseaseSeverity, number> = { low: 0, moderate: 1, high: 2, critical: 3 }
 
+const DEFAULT_PERIOD_FROM = '2025-06-01'
+const DEFAULT_PERIOD_TO = '2026-05-31'
+
 // Common disease suggestions for datalist
 const DISEASE_SUGGESTIONS = [
   'Powdery Mildew', 'Downy Mildew', 'Early Blight', 'Late Blight', 'Anthracnose',
@@ -139,7 +142,7 @@ function DiseaseFrequency({ observations }: { observations: DiseaseObservation[]
 const obsSchema = z.object({
   farm_id: z.string().min(1, 'Select a farm'),
   field_id: z.string().min(1, 'Select a field'),
-  crop_id: z.string(),
+  crop_id: z.string().min(1, 'Select a crop cycle'),
   disease_name: z.string().min(1, 'Disease name is required'),
   severity: z.string().min(1, 'Severity is required'),
   observed_at: z.string().min(1, 'Observed at is required'),
@@ -225,7 +228,7 @@ function ObsDialog({ open, onOpenChange, editing, allFields }: ObsDialogProps) {
 
   const onSubmit = (values: ObsFormValues) => {
     const payload = {
-      crop_id: values.crop_id ? Number(values.crop_id) : undefined,
+      crop_id: values.crop_id,
       disease_name: values.disease_name.trim(),
       severity: values.severity as DiseaseSeverity,
       observed_at: new Date(values.observed_at).toISOString(),
@@ -464,27 +467,46 @@ function DeleteDialog({ obs, onOpenChange }: DeleteDialogProps) {
 
 export function Disease() {
   const [selectedFarmId, setSelectedFarmId] = useState<string | undefined>()
-  const [selectedFieldId, setSelectedFieldId] = useState<number | undefined>()
+  const [selectedFieldId, setSelectedFieldId] = useState<string | undefined>()
   const [severityFilter, setSeverityFilter] = useState<DiseaseSeverity | 'all'>('all')
   const [dialogOpen, setDialogOpen] = useState(false)
   const [editing, setEditing] = useState<DiseaseObservation | null>(null)
   const [deleteTarget, setDeleteTarget] = useState<DiseaseObservation | null>(null)
 
-  const now = new Date()
-  const sixMonthsAgo = new Date(now.getFullYear(), now.getMonth() - 6, now.getDate())
-  const [fromDate, setFromDate] = useState(sixMonthsAgo.toISOString().slice(0, 10))
-  const [toDate, setToDate] = useState(now.toISOString().slice(0, 10))
+  const [fromDate, setFromDate] = useState(DEFAULT_PERIOD_FROM)
+  const [toDate, setToDate] = useState(DEFAULT_PERIOD_TO)
 
   const { data: farms = [] } = useFarms()
-  const { data: fields = [] } = useFields(selectedFarmId)
-  const { data: allFieldsFlat = [] } = useFields()
+  const { data: fields = [], isSuccess: fieldsReady, isLoading: fieldsLoading } =
+    useFields(selectedFarmId)
 
-  const { data: observations = [], isLoading } = useDiseaseObservations({
-    fieldId: selectedFieldId,
-    severity: severityFilter !== 'all' ? severityFilter : undefined,
-    from: fromDate ? `${fromDate}T00:00:00Z` : undefined,
-    to: toDate ? `${toDate}T23:59:59Z` : undefined,
+  const { data: allFieldsFlat = [] } = useFields(undefined, {
+    enabled: dialogOpen || editing != null,
   })
+
+  const fieldIds = useMemo(
+    () => (selectedFieldId ? [selectedFieldId] : fields.map((f) => f.id)),
+    [selectedFieldId, fields],
+  )
+
+  const listEnabled =
+    selectedFieldId != null || !selectedFarmId || (fieldsReady && fieldIds.length > 0)
+
+  const { data: observations = [], isLoading: observationsLoading, isFetching } =
+    useDiseaseObservations({
+      fieldId: selectedFieldId,
+      fieldIds: selectedFieldId ? undefined : fieldIds.length > 0 ? fieldIds : undefined,
+      severity: severityFilter !== 'all' ? severityFilter : undefined,
+      from: fromDate,
+      to: toDate,
+      limit: 500,
+      enabled: listEnabled,
+    })
+
+  const isLoading =
+    (selectedFarmId && !selectedFieldId && fieldsLoading) ||
+    observationsLoading ||
+    isFetching
 
   // Stats
   const stats = useMemo(() => {
@@ -554,7 +576,7 @@ export function Disease() {
 
         <Select
           value={selectedFieldId ? String(selectedFieldId) : 'all'}
-          onValueChange={v => setSelectedFieldId(v !== 'all' ? Number(v) : undefined)}
+          onValueChange={v => setSelectedFieldId(v !== 'all' ? v : undefined)}
           disabled={!selectedFarmId}
         >
           <SelectTrigger className="w-44">

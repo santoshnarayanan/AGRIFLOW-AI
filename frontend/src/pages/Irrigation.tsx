@@ -57,6 +57,12 @@ const METHOD_COLOR: Record<IrrigationMethod, string> = {
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
+const DEFAULT_PERIOD_FROM = '2025-06-01'
+const DEFAULT_PERIOD_TO = '2026-05-31'
+
+/** CDD rain-fed fields — no irrigation_events in seed data */
+const RAIN_FED_FIELD_NAMES = new Set(['East Soy Belt', 'Hilltop Barley'])
+
 function toDatetimeLocal(iso: string) {
   const d = new Date(iso)
   const pad = (n: number) => String(n).padStart(2, '0')
@@ -190,7 +196,6 @@ function EventDialog({ open, onOpenChange, editing, allFields }: EventDialogProp
 
   const onSubmit = (values: EventFormValues) => {
     const payload = {
-      crop_id: values.crop_id ? Number(values.crop_id) : undefined,
       irrigation_method: values.irrigation_method as IrrigationMethod,
       start_time: new Date(values.start_time).toISOString(),
       end_time: values.end_time ? new Date(values.end_time).toISOString() : undefined,
@@ -405,27 +410,74 @@ function DeleteDialog({ event, onOpenChange }: DeleteDialogProps) {
 
 export function Irrigation() {
   const [selectedFarmId, setSelectedFarmId] = useState<string | undefined>()
-  const [selectedFieldId, setSelectedFieldId] = useState<number | undefined>()
+  const [selectedFieldId, setSelectedFieldId] = useState<string | undefined>()
+  const [fieldFilterLabel, setFieldFilterLabel] = useState<string | undefined>()
   const [dialogOpen, setDialogOpen] = useState(false)
   const [editing, setEditing] = useState<IrrigationEvent | null>(null)
   const [deleteTarget, setDeleteTarget] = useState<IrrigationEvent | null>(null)
 
-  const now = new Date()
-  const thirtyDaysAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000)
-  const [fromDate, setFromDate] = useState(thirtyDaysAgo.toISOString().slice(0, 10))
-  const [toDate, setToDate] = useState(now.toISOString().slice(0, 10))
+  const [fromDate, setFromDate] = useState(DEFAULT_PERIOD_FROM)
+  const [toDate, setToDate] = useState(DEFAULT_PERIOD_TO)
 
   const { data: farms = [] } = useFarms()
-  const { data: fields = [] } = useFields(selectedFarmId)
+  const { data: fields = [], isSuccess: fieldsReady, isLoading: fieldsLoading } =
+    useFields(selectedFarmId)
 
-  // All fields flattened for form lookups (farm_id resolution)
-  const { data: allFieldsFlat = [] } = useFields()
-
-  const { data: events = [], isLoading } = useIrrigationEvents({
-    fieldId: selectedFieldId,
-    from: fromDate ? `${fromDate}T00:00:00Z` : undefined,
-    to: toDate ? `${toDate}T23:59:59Z` : undefined,
+  const { data: allFieldsFlat = [] } = useFields(undefined, {
+    enabled: dialogOpen || editing != null,
   })
+
+  const fieldIds = useMemo(
+    () => (selectedFieldId ? [selectedFieldId] : fields.map((f) => f.id)),
+    [selectedFieldId, fields],
+  )
+
+  const listEnabled =
+    selectedFieldId != null || !selectedFarmId || (fieldsReady && fieldIds.length > 0)
+
+  const {
+    data: events = [],
+    isLoading: eventsLoading,
+    isFetching,
+    isError,
+    error: eventsError,
+  } = useIrrigationEvents({
+    fieldId: selectedFieldId,
+    fieldIds: selectedFieldId ? undefined : fieldIds.length > 0 ? fieldIds : undefined,
+    from: fromDate,
+    to: toDate,
+    limit: 500,
+    enabled: listEnabled,
+  })
+  const isLoading =
+    (selectedFarmId && !selectedFieldId && fieldsLoading) || eventsLoading || isFetching
+
+  useEffect(() => {
+    if (!selectedFieldId || !fields.length) return
+    const name = fields.find((f) => String(f.id) === String(selectedFieldId))?.name
+    if (name) setFieldFilterLabel(name)
+  }, [selectedFieldId, fields])
+
+  const fieldIdInList = (id: string) => fields.some((f) => String(f.id) === String(id))
+
+  const fieldSelectValue =
+    selectedFieldId && fieldIdInList(selectedFieldId) ? String(selectedFieldId) : 'all'
+
+  const selectedFieldName = selectedFieldId
+    ? fields.find((f) => String(f.id) === String(selectedFieldId))?.name
+    : undefined
+  const isRainFedField =
+    selectedFieldName != null && RAIN_FED_FIELD_NAMES.has(selectedFieldName)
+
+  function handleFieldFilterChange(v: string) {
+    if (v === 'all') {
+      setSelectedFieldId(undefined)
+      setFieldFilterLabel(undefined)
+      return
+    }
+    setSelectedFieldId(v)
+    setFieldFilterLabel(fields.find((f) => String(f.id) === v)?.name)
+  }
 
   // Stats
   const stats = useMemo(() => {
@@ -482,6 +534,7 @@ export function Irrigation() {
           onValueChange={v => {
             setSelectedFarmId(v !== 'all' ? v : undefined)
             setSelectedFieldId(undefined)
+            setFieldFilterLabel(undefined)
           }}
         >
           <SelectTrigger className="w-44">
@@ -493,19 +546,32 @@ export function Irrigation() {
           </SelectContent>
         </Select>
 
-        <Select
-          value={selectedFieldId ? String(selectedFieldId) : 'all'}
-          onValueChange={v => setSelectedFieldId(v !== 'all' ? Number(v) : undefined)}
-          disabled={!selectedFarmId}
-        >
-          <SelectTrigger className="w-44">
-            <SelectValue placeholder={selectedFarmId ? 'All fields' : 'Select farm'} />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">All fields</SelectItem>
-            {fields.map(f => <SelectItem key={f.id} value={String(f.id)}>{f.name}</SelectItem>)}
-          </SelectContent>
-        </Select>
+        {selectedFarmId && fieldsLoading ? (
+          <Skeleton className="h-10 w-52" />
+        ) : selectedFarmId ? (
+          <>
+            <span className="text-muted-foreground hidden sm:inline">›</span>
+            <Select
+              key={selectedFarmId}
+              value={fieldSelectValue}
+              onValueChange={handleFieldFilterChange}
+            >
+              <SelectTrigger className="w-52 min-w-[12rem]">
+                <span className="flex-1 truncate text-left text-sm">
+                  {fieldSelectValue === 'all'
+                    ? 'All fields'
+                    : (fieldFilterLabel ?? selectedFieldName ?? 'Selected field')}
+                </span>
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All fields</SelectItem>
+                {fields.map((f) => (
+                  <SelectItem key={f.id} value={String(f.id)}>{f.name}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </>
+        ) : null}
 
         <div className="flex items-center gap-2">
           <Input
@@ -595,9 +661,23 @@ export function Irrigation() {
         <CardContent>
           {isLoading ? (
             <Skeleton className="h-56 w-full" />
+          ) : isError ? (
+            <div className="flex h-56 flex-col items-center justify-center gap-1 text-center text-sm text-destructive px-4">
+              <p>Failed to load irrigation events.</p>
+              <p className="text-xs text-muted-foreground">
+                {eventsError instanceof Error ? eventsError.message : 'Request failed'}
+              </p>
+            </div>
           ) : chartData.length === 0 ? (
-            <div className="flex h-56 items-center justify-center text-muted-foreground text-sm">
-              No irrigation events in the selected date range
+            <div className="flex h-56 flex-col items-center justify-center gap-1 text-center text-muted-foreground text-sm px-4">
+              <p>No irrigation events in the selected date range</p>
+              {isRainFedField && (
+                <p className="text-xs max-w-md">
+                  <strong>{selectedFieldName}</strong> is rain-fed in the demo dataset (no irrigation
+                  logs). Try <strong>North Wheat Pivot</strong> or <strong>South Corn Block</strong>.
+                </p>
+              )}
+              <p className="text-xs">Demo data: {DEFAULT_PERIOD_FROM} → {DEFAULT_PERIOD_TO}</p>
             </div>
           ) : (
             <ResponsiveContainer width="100%" height={240}>
@@ -646,9 +726,16 @@ export function Irrigation() {
             <div className="space-y-2 p-4">
               {Array.from({ length: 5 }).map((_, i) => <Skeleton key={i} className="h-10 w-full" />)}
             </div>
+          ) : isError ? (
+            <div className="flex h-32 items-center justify-center text-destructive text-sm px-4 text-center">
+              Could not load the event log — see chart message above.
+            </div>
           ) : events.length === 0 ? (
-            <div className="flex h-32 items-center justify-center text-muted-foreground text-sm">
-              No irrigation events found — log the first one above
+            <div className="flex h-32 flex-col items-center justify-center gap-1 text-muted-foreground text-sm px-4 text-center">
+              <p>No irrigation events found — log the first one above</p>
+              {isRainFedField && (
+                <p className="text-xs">This field has no seeded irrigation history (rain-fed).</p>
+              )}
             </div>
           ) : (
             <div className="overflow-x-auto">
