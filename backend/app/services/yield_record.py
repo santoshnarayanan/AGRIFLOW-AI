@@ -227,6 +227,24 @@ class YieldRecordService:
             offset=offset,
         )
 
+    async def list_yield_records(
+        self,
+        *,
+        field_id: uuid.UUID | None = None,
+        field_ids: list[uuid.UUID] | None = None,
+        crop_id: uuid.UUID | None = None,
+        limit: int = 500,
+        offset: int = 0,
+    ) -> list[YieldRecord]:
+        """List yield records for the UI (optional field or crop filter)."""
+        return await self._records.list_records(
+            field_id=field_id,
+            field_ids=field_ids,
+            crop_id=crop_id,
+            limit=limit,
+            offset=offset,
+        )
+
     # ── Update ─────────────────────────────────────────────────────────────────
 
     async def update_yield_record(

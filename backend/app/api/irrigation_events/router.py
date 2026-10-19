@@ -124,6 +124,55 @@ async def list_field_irrigation_events(
     )
 
 
+# ── List (UI) ──────────────────────────────────────────────────────────────────
+
+
+@router.get(
+    "/irrigation-events",
+    response_model=PaginatedResponse[IrrigationEventResponse],
+    status_code=status.HTTP_200_OK,
+    summary="List irrigation events",
+    description=(
+        "Return irrigation events across the platform, optionally filtered "
+        "by ``field_id`` or repeated ``field_ids`` query parameters."
+    ),
+)
+async def list_irrigation_events(
+    service: IrrigationEventServiceDep,
+    field_id: uuid.UUID | None = Query(
+        default=None,
+        description="Return events for a single field",
+    ),
+    field_ids: list[uuid.UUID] | None = Query(
+        default=None,
+        description="Return events for any of these fields",
+    ),
+    limit: int = Query(
+        default=500,
+        ge=1,
+        le=500,
+        description="Maximum number of records to return",
+    ),
+    offset: int = Query(
+        default=0,
+        ge=0,
+        description="Number of records to skip",
+    ),
+) -> PaginatedResponse[IrrigationEventResponse]:
+    events = await service.list_irrigation_events(
+        field_id=field_id,
+        field_ids=field_ids,
+        limit=limit,
+        offset=offset,
+    )
+    return PaginatedResponse[IrrigationEventResponse](
+        items=[IrrigationEventResponse.model_validate(e) for e in events],
+        total=len(events),
+        limit=limit,
+        offset=offset,
+    )
+
+
 # ── Get single ─────────────────────────────────────────────────────────────────
 
 

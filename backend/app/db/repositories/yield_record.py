@@ -149,6 +149,31 @@ class YieldRecordRepository(BaseRepository[YieldRecord]):
         )
         return list(result.scalars().all())
 
+    async def list_records(
+        self,
+        *,
+        field_id: uuid.UUID | None = None,
+        field_ids: list[uuid.UUID] | None = None,
+        crop_id: uuid.UUID | None = None,
+        limit: int = 500,
+        offset: int = 0,
+    ) -> list[YieldRecord]:
+        """Return yield records, optionally filtered by field or crop."""
+        stmt = (
+            select(YieldRecord)
+            .order_by(YieldRecord.recorded_at.desc())
+            .limit(limit)
+            .offset(offset)
+        )
+        if crop_id is not None:
+            stmt = stmt.where(YieldRecord.crop_id == crop_id)
+        elif field_id is not None:
+            stmt = stmt.where(YieldRecord.field_id == field_id)
+        elif field_ids:
+            stmt = stmt.where(YieldRecord.field_id.in_(field_ids))
+        result = await self._session.execute(stmt)
+        return list(result.scalars().all())
+
     async def exists(self, record_id: uuid.UUID) -> bool:
         """
         Return True if a YieldRecord with the given UUID exists.

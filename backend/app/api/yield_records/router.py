@@ -124,6 +124,60 @@ async def list_crop_yield_records(
     )
 
 
+# ── List (UI) ──────────────────────────────────────────────────────────────────
+
+
+@router.get(
+    "/yield-records",
+    response_model=PaginatedResponse[YieldRecordResponse],
+    status_code=status.HTTP_200_OK,
+    summary="List yield records",
+    description=(
+        "Return yield records across the platform, optionally filtered by "
+        "``field_id``, repeated ``field_ids``, or ``crop_id``."
+    ),
+)
+async def list_yield_records(
+    service: YieldRecordServiceDep,
+    field_id: uuid.UUID | None = Query(
+        default=None,
+        description="Return records for a single field",
+    ),
+    field_ids: list[uuid.UUID] | None = Query(
+        default=None,
+        description="Return records for any of these fields",
+    ),
+    crop_id: uuid.UUID | None = Query(
+        default=None,
+        description="Return records for a single crop cycle",
+    ),
+    limit: int = Query(
+        default=500,
+        ge=1,
+        le=500,
+        description="Maximum number of records to return",
+    ),
+    offset: int = Query(
+        default=0,
+        ge=0,
+        description="Number of records to skip",
+    ),
+) -> PaginatedResponse[YieldRecordResponse]:
+    records = await service.list_yield_records(
+        field_id=field_id,
+        field_ids=field_ids,
+        crop_id=crop_id,
+        limit=limit,
+        offset=offset,
+    )
+    return PaginatedResponse[YieldRecordResponse](
+        items=[YieldRecordResponse.model_validate(r) for r in records],
+        total=len(records),
+        limit=limit,
+        offset=offset,
+    )
+
+
 # ── Get single ─────────────────────────────────────────────────────────────────
 
 

@@ -105,6 +105,28 @@ class IrrigationEventRepository(BaseRepository[IrrigationEvent]):
         )
         return list(result.scalars().all())
 
+    async def list_records(
+        self,
+        *,
+        field_id: uuid.UUID | None = None,
+        field_ids: list[uuid.UUID] | None = None,
+        limit: int = 500,
+        offset: int = 0,
+    ) -> list[IrrigationEvent]:
+        """Return irrigation events, optionally filtered by field(s)."""
+        stmt = (
+            select(IrrigationEvent)
+            .order_by(IrrigationEvent.started_at.desc())
+            .limit(limit)
+            .offset(offset)
+        )
+        if field_id is not None:
+            stmt = stmt.where(IrrigationEvent.field_id == field_id)
+        elif field_ids:
+            stmt = stmt.where(IrrigationEvent.field_id.in_(field_ids))
+        result = await self._session.execute(stmt)
+        return list(result.scalars().all())
+
     async def exists(self, record_id: uuid.UUID) -> bool:
         """
         Return True if an IrrigationEvent with the given UUID exists.

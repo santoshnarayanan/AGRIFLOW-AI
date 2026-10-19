@@ -187,6 +187,22 @@ class IrrigationEventService:
             offset=offset,
         )
 
+    async def list_irrigation_events(
+        self,
+        *,
+        field_id: uuid.UUID | None = None,
+        field_ids: list[uuid.UUID] | None = None,
+        limit: int = 500,
+        offset: int = 0,
+    ) -> list[IrrigationEvent]:
+        """List irrigation events for the UI (optional field filter)."""
+        return await self._events.list_records(
+            field_id=field_id,
+            field_ids=field_ids,
+            limit=limit,
+            offset=offset,
+        )
+
     # ── Update ─────────────────────────────────────────────────────────────────
 
     async def update_irrigation_event(
