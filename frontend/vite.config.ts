@@ -13,6 +13,10 @@ export default defineConfig({
   server: {
     port: 3000,
     host: true,
+    // Bind mounts on Windows often miss fs events; polling keeps HMR in sync in Compose.
+    watch: process.env.VITE_API_PROXY_TARGET
+      ? { usePolling: true, interval: 1000 }
+      : undefined,
     proxy: {
       '/api': {
         target: apiProxyTarget,
