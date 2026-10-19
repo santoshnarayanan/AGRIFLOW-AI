@@ -96,8 +96,12 @@ export interface FieldUpdate {
 export type SatelliteSource =
   | 'sentinel_2' | 'landsat_8' | 'landsat_9' | 'planet' | 'modis' | 'spot'
 
+export type SatelliteIndexObservationIds = Partial<
+  Record<'ndvi' | 'ndwi' | 'ndre' | 'evi', string>
+>
+
 export interface SatelliteAnalysis {
-  id: number
+  id: string
   field_id: string
   acquisition_date: string
   satellite_source: SatelliteSource | null
@@ -108,6 +112,8 @@ export interface SatelliteAnalysis {
   evi: number | null
   image_url: string | null
   notes: string | null
+  /** Per-index API row ids after pivoting spectral_index rows for the UI. */
+  observation_ids?: SatelliteIndexObservationIds
   created_at: string
   updated_at: string
 }

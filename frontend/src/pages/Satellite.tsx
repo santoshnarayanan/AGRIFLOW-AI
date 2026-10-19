@@ -214,7 +214,7 @@ function AnalysisDialog({ open, onOpenChange, editing, allFields }: AnalysisDial
 
     if (editing) {
       updateAnalysis.mutate(
-        { id: editing.id, payload },
+        { analysis: editing, payload },
         { onSuccess: () => { onOpenChange(false); reset(defaultValues) } },
       )
     } else {
@@ -397,7 +397,7 @@ function DeleteDialog({ analysis, onOpenChange }: DeleteDialogProps) {
           <Button
             variant="destructive"
             disabled={deleteAnalysis.isPending}
-            onClick={() => deleteAnalysis.mutate(analysis.id, { onSuccess: () => onOpenChange(false) })}
+            onClick={() => deleteAnalysis.mutate(analysis, { onSuccess: () => onOpenChange(false) })}
           >
             {deleteAnalysis.isPending ? 'Deleting…' : 'Delete'}
           </Button>
@@ -478,11 +478,14 @@ function LatestHealthPanel({ latest }: { latest: SatelliteAnalysis | null }) {
   )
 }
 
+const DEFAULT_PERIOD_FROM = '2025-06-01'
+const DEFAULT_PERIOD_TO = '2026-05-31'
+
 // ─── Main page ────────────────────────────────────────────────────────────────
 
 export function Satellite() {
   const [selectedFarmId, setSelectedFarmId] = useState<string | undefined>()
-  const [selectedFieldId, setSelectedFieldId] = useState<number | undefined>()
+  const [selectedFieldId, setSelectedFieldId] = useState<string | undefined>()
   const [visibleIndices, setVisibleIndices] = useState<Record<IndexKey, boolean>>({
     ndvi: true, ndwi: true, ndre: false, evi: false,
   })
@@ -490,20 +493,36 @@ export function Satellite() {
   const [editing, setEditing] = useState<SatelliteAnalysis | null>(null)
   const [deleteTarget, setDeleteTarget] = useState<SatelliteAnalysis | null>(null)
 
-  const now = new Date()
-  const oneYearAgo = new Date(now.getFullYear() - 1, now.getMonth(), now.getDate())
-  const [fromDate, setFromDate] = useState(oneYearAgo.toISOString().slice(0, 10))
-  const [toDate, setToDate] = useState(now.toISOString().slice(0, 10))
+  const [fromDate, setFromDate] = useState(DEFAULT_PERIOD_FROM)
+  const [toDate, setToDate] = useState(DEFAULT_PERIOD_TO)
 
   const { data: farms = [] } = useFarms()
-  const { data: fields = [] } = useFields(selectedFarmId)
-  const { data: allFieldsFlat = [] } = useFields()
+  const { data: fields = [], isSuccess: fieldsReady, isLoading: fieldsLoading } =
+    useFields(selectedFarmId)
 
-  const { data: analyses = [], isLoading } = useSatelliteAnalyses({
-    fieldId: selectedFieldId,
-    from: fromDate ? `${fromDate}T00:00:00Z` : undefined,
-    to: toDate ? `${toDate}T23:59:59Z` : undefined,
+  const { data: allFieldsFlat = [] } = useFields(undefined, {
+    enabled: dialogOpen || editing != null,
   })
+
+  const fieldIds = useMemo(
+    () => (selectedFieldId ? [selectedFieldId] : fields.map((f) => f.id)),
+    [selectedFieldId, fields],
+  )
+
+  const listEnabled =
+    selectedFieldId != null || !selectedFarmId || (fieldsReady && fieldIds.length > 0)
+
+  const { data: analyses = [], isLoading: analysesLoading, isFetching } = useSatelliteAnalyses({
+    fieldId: selectedFieldId,
+    fieldIds: selectedFieldId ? undefined : fieldIds.length > 0 ? fieldIds : undefined,
+    from: fromDate,
+    to: toDate,
+    limit: 500,
+    enabled: listEnabled,
+  })
+
+  const isLoading =
+    (selectedFarmId && !selectedFieldId && fieldsLoading) || analysesLoading || isFetching
 
   const sorted = useMemo(
     () => [...analyses].sort((a, b) => a.acquisition_date.localeCompare(b.acquisition_date)),
@@ -586,7 +605,7 @@ export function Satellite() {
 
         <Select
           value={selectedFieldId ? String(selectedFieldId) : 'all'}
-          onValueChange={v => setSelectedFieldId(v !== 'all' ? Number(v) : undefined)}
+          onValueChange={v => setSelectedFieldId(v !== 'all' ? v : undefined)}
           disabled={!selectedFarmId}
         >
           <SelectTrigger className="w-44">
