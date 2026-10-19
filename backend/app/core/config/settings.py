@@ -5,7 +5,6 @@ All secrets are sourced from environment / .env file — never hardcoded.
 Azure Key Vault or Docker secrets can inject values as env vars at runtime.
 """
 
-import os
 from functools import lru_cache
 from typing import Literal
 
@@ -31,17 +30,11 @@ class Settings(BaseSettings):
         file_secret_settings: PydanticBaseSettingsSource,
     ) -> tuple[PydanticBaseSettingsSource, ...]:
         """
-        In development, ``backend/.env`` wins over process/OS env vars so a
-        stale global ``POSTGRES_PORT`` does not override Podman host port 25432.
-        Production/staging keep the usual env-var precedence (12-factor).
+        Process environment wins over ``backend/.env`` (12-factor). Required so
+        Compose/Podman can set ``POSTGRES_HOST=db`` while ``.env`` keeps
+        ``localhost:25432`` for host-run ``uvicorn``. Unset stray global
+        ``POSTGRES_*`` on the host if they conflict with ``.env``.
         """
-        if os.getenv("APP_ENV", "development").lower() == "development":
-            return (
-                init_settings,
-                dotenv_settings,
-                env_settings,
-                file_secret_settings,
-            )
         return (
             init_settings,
             env_settings,
