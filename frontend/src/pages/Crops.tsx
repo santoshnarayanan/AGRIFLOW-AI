@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useForm, Controller } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
@@ -19,7 +19,10 @@ import {
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { useFarms } from '@/api/farms'
 import { useFields } from '@/api/fields'
-import { useCrops, useCreateCrop, useUpdateCrop, useDeleteCrop } from '@/api/crops'
+import {
+  useCrops, useCreateCrop, useUpdateCrop, useDeleteCrop,
+  useCropGrowthDurations, findCropDuration, addDaysIso,
+} from '@/api/crops'
 import { formatDate, cn } from '@/lib/utils'
 import { cropDisplayName, cropDisplayVariety } from '@/lib/cropDisplay'
 import type { Crop, GrowthStage, CropStatus, CropCreate, CropUpdate } from '@/types'
@@ -95,7 +98,11 @@ const cropSchema = z.object({
   status: z.string().min(1, 'Please select a status'),
   planting_date: z.string(),
   expected_harvest_date: z.string(),
-})
+}).refine(
+  // Mirrors the backend rule; the server remains the authority.
+  (v) => !v.planting_date || !v.expected_harvest_date || v.expected_harvest_date >= v.planting_date,
+  { message: 'Expected harvest cannot be before the planting date', path: ['expected_harvest_date'] },
+)
 
 interface CropFormValues {
   field_id: string
@@ -132,7 +139,7 @@ function CropForm({
   const [formFarmId, setFormFarmId] = useState<string | undefined>(preselectedFarmId)
   const { data: fields } = useFields(formFarmId)
 
-  const { register, handleSubmit, control, formState: { errors } } = useForm<CropFormValues>({
+  const { register, handleSubmit, control, watch, setValue, getValues, formState: { errors } } = useForm<CropFormValues>({
     resolver: zodResolver(cropSchema),
     defaultValues: {
       field_id: lockedFieldId ? String(lockedFieldId) : '',
@@ -147,6 +154,28 @@ function CropForm({
   })
 
   const lockedField = fields?.find((f) => f.id === lockedFieldId)
+
+  // ── Expected harvest auto-fill (rule owned by backend crop_durations) ──────
+  // Fill expected harvest = planting + typical days for the crop, but only
+  // while the current value is empty or still the previous auto-estimate, so a
+  // date the user typed is never overwritten (same rule the server applies).
+  const { data: durations } = useCropGrowthDurations()
+  const cropName = watch('name')
+  const plantingDate = watch('planting_date')
+  const duration = findCropDuration(durations, cropName)
+  const prevInputs = useRef({ name: getValues('name'), planting: getValues('planting_date') })
+
+  useEffect(() => {
+    if (!durations) return
+    const prev = prevInputs.current
+    prevInputs.current = { name: cropName, planting: plantingDate }
+    const prevDur = findCropDuration(durations, prev.name)
+    const prevEstimate = prevDur && prev.planting ? addDaysIso(prev.planting, prevDur.days_to_harvest) : ''
+    const current = getValues('expected_harvest_date')
+    if (current !== '' && current !== prevEstimate) return
+    const next = duration && plantingDate ? addDaysIso(plantingDate, duration.days_to_harvest) : ''
+    if (next && next !== current) setValue('expected_harvest_date', next, { shouldValidate: true, shouldDirty: true })
+  }, [durations, cropName, plantingDate, duration, getValues, setValue])
 
   return (
     <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
@@ -207,7 +236,11 @@ function CropForm({
       <div className="grid grid-cols-2 gap-3">
         <div className="space-y-2">
           <Label htmlFor="name">Crop Name *</Label>
-          <Input id="name" placeholder="e.g. Rice" {...register('name')} />
+          <Input id="name" placeholder="e.g. Rice" list="known-crops" {...register('name')} />
+          {/* Suggest crops with a known growth duration so auto-harvest applies. */}
+          <datalist id="known-crops">
+            {durations?.map((d) => <option key={d.crop} value={d.crop} />)}
+          </datalist>
           {errors.name && <p className="text-xs text-destructive">{errors.name.message}</p>}
         </div>
         <div className="space-y-2">
@@ -268,8 +301,16 @@ function CropForm({
         <div className="space-y-2">
           <Label htmlFor="expected_harvest_date">Expected Harvest</Label>
           <Input id="expected_harvest_date" type="date" {...register('expected_harvest_date')} />
+          {errors.expected_harvest_date && (
+            <p className="text-xs text-destructive">{errors.expected_harvest_date.message}</p>
+          )}
         </div>
       </div>
+      <p className="-mt-2 text-xs text-muted-foreground">
+        {duration
+          ? `${duration.crop} takes about ${duration.days_to_harvest} days to harvest; expected harvest is auto-calculated from the planting date (you can change it).`
+          : 'Pick a known crop and planting date to auto-calculate the expected harvest.'}
+      </p>
 
       <DialogFooter className="pt-2">
         <Button type="button" variant="outline" onClick={onCancel} disabled={isPending}>

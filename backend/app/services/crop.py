@@ -7,6 +7,9 @@ Responsibilities
 - Verify a crop exists before applying an update.                    (rule 2)
 - Verify a crop exists before deletion.                              (rule 3)
 - Ensure actual_harvest_date is not earlier than planting_date.      (rule 4)
+- Default expected_harvest_date = planting_date + crop growth
+  duration when not supplied (see crop_durations), and ensure it is
+  not earlier than planting_date.                                    (rule 5)
 
 All database access is delegated to the injected repositories; no SQLAlchemy
 sessions or queries appear in this module.
@@ -27,6 +30,7 @@ from app.events.publisher import DomainEventPublisher, NoOpDomainEventPublisher
 from app.db.repositories.crop import CropRepository
 from app.db.repositories.field import FieldRepository
 from app.schemas.crop import CropCreate, CropUpdate
+from app.services.crop_durations import estimate_expected_harvest_date
 from app.services.field import FieldNotFoundError  # shared domain exception
 
 logger = get_logger(__name__)
@@ -41,7 +45,8 @@ class CropNotFoundError(ValueError):
 
 class InvalidHarvestDateError(ValueError):
     """
-    Raised when actual_harvest_date is set to a date earlier than planting_date.
+    Raised when actual_harvest_date or expected_harvest_date is set to a date
+    earlier than planting_date.
 
     This is a business invariant — a crop cannot be harvested before it was
     planted — enforced here rather than in the database layer so that the
@@ -101,6 +106,8 @@ class CropService:
         ------
         FieldNotFoundError
             If no field with ``field_id`` exists.
+        InvalidHarvestDateError
+            If expected_harvest_date is earlier than planting_date.
         """
         log = logger.bind(field_id=str(field_id), crop_name=payload.crop_name)
 
@@ -115,6 +122,18 @@ class CropService:
             "status": CropStatus.PLANNED,
             **payload.model_dump(),
         }
+
+        # Rule 5 — derive expected_harvest_date from the crop's typical growth
+        # duration when the caller did not supply one; an explicit value wins.
+        if data.get("expected_harvest_date") is None:
+            data["expected_harvest_date"] = estimate_expected_harvest_date(
+                data.get("crop_name"), data.get("planting_date")
+            )
+        _validate_expected_harvest_date(
+            planting_date=data["planting_date"],
+            expected_harvest_date=data.get("expected_harvest_date"),
+            log=log,
+        )
 
         # P1 yield validation — status is always PLANNED on create, so
         # actual_yield_tons_ha must not be supplied at creation time.
@@ -214,6 +233,30 @@ class CropService:
             log=log,
         )
 
+        # Rule 5 — if planting_date or crop_name changes and the caller did not
+        # send expected_harvest_date, re-derive it, but only when the stored
+        # value was itself auto-derived (or empty) so manual dates are kept.
+        if "expected_harvest_date" not in update_data and (
+            "planting_date" in update_data or "crop_name" in update_data
+        ):
+            previous_estimate = estimate_expected_harvest_date(
+                current.crop_name, current.planting_date
+            )
+            if current.expected_harvest_date in (None, previous_estimate):
+                new_estimate = estimate_expected_harvest_date(
+                    update_data.get("crop_name", current.crop_name),
+                    update_data.get("planting_date", current.planting_date),
+                )
+                if new_estimate is not None:
+                    update_data["expected_harvest_date"] = new_estimate
+        _validate_expected_harvest_date(
+            planting_date=update_data.get("planting_date", current.planting_date),
+            expected_harvest_date=update_data.get(
+                "expected_harvest_date", current.expected_harvest_date
+            ),
+            log=log,
+        )
+
         # P1 yield validation — evaluate against the effective status after the
         # update is applied; fall back to the stored value if not being changed.
         _validate_yield_data(
@@ -271,6 +314,25 @@ class CropService:
 
 
 # ── Internal helpers ───────────────────────────────────────────────────────────
+
+
+def _validate_expected_harvest_date(
+    *,
+    planting_date: date,
+    expected_harvest_date: date | None,
+    log: Any,
+) -> None:
+    """Raise ``InvalidHarvestDateError`` if expected_harvest_date precedes planting_date."""
+    if expected_harvest_date is not None and expected_harvest_date < planting_date:
+        log.warning(
+            "crop_service.expected_harvest_date_invalid",
+            planting_date=str(planting_date),
+            expected_harvest_date=str(expected_harvest_date),
+        )
+        raise InvalidHarvestDateError(
+            f"expected_harvest_date ({expected_harvest_date}) cannot be earlier than "
+            f"planting_date ({planting_date})."
+        )
 
 
 def _validate_harvest_date(

@@ -218,3 +218,11 @@ class CropResponse(CropBase):
     field_id: uuid.UUID = Field(description="UUID of the parent field")
     created_at: datetime = Field(description="Row creation timestamp (UTC)")
     updated_at: datetime = Field(description="Row last-updated timestamp (UTC)")
+
+
+class CropGrowthDurationResponse(BaseModel):
+    """Typical planting-to-harvest duration for a crop (reference data)."""
+
+    crop: str = Field(description="Canonical crop name, e.g. Rice")
+    days_to_harvest: int = Field(description="Typical days from planting to harvest")
+    aliases: list[str] = Field(default_factory=list, description="Alternative names, e.g. paddy")

@@ -212,3 +212,46 @@ export function useDeleteCrop() {
     onSuccess: () => qc.invalidateQueries({ queryKey: CROPS_KEY }),
   })
 }
+
+// ─── Growth durations (server-owned business rule) ───────────────────────────
+
+export interface CropGrowthDuration {
+  crop: string
+  days_to_harvest: number
+  aliases: string[]
+}
+
+/**
+ * Typical planting-to-harvest days per crop from GET /crops/growth-durations.
+ * The backend applies this rule authoritatively; the UI uses it only to show
+ * the auto-filled expected harvest date before saving.
+ */
+export function useCropGrowthDurations() {
+  return useQuery({
+    queryKey: [...CROPS_KEY, 'growth-durations'],
+    queryFn: async () => {
+      const { data } = await apiClient.get<CropGrowthDuration[]>('/crops/growth-durations')
+      return data
+    },
+    staleTime: Infinity,
+  })
+}
+
+/** Find a duration entry by crop name or alias (case-insensitive). */
+export function findCropDuration(
+  durations: CropGrowthDuration[] | undefined,
+  cropName: string,
+): CropGrowthDuration | undefined {
+  const key = cropName.trim().toLowerCase()
+  if (!key || !durations) return undefined
+  return durations.find(
+    (d) => d.crop.toLowerCase() === key || d.aliases.some((a) => a.toLowerCase() === key),
+  )
+}
+
+/** planting (YYYY-MM-DD) + days → YYYY-MM-DD, computed in UTC to avoid DST drift. */
+export function addDaysIso(isoDate: string, days: number): string {
+  const d = new Date(`${isoDate}T00:00:00Z`)
+  d.setUTCDate(d.getUTCDate() + days)
+  return d.toISOString().slice(0, 10)
+}

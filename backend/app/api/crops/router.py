@@ -25,12 +25,36 @@ from app.api.deps import CropServiceDep
 from app.core.logging import get_logger
 from app.db.models.crop import CropStatus
 from app.schemas.common import PaginatedResponse
-from app.schemas.crop import CropCreate, CropResponse, CropUpdate
+from app.schemas.crop import CropCreate, CropGrowthDurationResponse, CropResponse, CropUpdate
+from app.services.crop_durations import CROP_GROWTH_DURATIONS
 from app.services.crop import CropNotFoundError, InvalidHarvestDateError, InvalidYieldDataError
 from app.services.field import FieldNotFoundError
 
 router = APIRouter(tags=["Crops"])
 logger = get_logger(__name__)
+
+
+# ── Reference data ─────────────────────────────────────────────────────────────
+# Declared before /crops/{crop_id} so the literal path is not parsed as a UUID.
+
+
+@router.get(
+    "/crops/growth-durations",
+    response_model=list[CropGrowthDurationResponse],
+    status_code=status.HTTP_200_OK,
+    summary="Typical crop growth durations",
+    description=(
+        "Typical planting-to-harvest days per crop. The server uses this table "
+        "to default expected_harvest_date when it is not supplied on create."
+    ),
+)
+async def list_crop_growth_durations() -> list[CropGrowthDurationResponse]:
+    return [
+        CropGrowthDurationResponse(
+            crop=d.crop, days_to_harvest=d.days_to_harvest, aliases=list(d.aliases)
+        )
+        for d in CROP_GROWTH_DURATIONS
+    ]
 
 
 # ── Create ─────────────────────────────────────────────────────────────────────
@@ -59,6 +83,12 @@ async def create_crop(
         log.warning("api.crops.create.field_not_found")
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
+            detail=str(exc),
+        ) from exc
+    except InvalidHarvestDateError as exc:
+        log.warning("api.crops.create.invalid_harvest_date")
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
             detail=str(exc),
         ) from exc
     log.info("api.crops.create.success", crop_id=str(crop.id))
