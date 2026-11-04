@@ -16,6 +16,7 @@ import {
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { useFarms, useCreateFarm, useUpdateFarm, useDeleteFarm } from '@/api/farms'
 import { formatDate } from '@/lib/utils'
+import { LocationPicker } from '@/components/location/LocationPicker'
 import { decimalFromApi, formatFarmLocation, farmDisplayName } from '@/lib/farm'
 import type { Farm, FarmCreate, FarmUpdate } from '@/types'
 
@@ -80,7 +81,7 @@ function FarmCreateForm({
   isPending: boolean
   onCancel: () => void
 }) {
-  const { register, handleSubmit, formState: { errors } } = useForm<FarmCreateFormValues>({
+  const { register, handleSubmit, watch, setValue, formState: { errors } } = useForm<FarmCreateFormValues>({
     resolver: zodResolver(farmCreateSchema),
     defaultValues: {
       farm_code: '',
@@ -130,6 +131,22 @@ function FarmCreateForm({
           {errors.country && <p className="text-xs text-destructive">{errors.country.message}</p>}
         </div>
       </div>
+      <div className="space-y-2">
+        <Label>Farm Location</Label>
+        <LocationPicker
+          latitude={watch('latitude')}
+          longitude={watch('longitude')}
+          onPick={(lat, lng) => {
+            setValue('latitude', String(lat), { shouldValidate: true, shouldDirty: true })
+            setValue('longitude', String(lng), { shouldValidate: true, shouldDirty: true })
+          }}
+          onAddress={(addr) => {
+            if (addr.city) setValue('city', addr.city, { shouldValidate: true, shouldDirty: true })
+            if (addr.state) setValue('state', addr.state, { shouldValidate: true, shouldDirty: true })
+            if (addr.country) setValue('country', addr.country, { shouldValidate: true, shouldDirty: true })
+          }}
+        />
+      </div>
       <div className="grid grid-cols-2 gap-3">
         <div className="space-y-2">
           <Label htmlFor="latitude">Latitude *</Label>
@@ -172,7 +189,7 @@ function FarmEditForm({
   isPending: boolean
   onCancel: () => void
 }) {
-  const { register, handleSubmit, formState: { errors } } = useForm<FarmEditFormValues>({
+  const { register, handleSubmit, watch, setValue, formState: { errors } } = useForm<FarmEditFormValues>({
     resolver: zodResolver(farmEditSchema),
     defaultValues,
   })
@@ -205,6 +222,22 @@ function FarmEditForm({
           <Input id="country" {...register('country')} />
           {errors.country && <p className="text-xs text-destructive">{errors.country.message}</p>}
         </div>
+      </div>
+      <div className="space-y-2">
+        <Label>Farm Location</Label>
+        <LocationPicker
+          latitude={watch('latitude')}
+          longitude={watch('longitude')}
+          onPick={(lat, lng) => {
+            setValue('latitude', String(lat), { shouldValidate: true, shouldDirty: true })
+            setValue('longitude', String(lng), { shouldValidate: true, shouldDirty: true })
+          }}
+          onAddress={(addr) => {
+            if (addr.city) setValue('city', addr.city, { shouldValidate: true, shouldDirty: true })
+            if (addr.state) setValue('state', addr.state, { shouldValidate: true, shouldDirty: true })
+            if (addr.country) setValue('country', addr.country, { shouldValidate: true, shouldDirty: true })
+          }}
+        />
       </div>
       <div className="grid grid-cols-2 gap-3">
         <div className="space-y-2">
@@ -431,7 +464,7 @@ export function Farms() {
       </Card>
 
       <Dialog open={createOpen} onOpenChange={setCreateOpen}>
-        <DialogContent className="max-w-lg">
+        <DialogContent className="max-w-2xl">
           <DialogHeader>
             <DialogTitle>Register New Farm</DialogTitle>
             <DialogDescription>Add a new agricultural farm to the platform.</DialogDescription>
@@ -441,7 +474,7 @@ export function Farms() {
       </Dialog>
 
       <Dialog open={!!editFarm} onOpenChange={(v) => !v && setEditFarm(null)}>
-        <DialogContent className="max-w-lg">
+        <DialogContent className="max-w-2xl">
           <DialogHeader>
             <DialogTitle>Edit Farm</DialogTitle>
             <DialogDescription>
