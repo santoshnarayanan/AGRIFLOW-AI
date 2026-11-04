@@ -34,7 +34,7 @@ if TYPE_CHECKING:
 @dataclass(frozen=True, slots=True)
 class CDDFarmRecord:
     id: uuid.UUID
-    farm_code: str
+    farm_code: uuid.UUID
     farm_name: str
     owner_name: str
     country: str

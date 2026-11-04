@@ -15,8 +15,9 @@ class FarmFactory:
         total_area = sum(f.area_hectares for f in ctx.manifest.fields)
 
         farm = CDDFarmRecord(
-            id=ctx.uuid_generator.generate("farm", farm_def.farm_code),
-            farm_code=farm_def.farm_code,
+            id=ctx.uuid_generator.generate("farm", farm_def.farm_key),
+            # Deterministic UUID so reseeding yields the same farm_code.
+            farm_code=ctx.uuid_generator.generate("farm_code", farm_def.farm_key),
             farm_name=farm_def.farm_name,
             owner_name=farm_def.owner_name,
             country=farm_def.country,

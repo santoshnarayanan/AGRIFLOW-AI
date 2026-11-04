@@ -12,9 +12,11 @@ IEEE-754 floating-point drift when persisting and comparing coordinates.
 
 from __future__ import annotations
 
+import uuid
 from typing import TYPE_CHECKING
 
-from sqlalchemy import Boolean, Numeric, String
+from sqlalchemy import Boolean, Numeric, String, text
+from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.db.base import AuditableModel, Base
@@ -27,12 +29,16 @@ class Farm(AuditableModel, Base):
     __tablename__ = "farms"
 
     # ── Identity ──────────────────────────────────────────────────────────────
-    farm_code: Mapped[str] = mapped_column(
-        String(50),
+    # System-generated business key. Never supplied by API clients: the ORM
+    # assigns uuid4 on insert, and the DB default covers raw SQL inserts.
+    farm_code: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True),
         unique=True,
         nullable=False,
         index=True,
-        comment="Short human-readable identifier, e.g. FARM-001",
+        default=uuid.uuid4,
+        server_default=text("gen_random_uuid()"),
+        comment="System-generated UUID business key (auto-assigned on insert)",
     )
     farm_name: Mapped[str] = mapped_column(
         String(255),

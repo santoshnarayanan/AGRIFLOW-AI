@@ -14,7 +14,8 @@ Business rules enforced at schema layer:
 - latitude must be in [-90, 90]
 - longitude must be in [-180, 180]
 - total_area_hectares must be > 0
-- farm_code, farm_name, owner_name are non-empty strings
+- farm_name, owner_name are non-empty strings
+- farm_code is system-generated (UUID) and is not accepted on create/update
 """
 
 import uuid
@@ -27,12 +28,6 @@ from pydantic import BaseModel, ConfigDict, Field, field_validator
 class FarmCreate(BaseModel):
     """Request body for POST /farms."""
 
-    farm_code: str = Field(
-        ...,
-        min_length=1,
-        max_length=50,
-        description="Short human-readable identifier, e.g. FARM-001 (must be unique)",
-    )
     farm_name: str = Field(
         ...,
         min_length=1,
@@ -84,11 +79,6 @@ class FarmCreate(BaseModel):
         default=True,
         description="Whether the farm is currently active; inactive farms are retained for history",
     )
-
-    @field_validator("farm_code")
-    @classmethod
-    def strip_farm_code(cls, value: str) -> str:
-        return value.strip()
 
     @field_validator("farm_name", "owner_name", "country", "state", "city")
     @classmethod
@@ -161,7 +151,7 @@ class FarmResponse(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
     id: uuid.UUID = Field(description="UUID v4 primary key of the farm")
-    farm_code: str = Field(description="Short human-readable identifier")
+    farm_code: uuid.UUID = Field(description="System-generated UUID business key")
     farm_name: str = Field(description="Display name of the farm")
     owner_name: str = Field(description="Full name of the farm owner or managing entity")
     country: str = Field(description="Country where the farm is located")

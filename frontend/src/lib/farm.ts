@@ -24,3 +24,8 @@ export function decimalFromApi(value: string | number | null | undefined): numbe
   const n = typeof value === 'number' ? value : Number(value)
   return Number.isFinite(n) ? n : null
 }
+
+/** Compact display form of the UUID farm_code (first 8 hex chars); show the full value in a tooltip. */
+export function shortFarmCode(farmCode: string): string {
+  return farmCode.slice(0, 8).toUpperCase()
+}

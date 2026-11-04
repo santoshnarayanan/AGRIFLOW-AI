@@ -26,6 +26,7 @@ import {
   formatFarmLocation,
   fieldHasGps,
   formatFieldGps,
+  shortFarmCode,
 } from '@/lib/farm'
 import type { Field, FieldCreate, FieldUpdate } from '@/types'
 
@@ -305,8 +306,8 @@ export function Fields() {
               {selectedFarm ? `Fields — ${farmDisplayName(selectedFarm)}` : 'All Fields'}
             </CardTitle>
             {selectedFarm && (
-              <Badge variant="outline" className="text-xs">
-                {selectedFarm.farm_code}
+              <Badge variant="outline" className="text-xs font-mono" title={selectedFarm.farm_code}>
+                {shortFarmCode(selectedFarm.farm_code)}
               </Badge>
             )}
           </div>

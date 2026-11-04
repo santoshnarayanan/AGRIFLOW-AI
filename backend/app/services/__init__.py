@@ -11,7 +11,6 @@ from .crop import (
     InvalidYieldDataError,
 )
 from .farm import (
-    DuplicateFarmCodeError,
     FarmNotFoundError,
     FarmService,
 )
@@ -74,7 +73,6 @@ __all__ = [
     "CropService",
     "DiseaseObservationNotFoundError",
     "DiseaseObservationService",
-    "DuplicateFarmCodeError",
     "DuplicateFieldNameError",
     "DuplicateSoilProfileError",
     "FarmNotFoundError",

@@ -129,7 +129,8 @@ class YieldRulesConfig:
 class FarmDefinition:
     """Root farm identity for the demonstration dataset."""
 
-    farm_code: str
+    # Readable seed label; the persisted UUID farm_code is derived from it.
+    farm_key: str
     farm_name: str
     owner_name: str
     country: str
@@ -531,7 +532,7 @@ _CDD_DEV_MANIFEST = CDDManifest(
     field_count=10,
     temporal_duration_days=365,
     farm=FarmDefinition(
-        farm_code="AGRIFLOW-DEMO",
+        farm_key="AGRIFLOW-DEMO",
         farm_name="AGRIFLOW Demonstration Farm",
         owner_name="AGRIFLOW Synthetic Holdings LLC",
         country="United States",

@@ -40,7 +40,7 @@ class FarmRepository(BaseRepository[Farm]):
 
     # ── Farm-specific queries ─────────────────────────────────────────────────
 
-    async def get_by_farm_code(self, farm_code: str) -> Farm | None:
+    async def get_by_farm_code(self, farm_code: uuid.UUID) -> Farm | None:
         """Return a farm by its unique farm_code, or None if not found."""
         result = await self._session.execute(
             select(Farm).where(Farm.farm_code == farm_code)

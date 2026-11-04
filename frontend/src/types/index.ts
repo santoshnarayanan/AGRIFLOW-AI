@@ -19,6 +19,7 @@ export interface OffsetPaginatedResponse<T> {
 
 export interface Farm {
   id: string
+  /** System-generated UUID business key (never user-entered). */
   farm_code: string
   farm_name: string
   owner_name: string
@@ -34,7 +35,6 @@ export interface Farm {
 }
 
 export interface FarmCreate {
-  farm_code: string
   farm_name: string
   owner_name: string
   country: string

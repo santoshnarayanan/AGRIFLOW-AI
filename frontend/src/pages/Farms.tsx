@@ -17,7 +17,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { useFarms, useCreateFarm, useUpdateFarm, useDeleteFarm } from '@/api/farms'
 import { formatDate } from '@/lib/utils'
 import { LocationPicker } from '@/components/location/LocationPicker'
-import { decimalFromApi, formatFarmLocation, farmDisplayName } from '@/lib/farm'
+import { decimalFromApi, formatFarmLocation, farmDisplayName, shortFarmCode } from '@/lib/farm'
 import type { Farm, FarmCreate, FarmUpdate } from '@/types'
 
 const coord = z.string().refine((v) => v !== '' && !isNaN(Number(v)), { message: 'Required' })
@@ -26,7 +26,6 @@ const positiveArea = z.string().refine((v) => v !== '' && !isNaN(Number(v)) && N
 })
 
 const farmCreateSchema = z.object({
-  farm_code: z.string().min(1, 'Farm code is required').max(50),
   farm_name: z.string().min(1, 'Farm name is required').max(255),
   owner_name: z.string().min(1, 'Owner name is required').max(255),
   country: z.string().min(1, 'Country is required').max(100),
@@ -37,14 +36,14 @@ const farmCreateSchema = z.object({
   total_area_hectares: positiveArea,
 })
 
-const farmEditSchema = farmCreateSchema.omit({ farm_code: true })
+// farm_code is generated server-side, so create and edit share one schema.
+const farmEditSchema = farmCreateSchema
 
 type FarmCreateFormValues = z.infer<typeof farmCreateSchema>
 type FarmEditFormValues = z.infer<typeof farmEditSchema>
 
 function toCreatePayload(values: FarmCreateFormValues): FarmCreate {
   return {
-    farm_code: values.farm_code.trim(),
     farm_name: values.farm_name.trim(),
     owner_name: values.owner_name.trim(),
     country: values.country.trim(),
@@ -84,7 +83,6 @@ function FarmCreateForm({
   const { register, handleSubmit, watch, setValue, formState: { errors } } = useForm<FarmCreateFormValues>({
     resolver: zodResolver(farmCreateSchema),
     defaultValues: {
-      farm_code: '',
       farm_name: '',
       owner_name: '',
       country: '',
@@ -99,11 +97,6 @@ function FarmCreateForm({
 
   return (
     <form onSubmit={handleSubmit(onSubmit)} className="space-y-4 max-h-[70vh] overflow-y-auto pr-1">
-      <div className="space-y-2">
-        <Label htmlFor="farm_code">Farm Code *</Label>
-        <Input id="farm_code" placeholder="e.g. FARM-001" {...register('farm_code')} />
-        {errors.farm_code && <p className="text-xs text-destructive">{errors.farm_code.message}</p>}
-      </div>
       <div className="space-y-2">
         <Label htmlFor="farm_name">Farm Name *</Label>
         <Input id="farm_name" placeholder="e.g. Green Valley Farm" {...register('farm_name')} />
@@ -418,7 +411,9 @@ export function Farms() {
                     <TableCell>
                       <div>
                         <p className="font-medium">{farmDisplayName(farm)}</p>
-                        <p className="text-xs text-muted-foreground">{farm.farm_code}</p>
+                        <p className="text-xs text-muted-foreground font-mono" title={farm.farm_code}>
+                          {shortFarmCode(farm.farm_code)}
+                        </p>
                       </div>
                     </TableCell>
                     <TableCell className="text-muted-foreground">{formatFarmLocation(farm)}</TableCell>
