@@ -14,11 +14,14 @@ import {
   DialogFooter, DialogDescription,
 } from '@/components/ui/dialog'
 import {
-  Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
+  Select, SelectContent, SelectGroup, SelectItem, SelectLabel, SelectSeparator, SelectTrigger, SelectValue,
 } from '@/components/ui/select'
+import { LocationPicker } from '@/components/location/LocationPicker'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { useFarms } from '@/api/farms'
 import { useFields, useCreateField, useUpdateField, useDeleteField } from '@/api/fields'
+import { useNearbySoilTypes } from '@/api/soilgrids'
+import { ALL_SOIL_TYPES } from '@/lib/soil'
 import { formatDate } from '@/lib/utils'
 import {
   decimalFromApi,
@@ -28,7 +31,10 @@ import {
   formatFieldGps,
   shortFarmCode,
 } from '@/lib/farm'
-import type { Field, FieldCreate, FieldUpdate } from '@/types'
+import type { Farm, Field, FieldCreate, FieldUpdate } from '@/types'
+
+// Radix Select forbids empty-string item values, so "not specified" uses a sentinel.
+const NO_SOIL = '__none__'
 
 const fieldSchema = z.object({
   farm_id: z.string().min(1, 'Please select a farm'),
@@ -95,9 +101,20 @@ function FieldForm({ defaultValues, onSubmit, isPending, onCancel, mode, lockedF
   })
 
   const selectedFarmId = watch('farm_id')
+  const soilType = watch('soil_type')
+  const selectedFarm: Farm | undefined = farms?.find((f) => f.id === selectedFarmId)
+  const farmLat = selectedFarm ? decimalFromApi(selectedFarm.latitude) : null
+  const farmLng = selectedFarm ? decimalFromApi(selectedFarm.longitude) : null
+
+  // Soil textures found around the farm's city (SoilGrids); listed first in the dropdown.
+  const { data: nearbySoils, isFetching: soilsLoading, isError: soilsError } = useNearbySoilTypes(farmLat, farmLng)
+  const nearby = nearbySoils ?? []
+  const otherSoils = ALL_SOIL_TYPES.filter((t) => !nearby.includes(t))
+  // Keep a legacy free-text value selectable when editing older fields.
+  const legacySoil = soilType && !ALL_SOIL_TYPES.includes(soilType) ? soilType : null
 
   return (
-    <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
+    <form onSubmit={handleSubmit(onSubmit)} className="space-y-4 max-h-[70vh] overflow-y-auto pr-1">
       <div className="space-y-2">
         <Label>Farm *</Label>
         {lockedFarmId ? (
@@ -136,14 +153,63 @@ function FieldForm({ defaultValues, onSubmit, isPending, onCancel, mode, lockedF
       </div>
 
       <div className="space-y-2">
-        <Label htmlFor="soil_type">Soil Type</Label>
-        <Input id="soil_type" placeholder="e.g. Loam" {...register('soil_type')} />
+        <Label>Soil Type</Label>
+        <Select
+          value={soilType || NO_SOIL}
+          onValueChange={(v) => setValue('soil_type', v === NO_SOIL ? '' : v, { shouldDirty: true })}
+        >
+          <SelectTrigger>
+            <SelectValue placeholder="Select soil type…" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value={NO_SOIL}>Not specified</SelectItem>
+            {legacySoil && <SelectItem value={legacySoil}>{legacySoil}</SelectItem>}
+            {nearby.length > 0 && (
+              <>
+                <SelectSeparator />
+                <SelectGroup>
+                  <SelectLabel>Found near {selectedFarm?.city || 'this farm'}</SelectLabel>
+                  {nearby.map((t) => <SelectItem key={t} value={t}>{t}</SelectItem>)}
+                </SelectGroup>
+              </>
+            )}
+            <SelectSeparator />
+            <SelectGroup>
+              <SelectLabel>{nearby.length > 0 ? 'Other soil types' : 'All soil types'}</SelectLabel>
+              {otherSoils.map((t) => <SelectItem key={t} value={t}>{t}</SelectItem>)}
+            </SelectGroup>
+          </SelectContent>
+        </Select>
+        <p className="text-xs text-muted-foreground">
+          {!selectedFarm
+            ? 'Select a farm to see soil types found in its area.'
+            : soilsLoading
+              ? `Looking up soils around ${selectedFarm.city}…`
+              : soilsError
+                ? 'Could not load local soil data; showing all soil types.'
+                : nearby.length > 0
+                  ? `Soil types near ${selectedFarm.city} are listed first (source: ISRIC SoilGrids).`
+                  : `No soil data found around ${selectedFarm.city}; showing all soil types.`}
+        </p>
       </div>
 
       <div className="space-y-2">
         <Label htmlFor="area_hectares">Area (hectares)</Label>
         <Input id="area_hectares" type="number" step="0.01" placeholder="e.g. 12.5" {...register('area_hectares')} />
         {errors.area_hectares && <p className="text-xs text-destructive">{errors.area_hectares.message}</p>}
+      </div>
+
+      <div className="space-y-2">
+        <Label>Field Location</Label>
+        <LocationPicker
+          latitude={watch('latitude')}
+          longitude={watch('longitude')}
+          defaultCenter={farmLat != null && farmLng != null ? [farmLat, farmLng] : null}
+          onPick={(lat, lng) => {
+            setValue('latitude', String(lat), { shouldDirty: true })
+            setValue('longitude', String(lng), { shouldDirty: true })
+          }}
+        />
       </div>
 
       <div className="grid grid-cols-2 gap-3">
@@ -409,7 +475,7 @@ export function Fields() {
       </Card>
 
       <Dialog open={createOpen} onOpenChange={setCreateOpen}>
-        <DialogContent>
+        <DialogContent className="max-w-2xl">
           <DialogHeader>
             <DialogTitle>Add New Field</DialogTitle>
             <DialogDescription>Register a new field within one of your farms.</DialogDescription>
@@ -426,7 +492,7 @@ export function Fields() {
       </Dialog>
 
       <Dialog open={!!editField} onOpenChange={(v) => !v && setEditField(null)}>
-        <DialogContent>
+        <DialogContent className="max-w-2xl">
           <DialogHeader>
             <DialogTitle>Edit Field</DialogTitle>
             <DialogDescription>Update details for {editField?.name}.</DialogDescription>

@@ -18,6 +18,8 @@ interface LocationPickerProps {
   onPick: (lat: number, lng: number) => void
   /** Called once reverse geocoding resolves for a picked point. */
   onAddress?: (address: PickedAddress) => void
+  /** Where to centre the map while no point is set (e.g. the parent farm). */
+  defaultCenter?: [number, number] | null
 }
 
 const NOMINATIM = 'https://nominatim.openstreetmap.org'
@@ -58,7 +60,7 @@ async function reverseGeocode(lat: number, lng: number): Promise<PickedAddress |
   }
 }
 
-export function LocationPicker({ latitude, longitude, onPick, onAddress }: LocationPickerProps) {
+export function LocationPicker({ latitude, longitude, onPick, onAddress, defaultCenter }: LocationPickerProps) {
   const containerRef = useRef<HTMLDivElement>(null)
   const mapRef = useRef<L.Map | null>(null)
   const markerRef = useRef<L.Marker | null>(null)
@@ -106,8 +108,8 @@ export function LocationPicker({ latitude, longitude, onPick, onAddress }: Locat
     if (!containerRef.current) return
     const initial = parseCoord(latitude, longitude)
     const map = L.map(containerRef.current, {
-      center: initial ?? DEFAULT_CENTER,
-      zoom: initial ? 14 : 2,
+      center: initial ?? defaultCenter ?? DEFAULT_CENTER,
+      zoom: initial ? 14 : defaultCenter ? 13 : 2,
       worldCopyJump: true,
     })
     mapRef.current = map
@@ -153,6 +155,14 @@ export function LocationPicker({ latitude, longitude, onPick, onAddress }: Locat
     placeMarker(ll)
     map.setView(ll, Math.max(map.getZoom(), 12))
   }, [latitude, longitude])
+
+  // Re-centre on a new default (e.g. a different farm selected) until a point is picked.
+  const centerKey = defaultCenter ? `${defaultCenter[0]},${defaultCenter[1]}` : ''
+  useEffect(() => {
+    if (!mapRef.current || markerRef.current || !defaultCenter) return
+    mapRef.current.setView(defaultCenter, 13)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [centerKey])
 
   async function handleSearch() {
     const q = query.trim()
